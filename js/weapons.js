@@ -90,6 +90,56 @@ export const WEAPONS = {
     color: '#78909c',
   },
 
+  // === BATTLE AXES ===
+  iron_axe: {
+    id: 'iron_axe',
+    name: 'Железный топор',
+    desc: '+4 ATK, медленный',
+    type: 'axe',
+    bonusAtk: 4,
+    range: 44,
+    attackSpeed: 0.45,
+    knockback: 35,
+    price: 60,
+    color: '#78909c',
+  },
+  steel_axe: {
+    id: 'steel_axe',
+    name: 'Стальной топор',
+    desc: '+7 ATK, тяжёлый удар',
+    type: 'axe',
+    bonusAtk: 7,
+    range: 46,
+    attackSpeed: 0.4,
+    knockback: 40,
+    price: 110,
+    color: '#90caf9',
+  },
+  gladiator_axe: {
+    id: 'gladiator_axe',
+    name: 'Топор гладиатора',
+    desc: '+9 ATK, двулезвийный',
+    type: 'axe',
+    bonusAtk: 9,
+    range: 48,
+    attackSpeed: 0.38,
+    knockback: 45,
+    price: 170,
+    color: '#c9a04e',
+  },
+  knight_axe: {
+    id: 'knight_axe',
+    name: 'Рыцарский топор',
+    desc: '+12 ATK, сокрушительный',
+    type: 'axe',
+    bonusAtk: 12,
+    range: 50,
+    attackSpeed: 0.35,
+    knockback: 50,
+    price: 250,
+    color: '#b0bec5',
+  },
+
   // === BANDIT LOOT WEAPONS ===
   bandit_sword: {
     id: 'bandit_sword',
@@ -164,6 +214,9 @@ export function drawWeaponAttack(ctx, x, y, facing, weapon, s, progress = 0.5) {
       break;
     case 'bow':
       drawBowShot(ctx, x, y, facing, w, s, progress);
+      break;
+    case 'axe':
+      drawAxeSwing(ctx, x, y, facing, w, s, progress);
       break;
   }
 }
@@ -398,6 +451,73 @@ function drawBowShot(ctx, x, y, facing, w, s, progress) {
   }
 }
 
+// Axe: heavy overhead swing
+function drawAxeSwing(ctx, x, y, facing, w, s, progress) {
+  const cx = x + 8 * s;
+  const cy = y + 10 * s;
+  const len = 10 * s;
+  const bright = lightenColor(w.color);
+
+  // Overhead swing: starts high, smashes down (wider arc than sword)
+  const swingRange = Math.PI * 0.9;
+  const swingOffset = -swingRange / 2;
+  const angle = swingOffset + progress * swingRange;
+
+  let baseAngle;
+  switch (facing) {
+    case 'right': baseAngle = -Math.PI / 2; break;
+    case 'left':  baseAngle = Math.PI / 2; break;
+    case 'up':    baseAngle = Math.PI; break;
+    case 'down':  baseAngle = 0; break;
+  }
+
+  const totalAngle = baseAngle + angle;
+  const tipX = cx + Math.sin(totalAngle) * len;
+  const tipY = cy + Math.cos(totalAngle) * len;
+
+  // Handle (shaft)
+  ctx.strokeStyle = '#5d4037';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+
+  // Axe head (wide rectangle at tip, perpendicular to shaft)
+  const perpX = Math.cos(totalAngle);
+  const perpY = -Math.sin(totalAngle);
+  const headSize = 5 * s;
+
+  ctx.fillStyle = w.color;
+  ctx.beginPath();
+  ctx.moveTo(tipX + perpX * headSize, tipY + perpY * headSize);
+  ctx.lineTo(tipX - perpX * headSize, tipY - perpY * headSize);
+  ctx.lineTo(tipX - perpX * headSize * 0.3 + Math.sin(totalAngle) * 4, tipY - perpY * headSize * 0.3 + Math.cos(totalAngle) * 4);
+  ctx.lineTo(tipX + perpX * headSize * 0.3 + Math.sin(totalAngle) * 4, tipY + perpY * headSize * 0.3 + Math.cos(totalAngle) * 4);
+  ctx.fill();
+
+  // Edge highlight
+  ctx.fillStyle = bright;
+  ctx.beginPath();
+  ctx.moveTo(tipX + perpX * headSize, tipY + perpY * headSize);
+  ctx.lineTo(tipX - perpX * headSize, tipY - perpY * headSize);
+  ctx.lineTo(tipX + Math.sin(totalAngle) * 2, tipY + Math.cos(totalAngle) * 2);
+  ctx.fill();
+
+  // Impact shockwave at peak (progress ~0.4-0.6)
+  if (progress > 0.35 && progress < 0.65) {
+    const intensity = 1 - Math.abs(progress - 0.5) * 4;
+    ctx.globalAlpha = intensity * 0.5;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(tipX, tipY, 8 + intensity * 10, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
 // Draw weapon at rest (not attacking) on right side of hero
 export function drawWeaponRest(ctx, x, y, weapon, s) {
   const w = getWeapon(weapon);
@@ -451,6 +571,20 @@ export function drawWeaponRest(ctx, x, y, weapon, s) {
       ctx.moveTo(x + 14 * s, y + 4 * s);
       ctx.lineTo(x + 14 * s, y + 16 * s);
       ctx.stroke();
+      break;
+    case 'axe':
+      // Axe resting on shoulder
+      ctx.strokeStyle = '#5d4037';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 12 * s, y + 12 * s);
+      ctx.lineTo(x + 16 * s, y + 1 * s);
+      ctx.stroke();
+      // Axe head
+      ctx.fillStyle = w.color;
+      ctx.fillRect(x + 14 * s, y - 1 * s, 4 * s, 4 * s);
+      ctx.fillStyle = lightenColor(w.color);
+      ctx.fillRect(x + 17 * s, y - 1 * s, 1 * s, 4 * s);
       break;
   }
 }

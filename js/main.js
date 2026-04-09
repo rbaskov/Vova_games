@@ -514,6 +514,7 @@ function updatePlayer(dt) {
     } else {
       const wType = getWeapon(p.weapon).type;
       if (wType === 'spear') SFX.playSpearThrust();
+      else if (wType === 'axe') { SFX.playSwordSwing(); SFX.playHitEnemy(); }
       else SFX.playSwordSwing();
     }
   }

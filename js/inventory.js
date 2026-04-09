@@ -291,6 +291,18 @@ function drawWeaponIcon(ctx, x, y, w) {
       ctx.fillStyle = '#fff';
       ctx.fillRect(cx - 5, cy - 1, 8, 1);
       break;
+    case 'axe':
+      // Axe handle
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(cx - 1, cy - 4, 2, 16);
+      // Axe head
+      ctx.fillStyle = w.color;
+      ctx.fillRect(cx - 6, cy - 8, 10, 6);
+      // Edge highlight
+      const axeBright = { '#78909c':'#b0bec5', '#90caf9':'#bbdefb', '#c9a04e':'#dbb85c', '#b0bec5':'#eceff1' };
+      ctx.fillStyle = axeBright[w.color] || '#fff';
+      ctx.fillRect(cx - 6, cy - 8, 2, 6);
+      break;
   }
 }
 
