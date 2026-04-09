@@ -15,22 +15,22 @@ const tiles = [
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 2
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
-  // Row 3 — blacksmith building top
-  [T,G,G,W,W,W,G,G,G,G,G,G,G,G,D,D,G,G,W,W,W,G,G,G,G,G,G,G,G,T],
-  // Row 4 — blacksmith building bottom
-  [T,G,G,W,G,W,G,G,G,G,G,G,G,G,D,D,G,G,W,G,W,G,G,G,G,G,G,G,G,T],
+  // Row 3
+  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,W,W,W,G,G,G,G,G,G,G,G,T],
+  // Row 4 — blacksmith stands here
+  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,W,G,W,G,G,G,G,G,G,G,G,T],
   // Row 5
-  [T,G,G,W,W,W,G,G,G,G,G,G,G,G,D,D,G,G,W,W,W,G,G,G,G,G,G,G,G,T],
+  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,W,W,W,G,G,G,G,G,G,G,G,T],
   // Row 6
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 7
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
-  // Row 8 — elder building top + horizontal path
-  [T,G,G,G,G,G,G,G,W,W,W,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
-  // Row 9 — horizontal dirt path + elder building
-  [T,D,D,D,D,D,D,D,W,G,W,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
-  // Row 10 — elder building bottom + main path
-  [T,G,G,G,G,G,G,G,W,W,W,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+  // Row 8
+  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+  // Row 9 — horizontal dirt path, elder stands here
+  [T,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
+  // Row 10
+  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 11
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 12
