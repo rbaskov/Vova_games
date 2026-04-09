@@ -281,6 +281,7 @@ export function createChunkManager(worldGen) {
     getTileAtWorld,
     getBiomeAtWorld,
     getLoadedChunks,
+    getChunk: loadChunk,
     pixelToChunk,
     recordChange,
     serializeChanges,

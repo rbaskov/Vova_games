@@ -859,8 +859,8 @@ function checkPortals() {
     game.player._hasHorse = game.hasHorse;
 
     if (portal.target === 'openworld') {
-      saveGame(game.player, 'openworld');
       enterOpenWorld(game.worldSeed);
+      saveGame(game.player, 'openworld', getOpenWorldSaveState());
       game.portalCooldown = 0.5;
       SFX.playPortal();
       return;
