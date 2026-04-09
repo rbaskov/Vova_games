@@ -93,7 +93,7 @@ function drawDarkAxeman(ctx, x, y, facing, frame) {
 const ENEMY_TYPES = {
   slime:    { hp: 30, maxHp: 30, atk: 5,  speed: 40,  xp: 10, coins: 3,  width: 28, height: 26, draw: drawSlime,    ai: 'hop',        aggroRange: 150 },
   wolf:     { hp: 25, maxHp: 25, atk: 8,  speed: 100, xp: 15, coins: 5,  width: 36, height: 28, draw: drawWolf,     ai: 'chase',      aggroRange: 200 },
-  skeleton: { hp: 40, maxHp: 40, atk: 10, speed: 50,  xp: 25, coins: 7,  width: 32, height: 40, draw: drawSkeleton, ai: 'patrol',     aggroRange: 160 },
+  skeleton: { hp: 40, maxHp: 40, atk: 10, speed: 50,  xp: 25, coins: 7,  width: 32, height: 40, draw: drawSkeleton, ai: 'patrol',     aggroRange: 160, loot: { weaponId: 'skeleton_sword', dropChance: 0.4 } },
   golem:    { hp: 80, maxHp: 80, atk: 18, speed: 25,  xp: 50, coins: 10, width: 32, height: 40, draw: drawGolem,    ai: 'slow_chase', aggroRange: 120 },
 
   // Human enemies

@@ -186,6 +186,33 @@ function getItems(player) {
   return items;
 }
 
+// Skeleton sword icon — bone blade
+function drawSkeletonSwordIcon(ctx, x, y) {
+  const cx = x + 16, cy = y + 16;
+  // Bone blade
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(cx - 1, cy - 11, 3, 14);
+  // Bone knobs
+  ctx.fillStyle = '#bdbdbd';
+  ctx.fillRect(cx - 2, cy - 12, 5, 2);
+  ctx.fillRect(cx - 2, cy - 8, 1, 2);
+  ctx.fillRect(cx + 2, cy - 6, 1, 2);
+  // Rib-like guard
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(cx - 4, cy + 2, 9, 2);
+  ctx.fillRect(cx - 5, cy + 1, 2, 3);
+  ctx.fillRect(cx + 4, cy + 1, 2, 3);
+  // Bone grip
+  ctx.fillStyle = '#d7ccc8';
+  ctx.fillRect(cx - 1, cy + 4, 3, 5);
+  ctx.fillStyle = '#bcaaa4';
+  ctx.fillRect(cx, cy + 5, 1, 3);
+  // Cracks
+  ctx.fillStyle = '#9e9e9e';
+  ctx.fillRect(cx, cy - 4, 1, 3);
+  ctx.fillRect(cx - 1, cy - 9, 1, 2);
+}
+
 // Bandit weapon icons — rough, damaged, unique look
 function drawBanditWeaponIcon(ctx, x, y, w) {
   const cx = x + 16, cy = y + 16;
@@ -281,6 +308,7 @@ function drawBanditWeaponIcon(ctx, x, y, w) {
 
 function drawWeaponIcon(ctx, x, y, w) {
   if (w.id && w.id.startsWith('bandit_')) { drawBanditWeaponIcon(ctx, x, y, w); return; }
+  if (w.id === 'skeleton_sword') { drawSkeletonSwordIcon(ctx, x, y); return; }
   const cx = x + 16, cy = y + 16;
   const id = w.id || '';
 

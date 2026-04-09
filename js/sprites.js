@@ -560,6 +560,15 @@ export function drawSkeleton(ctx, x, y, frame = 0) {
   ctx.fillRect(5 * s, (18 + legSwing) * s, 2 * s, 1 * s);
   ctx.fillRect(10 * s, (18 + 1 - legSwing) * s, 2 * s, 1 * s);
 
+  // Bone sword in right hand
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(13 * s, (4 - armSwing) * s, 1 * s, 7 * s);
+  ctx.fillStyle = '#bdbdbd';
+  ctx.fillRect(13 * s, (3 - armSwing) * s, 1 * s, 2 * s);
+  // Guard
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(12 * s, (10 - armSwing) * s, 3 * s, 1 * s);
+
   ctx.restore();
 }
 

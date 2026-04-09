@@ -141,6 +141,18 @@ export const WEAPONS = {
   },
 
   // === BANDIT LOOT WEAPONS ===
+  skeleton_sword: {
+    id: 'skeleton_sword',
+    name: 'Костяной меч скелета',
+    desc: '+1 ATK, хрупкий',
+    type: 'sword',
+    bonusAtk: 1,
+    range: 46,
+    attackSpeed: 0.32,
+    knockback: 18,
+    price: 15,
+    color: '#e0e0e0',
+  },
   bandit_sword: {
     id: 'bandit_sword',
     name: 'Ржавый меч бандита',
