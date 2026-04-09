@@ -1,5 +1,5 @@
 import { initInput, isKeyDown, isKeyPressed, getMovementInput } from './input.js';
-import { detectMobile, initTouchControls, renderTouchControls, isMobileDevice } from './touch.js';
+import { detectMobile, initTouchControls, renderTouchControls, renderMenuTouchControls, isMobileDevice, setTapAnywhereMode, getJoystickFlick } from './touch.js';
 import { createTileMap, renderMap, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
@@ -614,19 +614,23 @@ function renderMenu(ctx, dt) {
   ctx.fillText('ХРОНИКИ', width / 2, 120);
   ctx.fillText('ЭЛЬДОРИИ', width / 2, 160);
 
-  // Blinking prompt
-  const blink = Math.sin(game.totalTime * 3) > 0;
-  if (blink) {
-    ctx.font = '14px "Press Start 2P"';
-    ctx.fillStyle = '#ffffff';
-    if (hasSave()) {
-      ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 330);
-    } else {
-      ctx.fillText('НАЖМИ ENTER', width / 2, 330);
+  // Menu prompts — different for mobile vs desktop
+  if (isMobileDevice()) {
+    renderMenuTouchControls(ctx, width, height, hasSave());
+  } else {
+    const blink = Math.sin(game.totalTime * 3) > 0;
+    if (blink) {
+      ctx.font = '14px "Press Start 2P"';
+      ctx.fillStyle = '#ffffff';
+      if (hasSave()) {
+        ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 330);
+      } else {
+        ctx.fillText('НАЖМИ ENTER', width / 2, 330);
+      }
+      ctx.font = '10px "Press Start 2P"';
+      ctx.fillStyle = '#b388ff';
+      ctx.fillText('S = Песочница', width / 2, 360);
     }
-    ctx.font = '10px "Press Start 2P"';
-    ctx.fillStyle = '#b388ff';
-    ctx.fillText('S = Песочница', width / 2, 360);
   }
 
   // Footer
@@ -923,12 +927,14 @@ function gameLoop(timestamp) {
 
   const { ctx } = game;
 
+  // On mobile, enable "tap anywhere" mode for GAMEOVER/WIN screens
+  if (isMobileDevice()) {
+    setTapAnywhereMode(game.state === STATE.GAMEOVER || game.state === STATE.WIN);
+  }
+
   switch (game.state) {
     case STATE.MENU:
       renderMenu(ctx, dt);
-      if (isMobileDevice()) {
-        renderTouchControls(ctx, game.width, game.height);
-      }
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         deleteSave();
         game.player = null;
@@ -1390,6 +1396,12 @@ function gameLoop(timestamp) {
       if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) dialogInput('up');
       if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) dialogInput('down');
       if (isKeyPressed('Enter') || isKeyPressed('Space') || isKeyPressed('KeyE')) dialogInput('confirm');
+      // Mobile: joystick flick for dialog navigation
+      if (isMobileDevice()) {
+        const flick = getJoystickFlick();
+        if (flick.dy < 0) dialogInput('up');
+        if (flick.dy > 0) dialogInput('down');
+      }
 
       // Return to play if dialog closed
       if (!isDialogOpen()) {
@@ -1400,6 +1412,8 @@ function gameLoop(timestamp) {
       updateParticles(game.particles, dt);
       renderPlay(ctx);
       renderDialog(ctx, game.width, game.height);
+      // Show touch controls in dialog (for joystick navigation + E confirm)
+      if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
       break;
 
     case STATE.INVENTORY:
@@ -1414,12 +1428,22 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyX')) {
         inventoryInput('sell', game.player, game.particles, createParticle);
       }
+      // Mobile: joystick flick for inventory navigation
+      if (isMobileDevice()) {
+        const flick = getJoystickFlick();
+        if (flick.dy < 0) inventoryInput('up', game.player);
+        if (flick.dy > 0) inventoryInput('down', game.player);
+        if (flick.dx < 0) inventoryInput('left', game.player);
+        if (flick.dx > 0) inventoryInput('right', game.player);
+      }
       if (isKeyPressed('KeyI') || isKeyPressed('Tab') || isKeyPressed('Escape')) {
         game.state = STATE.PLAY;
       }
       // Render
       renderPlay(ctx);
       renderInventory(ctx, game.player, game.width, game.height, game.sandbox);
+      // Show touch controls in inventory (for joystick navigation + Space/E use)
+      if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
       break;
 
     case STATE.GAMEOVER:
@@ -1445,12 +1469,12 @@ function gameLoop(timestamp) {
         if (blink) {
           ctx.font = '12px "Press Start 2P"';
           ctx.fillStyle = '#ffffff';
-          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 40);
+          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', game.width / 2, game.height / 2 + 40);
         }
       }
       ctx.textAlign = 'left';
       // Respawn at checkpoint or return to menu
-      if (isKeyPressed('Enter')) {
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         if (game.checkpoint && respawnAtCheckpoint()) {
           game.state = STATE.PLAY;
           game.particles = [];
@@ -1484,11 +1508,11 @@ function gameLoop(timestamp) {
         if (blink) {
           ctx.font = '12px "Press Start 2P"';
           ctx.fillStyle = '#ffffff';
-          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 70);
+          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', game.width / 2, game.height / 2 + 70);
         }
       }
       ctx.textAlign = 'left';
-      if (isKeyPressed('Enter')) {
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         game.state = STATE.MENU;
         game.player = null;
         game.enemies = [];
@@ -1504,21 +1528,28 @@ function gameLoop(timestamp) {
 
 // --- Start Game ---
 function resizeCanvas() {
-  const ratio = canvas.width / canvas.height;
+  // On mobile, stretch to fill entire screen (game adapts to any ratio)
   const maxW = window.innerWidth;
   const maxH = window.innerHeight;
 
-  let w, h;
-  if (maxW / maxH > ratio) {
-    h = maxH;
-    w = h * ratio;
+  if (isMobileDevice()) {
+    // Fill entire viewport — the game renders at 640x480 internal but fills screen
+    canvas.style.width = maxW + 'px';
+    canvas.style.height = maxH + 'px';
   } else {
-    w = maxW;
-    h = w / ratio;
+    // Desktop: maintain aspect ratio
+    const ratio = canvas.width / canvas.height;
+    let w, h;
+    if (maxW / maxH > ratio) {
+      h = maxH;
+      w = h * ratio;
+    } else {
+      w = maxW;
+      h = w / ratio;
+    }
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
   }
-
-  canvas.style.width = w + 'px';
-  canvas.style.height = h + 'px';
 }
 
 let canvas; // module-level reference
