@@ -426,6 +426,97 @@ function renderHUD(ctx) {
   ctx.textAlign = 'left';
 }
 
+// --- Minimap ---
+function renderMinimap(ctx) {
+  const map = game.currentMap;
+  const p = game.player;
+  if (!map || !p) return;
+
+  const mmW = 72, mmH = 72;
+  const mmX = game.width - mmW - 8;
+  const mmY = game.height - mmH - 8;
+
+  // Background
+  ctx.fillStyle = '#111';
+  ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+  ctx.fillStyle = '#1a2a10';
+  ctx.fillRect(mmX, mmY, mmW, mmH);
+
+  // Scale factors
+  const scaleX = mmW / (map.width * TILE_SIZE);
+  const scaleY = mmH / (map.height * TILE_SIZE);
+
+  // Enemy dots (red, 3x3)
+  ctx.fillStyle = '#ff3333';
+  for (const e of game.enemies) {
+    if (!e.alive) continue;
+    const ex = mmX + e.x * scaleX;
+    const ey = mmY + e.y * scaleY;
+    ctx.fillRect(ex - 1, ey - 1, 3, 3);
+  }
+
+  // Boss dot (gold, 5x5)
+  if (game.boss && game.boss.alive) {
+    ctx.fillStyle = '#f0c040';
+    const bx = mmX + game.boss.x * scaleX;
+    const by = mmY + game.boss.y * scaleY;
+    ctx.fillRect(bx - 2, by - 2, 5, 5);
+  }
+
+  // Player dot (cyan, 4x4)
+  ctx.fillStyle = '#00ffff';
+  const px = mmX + p.x * scaleX;
+  const py = mmY + p.y * scaleY;
+  ctx.fillRect(px - 2, py - 2, 4, 4);
+}
+
+// --- Help Overlay ---
+function renderHelpOverlay(ctx) {
+  const x = 60, y = 40;
+  const w = game.width - 120, h = game.height - 80;
+
+  // Dark background
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(x, y, w, h);
+  // Gold border
+  ctx.strokeStyle = '#ffd54f';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+
+  // Title
+  ctx.font = '14px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54f';
+  ctx.fillText('УПРАВЛЕНИЕ', game.width / 2, y + 36);
+
+  // Lines
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#ffffff';
+  const lines = [
+    'WASD / Стрелки — Движение',
+    'ПРОБЕЛ — Удар мечом',
+    'E — Говорить с NPC',
+    'Q — Использовать зелье',
+    '1 — Каменный щит',
+    '2 — Огненный шар',
+    '3 — Ледяная волна',
+    'H — Эта справка',
+  ];
+  let lineY = y + 70;
+  for (const line of lines) {
+    ctx.fillText(line, game.width / 2, lineY);
+    lineY += 28;
+  }
+
+  // Footer
+  ctx.fillStyle = '#aaa';
+  ctx.fillText('Нажми H чтобы закрыть', game.width / 2, y + h - 20);
+  ctx.textAlign = 'left';
+}
+
 // --- Render Play State ---
 function renderPlay(ctx) {
   const cam = game.camera;
@@ -472,11 +563,12 @@ function renderPlay(ctx) {
   if (p) {
     const px = p.x - cam.x;
     const py = p.y - cam.y;
-    // Blink when invincible
-    const visible = p.invincibleTimer <= 0 || Math.floor(p.invincibleTimer * 10) % 2 === 0;
-    if (visible) {
-      drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    // Flash when invincible (semi-transparent flicker)
+    if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer * 10) % 2 === 0) {
+      ctx.globalAlpha = 0.4;
     }
+    drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    ctx.globalAlpha = 1;
   }
 
   // Particles
@@ -492,6 +584,9 @@ function renderPlay(ctx) {
   if (game.boss && game.boss.alive) {
     renderBossHPBar(ctx, game.boss, game.width);
   }
+
+  // Minimap
+  renderMinimap(ctx);
 }
 
 // --- Game Loop ---
@@ -714,6 +809,9 @@ function gameLoop(timestamp) {
         }
       }
 
+      // --- Help toggle ---
+      if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
+
       // --- NPC interaction ---
       if (isKeyPressed('KeyE')) {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
@@ -739,6 +837,23 @@ function gameLoop(timestamp) {
           ctx.fillText('[E] Говорить', game.width / 2, game.height - 20);
           ctx.textAlign = 'left';
         }
+      }
+
+      // --- First-time hint (village, level 1) ---
+      if (game.currentMapName === 'village' && game.player.level === 1 && !game.showHelp) {
+        const blink = Math.sin(game.totalTime * 4) > 0;
+        if (blink) {
+          ctx.font = '8px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ffd54f';
+          ctx.fillText('[H] Справка', game.width / 2, 56);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // --- Help overlay ---
+      if (game.showHelp) {
+        renderHelpOverlay(ctx);
       }
       break;
 
