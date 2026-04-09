@@ -7,6 +7,8 @@ import { drawHero, drawNPC } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { createParticle, updateParticles, renderParticles } from './particles.js';
+import { getNearbyNPC } from './npc.js';
+import { openDialog, isDialogOpen, dialogInput, renderDialog, closeDialog } from './dialog.js';
 
 // --- Game States ---
 export const STATE = {
@@ -135,6 +137,31 @@ function checkPortals() {
   const portal = isPortal(game.currentMap, centerCol, centerRow);
   if (portal) {
     loadMap(portal.target, portal.spawnX, portal.spawnY);
+  }
+}
+
+// --- Dialog Actions ---
+function handleDialogAction(action) {
+  const p = game.player;
+  if (!p) return;
+
+  if (action === 'buy_potion') {
+    if (p.coins >= 10) {
+      p.coins -= 10;
+      p.potions++;
+      game.particles.push(createParticle(p.x, p.y - 8, '+1 зелье', '#44cc44'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
+  } else if (action === 'buy_big_potion') {
+    if (p.coins >= 25) {
+      p.coins -= 25;
+      const heal = Math.min(60, p.maxHp - p.hp);
+      p.hp += heal;
+      game.particles.push(createParticle(p.x, p.y - 8, '+60 HP', '#44cc44'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   }
 }
 
@@ -510,15 +537,53 @@ function gameLoop(timestamp) {
         ));
       }
 
+      // --- NPC interaction ---
+      if (isKeyPressed('KeyE')) {
+        const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
+        if (nearNPC) {
+          if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction)) {
+            game.state = STATE.DIALOG;
+          }
+        }
+      }
+
       // --- Update particles ---
       updateParticles(game.particles, dt);
 
       renderPlay(ctx);
+
+      // --- NPC proximity prompt ---
+      {
+        const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
+        if (nearNPC) {
+          ctx.font = '8px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ffd54f';
+          ctx.fillText('[E] Говорить', game.width / 2, game.height - 20);
+          ctx.textAlign = 'left';
+        }
+      }
       break;
 
     case STATE.DIALOG:
+      // Dialog input handling
+      if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) dialogInput('up');
+      if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) dialogInput('down');
+      if (isKeyPressed('Enter') || isKeyPressed('Space') || isKeyPressed('KeyE')) dialogInput('confirm');
+
+      // Return to play if dialog closed
+      if (!isDialogOpen()) {
+        game.state = STATE.PLAY;
+      }
+
+      // Render play scene underneath + dialog overlay
+      updateParticles(game.particles, dt);
+      renderPlay(ctx);
+      renderDialog(ctx, game.width, game.height);
+      break;
+
     case STATE.INVENTORY:
-      // Placeholders for future tasks
+      // Placeholder for future tasks
       break;
 
     case STATE.GAMEOVER:
