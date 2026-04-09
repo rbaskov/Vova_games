@@ -954,7 +954,7 @@ function gameLoop(timestamp) {
         p.ownedWeapons = Object.keys(WEAPONS);
         // Give all armor
         p.ownedArmor = Object.keys(ARMOR);
-        p.equippedArmor = { helmet: 'mithril_helmet', chest: 'mithril_chest', legs: 'mithril_legs', shield: 'mirror_shield' };
+        p.equippedArmor = { helmet: 'knight_helmet', chest: 'knight_chest', legs: 'knight_legs', shield: 'mirror_shield' };
         p.weapon = 'mithril_sword';
         saveCheckpoint();
         SFX.resumeAudio();

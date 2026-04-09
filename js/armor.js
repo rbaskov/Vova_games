@@ -37,6 +37,12 @@ export const ARMOR = {
     def: 5, bonusHp: 10, price: 110,
     color: '#9575cd', accent: '#b39ddb',
   },
+  knight_helmet: {
+    id: 'knight_helmet', slot: 'helmet',
+    name: 'Рыцарский шлем', desc: '+7 DEF +15 HP',
+    def: 7, bonusHp: 15, price: 180,
+    color: '#1565c0', accent: '#42a5f5',
+  },
 
   // === CHESTPLATES ===
   leather_chest: {
@@ -69,6 +75,12 @@ export const ARMOR = {
     def: 8, bonusHp: 20, price: 160,
     color: '#9575cd', accent: '#b39ddb',
   },
+  knight_chest: {
+    id: 'knight_chest', slot: 'chest',
+    name: 'Рыцарский доспех', desc: '+10 DEF +30 HP',
+    def: 10, bonusHp: 30, price: 250,
+    color: '#1565c0', accent: '#42a5f5',
+  },
 
   // === LEGGINGS ===
   leather_legs: {
@@ -100,6 +112,12 @@ export const ARMOR = {
     name: 'Мифрил. поножи', desc: '+5 DEF +10 HP',
     def: 5, bonusHp: 10, price: 120,
     color: '#9575cd', accent: '#b39ddb',
+  },
+  knight_legs: {
+    id: 'knight_legs', slot: 'legs',
+    name: 'Рыцарские поножи', desc: '+7 DEF +15 HP',
+    def: 7, bonusHp: 15, price: 190,
+    color: '#1565c0', accent: '#42a5f5',
   },
 
   // === SHIELDS ===
