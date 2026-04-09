@@ -1131,32 +1131,18 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyE')) {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
         if (nearNPC) {
-          // Check for quests from this NPC
+          // Build quest choices to inject into dialog
           const { available, completedReady } = getNpcQuests(game.player, nearNPC.id);
+          const extraChoices = [];
 
-          // If NPC has quest stuff, show quest dialog instead
-          if (completedReady.length > 0) {
-            // Completed quest — offer to claim reward
-            const q = completedReady[0];
-            if (openDialog('_quest_complete', nearNPC.name, handleDialogAction, [
-              { text: `Квест "${q.name}" выполнен! Вот твоя награда: ${q.rewardText}.`,
-                choices: [{ text: 'Получить награду', action: `quest_claim_${q.questId}`, next: null }] }
-            ])) {
-              game.state = STATE.DIALOG;
-            }
-          } else if (available.length > 0) {
-            // Available quests — offer before normal dialog
-            const q = available[0];
-            if (openDialog('_quest_offer', nearNPC.name, handleDialogAction, [
-              { text: `${q.desc}. Награда: ${q.rewardText}. Берёшься?`,
-                choices: [
-                  { text: 'Принять квест!', action: `quest_accept_${q.questId}`, next: null },
-                  { text: 'Не сейчас', next: null },
-                ] }
-            ])) {
-              game.state = STATE.DIALOG;
-            }
-          } else if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction)) {
+          for (const q of completedReady) {
+            extraChoices.push({ text: `✓ Сдать: ${q.name}`, action: `quest_claim_${q.questId}`, next: 0 });
+          }
+          for (const q of available) {
+            extraChoices.push({ text: `! Квест: ${q.name}`, action: `quest_accept_${q.questId}`, next: 0 });
+          }
+
+          if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction, null, extraChoices)) {
             game.state = STATE.DIALOG;
           }
         }

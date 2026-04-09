@@ -5,10 +5,31 @@ let currentNodeIndex = 0;
 let selectedChoice = 0;
 let actionCallback = null;
 
-export function openDialog(npcId, npcName, onAction, customTree) {
-  const tree = customTree || DIALOGS[npcId];
-  if (!tree) return false;
-  currentDialog = tree;
+export function openDialog(npcId, npcName, onAction, customTree, extraChoices) {
+  const sourceTree = customTree || DIALOGS[npcId];
+  if (!sourceTree) return false;
+
+  // Deep copy to avoid mutating the original DIALOGS
+  currentDialog = sourceTree.map(node => ({
+    text: node.text,
+    choices: [...node.choices],
+  }));
+
+  // Inject extra choices (quests) into the first node
+  if (extraChoices && extraChoices.length > 0 && currentDialog.length > 0) {
+    // Add before the last choice (which is usually "Уйти")
+    const firstNode = currentDialog[0];
+    const lastChoice = firstNode.choices[firstNode.choices.length - 1];
+    const isExitChoice = lastChoice && lastChoice.next === null && !lastChoice.action;
+
+    if (isExitChoice) {
+      // Insert quest choices before the exit option
+      firstNode.choices.splice(firstNode.choices.length - 1, 0, ...extraChoices);
+    } else {
+      firstNode.choices.push(...extraChoices);
+    }
+  }
+
   currentDialog._npcName = npcName;
   currentNodeIndex = 0;
   selectedChoice = 0;
