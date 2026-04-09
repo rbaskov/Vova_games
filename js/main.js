@@ -21,6 +21,7 @@ import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKno
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
 import { generateDungeon } from './dungeon.js';
 import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
+import * as SFX from './audio.js';
 
 // --- Game States ---
 export const STATE = {
@@ -234,7 +235,9 @@ function checkPortals() {
   if (portal) {
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
-    game.portalCooldown = 0.5; // 0.5s grace period
+    game.portalCooldown = 0.5;
+    SFX.playPortal();
+    SFX.playMusic(SFX.getMusicTheme(game.currentMapName));
   }
 }
 
@@ -274,6 +277,7 @@ function checkCheckpoint() {
       saveCheckpoint();
       // Heal a bit at checkpoint
       p.hp = Math.min(p.maxHp, p.hp + 20);
+      SFX.playCheckpoint();
       game.particles.push(createParticle(p.x, p.y - 16, 'ЧЕКПОИНТ!', '#b388ff', 1.2));
       game.particles.push(createParticle(p.x, p.y - 4, '+20 HP', '#44cc44'));
     }
@@ -398,6 +402,18 @@ function handleDialogAction(action) {
       }
     }
   }
+
+
+  // Play buy/sell sound based on action type
+  if (action.startsWith('buy_') || action === 'buy_potion' || action === 'buy_big_potion' || action === 'buy_potion_pack') {
+    SFX.playBuy();
+  } else if (action.startsWith('quest_accept_')) {
+    SFX.playMenuSelect();
+  } else if (action.startsWith('quest_claim_')) {
+    SFX.playQuestComplete();
+  } else if (action === 'king_blessing') {
+    SFX.playCheckpoint();
+  }
 }
 
 // --- Update Player ---
@@ -469,6 +485,11 @@ function updatePlayer(dt) {
     const arrow = createArrow(p);
     if (arrow) {
       game.projectiles.push(arrow);
+      SFX.playBowShot();
+    } else {
+      const wType = getWeapon(p.weapon).type;
+      if (wType === 'spear') SFX.playSpearThrust();
+      else SFX.playSwordSwing();
     }
   }
 
@@ -743,6 +764,7 @@ function renderHelpOverlay(ctx) {
     '3 — Ледяная волна',
     'I — Инвентарь',
     'J — Журнал квестов',
+    'M — Музыка вкл/выкл',
     'H — Эта справка',
   ];
   let lineY = y + 70;
@@ -868,6 +890,8 @@ function gameLoop(timestamp) {
         game.state = STATE.PLAY;
         loadMap('village');
         saveCheckpoint();
+        SFX.resumeAudio();
+        SFX.playMusic('village');
       }
       if (isKeyPressed('KeyS')) {
         deleteSave();
@@ -892,6 +916,8 @@ function gameLoop(timestamp) {
         p.equippedArmor = { helmet: 'mithril_helmet', chest: 'mithril_chest', legs: 'mithril_legs' };
         p.weapon = 'mithril_sword';
         saveCheckpoint();
+        SFX.resumeAudio();
+        SFX.playMusic('village');
       }
       if (isKeyPressed('KeyC') && hasSave()) {
         const save = loadGame();
@@ -935,20 +961,25 @@ function gameLoop(timestamp) {
         for (const enemy of killed) {
           game.player.xp += enemy.xp;
           game.player.coins += enemy.coins;
+          SFX.playKillEnemy();
+          SFX.playPickupCoin();
           game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
           game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
           // 20% potion drop
           if (Math.random() < 0.2) {
             game.player.potions++;
             game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
+            SFX.playPickupItem();
           }
           // Quest progress
           const questsDone = updateKillProgress(game.player, enemy.type);
           for (const q of questsDone) {
             game.particles.push(createParticle(game.player.x, game.player.y - 32, `Квест: ${q.name}!`, '#4caf50', 2));
+            SFX.playQuestComplete();
           }
           // Check level up
           if (checkLevelUp(game.player)) {
+            SFX.playLevelUp();
             game.particles.push(createParticle(
               game.player.x, game.player.y - 20,
               'LEVEL UP!', '#f0c040', 1.5
@@ -961,13 +992,18 @@ function gameLoop(timestamp) {
       {
         const dmgTaken = enemyAttackPlayer(game.enemies, game.player, dt);
         if (dmgTaken > 0) {
+          SFX.playPlayerHurt();
           game.particles.push(createParticle(
             game.player.x, game.player.y - 8,
             `-${dmgTaken}`, '#ff4444'
           ));
           if (game.player.hp <= 0) {
             game.player.hp = 0;
-            if (!game.sandbox) game.state = STATE.GAMEOVER;
+            if (!game.sandbox) {
+              game.state = STATE.GAMEOVER;
+              SFX.playPlayerDeath();
+              SFX.stopMusic();
+            }
           }
         }
       }
@@ -977,6 +1013,7 @@ function gameLoop(timestamp) {
         game.player.potions--;
         const heal = Math.min(30, game.player.maxHp - game.player.hp);
         game.player.hp += heal;
+        SFX.playUsePotion();
         game.particles.push(createParticle(
           game.player.x, game.player.y - 8,
           `+${heal} HP`, '#44cc44'
@@ -984,9 +1021,9 @@ function gameLoop(timestamp) {
       }
 
       // --- Abilities ---
-      if (isKeyPressed('Digit1')) useAbility('earth', game.player, game.projectiles, game.enemies);
-      if (isKeyPressed('Digit2')) useAbility('fire', game.player, game.projectiles, game.enemies);
-      if (isKeyPressed('Digit3')) useAbility('water', game.player, game.projectiles, game.enemies);
+      if (isKeyPressed('Digit1') && useAbility('earth', game.player, game.projectiles, game.enemies)) SFX.playShield();
+      if (isKeyPressed('Digit2') && useAbility('fire', game.player, game.projectiles, game.enemies)) SFX.playFireball();
+      if (isKeyPressed('Digit3') && useAbility('water', game.player, game.projectiles, game.enemies)) SFX.playIceWave();
       {
         const projKilled = updateProjectiles(game.projectiles, game.enemies, dt);
         for (const enemy of projKilled) {
@@ -1089,6 +1126,8 @@ function gameLoop(timestamp) {
               if (game.boss.type === 'dark_mage') {
                 game.state = STATE.WIN;
                 deleteSave();
+                SFX.stopMusic();
+                SFX.playVictory();
               }
             }
           }
@@ -1147,6 +1186,7 @@ function gameLoop(timestamp) {
       // --- Help toggle ---
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
       if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
+      if (isKeyPressed('KeyM')) SFX.toggleMusic();
       if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
         resetInventorySelection();
         game.state = STATE.INVENTORY;
@@ -1169,6 +1209,7 @@ function gameLoop(timestamp) {
 
           if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction, null, extraChoices)) {
             game.state = STATE.DIALOG;
+            SFX.playDialogOpen();
           }
         }
       }
@@ -1341,6 +1382,7 @@ function startGame() {
   game.height = game.canvas.height;
 
   initInput();
+  SFX.initAudio();
   initStars();
 
   requestAnimationFrame((timestamp) => {
