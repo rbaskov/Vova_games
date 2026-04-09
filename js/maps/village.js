@@ -10,8 +10,8 @@ const C = TILE.CHECKPOINT;
 
 // 30x20 village map
 const tiles = [
-  // Row 0 — top border
-  [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
+  // Row 0 — top border (col 14 = portal to open world)
+  [T,T,T,T,T,T,T,T,T,T,T,T,T,T,P,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
   // Row 1
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 2
@@ -59,6 +59,7 @@ export const villageMap = {
   tiles,
   playerStart: { x: 14, y: 10 },
   portals: [
+    { col: 14, row: 0, target: 'openworld', spawnX: 14, spawnY: 18 },
     { col: 17, row: 18, target: 'forest', spawnX: 15, spawnY: 1 },
     { col: 1, row: 9, target: 'kingdom', spawnX: 14, spawnY: 22 },
     { col: 28, row: 9, target: 'dungeon', spawnX: 0, spawnY: 0 },
