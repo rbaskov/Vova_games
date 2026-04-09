@@ -16,7 +16,7 @@ import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, rende
 import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
-import { getWeapon, getTotalAtk, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
+import { getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
 
 // --- Game States ---
 export const STATE = {
