@@ -9,6 +9,7 @@ import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.j
 import { createParticle, updateParticles, renderParticles } from './particles.js';
 import { getNearbyNPC } from './npc.js';
 import { openDialog, isDialogOpen, dialogInput, renderDialog, closeDialog } from './dialog.js';
+import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, renderProjectiles, renderAbilityBar } from './abilities.js';
 
 // --- Game States ---
 export const STATE = {
@@ -437,6 +438,9 @@ function renderPlay(ctx) {
   // Enemies
   renderEnemies(ctx, game.enemies, cam, game.animFrame);
 
+  // Projectiles
+  renderProjectiles(ctx, game.projectiles, cam);
+
   // Player
   const p = game.player;
   if (p) {
@@ -454,6 +458,9 @@ function renderPlay(ctx) {
 
   // HUD on top
   renderHUD(ctx);
+
+  // Ability bar
+  renderAbilityBar(ctx, game.player, game.width, game.height);
 }
 
 // --- Game Loop ---
@@ -536,6 +543,32 @@ function gameLoop(timestamp) {
           `+${heal} HP`, '#44cc44'
         ));
       }
+
+      // --- Abilities ---
+      if (isKeyPressed('Digit1')) useAbility('earth', game.player, game.projectiles, game.enemies);
+      if (isKeyPressed('Digit2')) useAbility('fire', game.player, game.projectiles, game.enemies);
+      if (isKeyPressed('Digit3')) useAbility('water', game.player, game.projectiles, game.enemies);
+      {
+        const projKilled = updateProjectiles(game.projectiles, game.enemies, dt);
+        for (const enemy of projKilled) {
+          game.player.xp += enemy.xp;
+          game.player.coins += enemy.coins;
+          game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
+          game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
+          if (Math.random() < 0.2) {
+            game.player.potions++;
+            game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
+          }
+          if (checkLevelUp(game.player)) {
+            game.particles.push(createParticle(
+              game.player.x, game.player.y - 20,
+              'LEVEL UP!', '#f0c040', 1.5
+            ));
+          }
+        }
+      }
+      updateCooldowns(game.player, dt);
+      updateSlowTimers(game.enemies, dt);
 
       // --- NPC interaction ---
       if (isKeyPressed('KeyE')) {
