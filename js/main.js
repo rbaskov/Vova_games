@@ -46,6 +46,7 @@ export const game = {
   totalTime: 0,
   boss: null,
   showHelp: false,
+  portalCooldown: 0,
   currentMapName: null,
 };
 
@@ -148,6 +149,9 @@ function collidesWithMap(x, y, w, h) {
 
 // --- Check Portals ---
 function checkPortals() {
+  // Grace period after teleport to prevent instant re-teleport
+  if (game.portalCooldown > 0) return;
+
   const p = game.player;
   const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
   const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
@@ -155,6 +159,7 @@ function checkPortals() {
   if (portal) {
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
+    game.portalCooldown = 0.5; // 0.5s grace period
   }
 }
 
@@ -203,10 +208,7 @@ function updatePlayer(dt) {
     p.invincibleTimer -= dt;
   }
 
-  // Cooldowns
-  for (const key of Object.keys(p.cooldowns)) {
-    if (p.cooldowns[key] > 0) p.cooldowns[key] -= dt;
-  }
+  // Cooldowns handled by updateCooldowns() in game loop
 
   // Movement
   let dx = 0;
@@ -253,7 +255,8 @@ function updatePlayer(dt) {
     p.attackTimer = 0.3;
   }
 
-  // Portal check
+  // Portal cooldown & check
+  if (game.portalCooldown > 0) game.portalCooldown -= dt;
   checkPortals();
 
   // Update camera
@@ -744,8 +747,8 @@ function gameLoop(timestamp) {
           }
         }
 
-        // Player sword hits boss
-        if (game.player.attacking) {
+        // Player sword hits boss (only once per swing, gated by boss.hitTimer)
+        if (game.player.attacking && game.boss.hitTimer <= 0) {
           const cx = game.player.x + game.player.hitW / 2;
           const cy = game.player.y + game.player.hitH / 2;
           let hx = cx, hy = cy;

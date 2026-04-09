@@ -100,6 +100,9 @@ export function updateProjectiles(projectiles, enemies, dt) {
       continue;
     }
 
+    // Boss projectiles don't hit enemies
+    if (p.fromBoss) continue;
+
     // Check collision with enemies
     const pcx = p.x + p.width / 2;
     const pcy = p.y + p.height / 2;
