@@ -25,6 +25,12 @@ export const ARMOR = {
     def: 3, bonusHp: 0, price: 45,
     color: '#78909c', accent: '#90a4ae',
   },
+  gladiator_helmet: {
+    id: 'gladiator_helmet', slot: 'helmet',
+    name: 'Шлем гладиатора', desc: '+4 DEF +5 HP',
+    def: 4, bonusHp: 5, price: 75,
+    color: '#c9a04e', accent: '#dbb85c',
+  },
   mithril_helmet: {
     id: 'mithril_helmet', slot: 'helmet',
     name: 'Мифрил. шлем', desc: '+5 DEF +10 HP',
@@ -51,6 +57,12 @@ export const ARMOR = {
     def: 5, bonusHp: 10, price: 70,
     color: '#78909c', accent: '#b0bec5',
   },
+  gladiator_chest: {
+    id: 'gladiator_chest', slot: 'chest',
+    name: 'Доспех гладиатора', desc: '+6 DEF +15 HP',
+    def: 6, bonusHp: 15, price: 110,
+    color: '#c9a04e', accent: '#dbb85c',
+  },
   mithril_chest: {
     id: 'mithril_chest', slot: 'chest',
     name: 'Мифрил. доспех', desc: '+8 DEF +20 HP',
@@ -76,6 +88,12 @@ export const ARMOR = {
     name: 'Железные поножи', desc: '+3 DEF',
     def: 3, bonusHp: 0, price: 50,
     color: '#78909c', accent: '#90a4ae',
+  },
+  gladiator_legs: {
+    id: 'gladiator_legs', slot: 'legs',
+    name: 'Поножи гладиатора', desc: '+4 DEF +5 HP',
+    def: 4, bonusHp: 5, price: 85,
+    color: '#c9a04e', accent: '#dbb85c',
   },
   mithril_legs: {
     id: 'mithril_legs', slot: 'legs',
