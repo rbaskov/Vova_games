@@ -92,6 +92,9 @@ function createPlayer(startX, startY) {
     artifacts: { earth: false, fire: false, water: false },
     cooldowns: { earth: 0, fire: 0, water: 0 },
     invincibleTimer: 0,
+    facingAngle: Math.PI / 2,  // start facing down (π/2)
+    targetAngle: Math.PI / 2,
+    turnSpeed: 12,             // radians per second
     defeatedBosses: [],
     weapon: 'iron_sword',
     ownedWeapons: ['iron_sword'],
@@ -453,11 +456,35 @@ function updatePlayer(dt) {
 
   p.moving = dx !== 0 || dy !== 0;
 
-  // Facing direction
-  if (dy < 0) p.facing = 'up';
-  else if (dy > 0) p.facing = 'down';
-  else if (dx < 0) p.facing = 'left';
-  else if (dx > 0) p.facing = 'right';
+  // Smooth facing rotation
+  if (p.moving) {
+    // Target angle from movement direction
+    p.targetAngle = Math.atan2(dy, dx);
+
+    // Interpolate current angle toward target (shortest path)
+    let diff = p.targetAngle - p.facingAngle;
+    // Normalize to [-π, π]
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+
+    const step = p.turnSpeed * dt;
+    if (Math.abs(diff) < step) {
+      p.facingAngle = p.targetAngle;
+    } else {
+      p.facingAngle += Math.sign(diff) * step;
+    }
+
+    // Normalize facingAngle to [0, 2π)
+    while (p.facingAngle < 0) p.facingAngle += Math.PI * 2;
+    while (p.facingAngle >= Math.PI * 2) p.facingAngle -= Math.PI * 2;
+
+    // Snap sprite facing based on angle quadrant
+    const a = p.facingAngle;
+    if (a > Math.PI * 0.25 && a <= Math.PI * 0.75) p.facing = 'down';
+    else if (a > Math.PI * 0.75 && a <= Math.PI * 1.25) p.facing = 'left';
+    else if (a > Math.PI * 1.25 && a <= Math.PI * 1.75) p.facing = 'up';
+    else p.facing = 'right';
+  }
 
   // Apply movement with collision
   const moveX = dx * MOVE_SPEED * dt;
@@ -827,16 +854,29 @@ function renderPlay(ctx) {
     if (p.invincibleTimer > 0 && Math.floor(p.invincibleTimer * 10) % 2 === 0) {
       ctx.globalAlpha = 0.4;
     }
+    // Body lean during turn
+    let diff = p.targetAngle - p.facingAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const lean = Math.max(-0.15, Math.min(0.15, diff * 0.5));
+
+    const heroCX = px + 16;
+    const heroCY = py + 20;
+    ctx.save();
+    ctx.translate(heroCX, heroCY);
+    ctx.rotate(lean);
+    ctx.translate(-heroCX, -heroCY);
+
     drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
-    // Draw armor overlay
     drawArmorOnHero(ctx, px, py, p.facing, p.equippedArmor, 2);
-    // Draw weapon on hero
     if (p.attacking) {
-      const atkProgress = 1 - (p.attackTimer / getAttackSpeed(p)); // 0→1
+      const atkProgress = 1 - (p.attackTimer / getAttackSpeed(p));
       drawWeaponAttack(ctx, px, py, p.facing, p.weapon, 2, atkProgress);
     } else {
       drawWeaponRest(ctx, px, py, p.weapon, 2);
     }
+
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
 
