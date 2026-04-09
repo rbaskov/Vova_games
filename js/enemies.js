@@ -91,6 +91,7 @@ const ENEMY_TYPES = {
     drawFacing: drawDarkSwordsman,
     ai: 'swordsman', aggroRange: 170,
     weapon: 'sword', blockChance: 0.2,
+    loot: { weaponId: 'bandit_sword', dropChance: 0.3 },
   },
   bandit_spear: {
     hp: 35, maxHp: 35, atk: 14, speed: 55, xp: 35, coins: 14,
@@ -99,6 +100,7 @@ const ENEMY_TYPES = {
     drawFacing: drawDarkSpearman,
     ai: 'spearman', aggroRange: 180,
     weapon: 'spear', blockChance: 0.1,
+    loot: { weaponId: 'bandit_spear', dropChance: 0.3 },
   },
   bandit_archer: {
     hp: 30, maxHp: 30, atk: 10, speed: 50, xp: 35, coins: 15,
@@ -107,6 +109,7 @@ const ENEMY_TYPES = {
     drawFacing: drawDarkArcher,
     ai: 'archer', aggroRange: 220,
     weapon: 'bow', shootInterval: 2.0,
+    loot: { weaponId: 'bandit_bow', dropChance: 0.3 },
   },
 };
 

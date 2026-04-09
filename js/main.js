@@ -1012,6 +1012,16 @@ function gameLoop(timestamp) {
             game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
             SFX.playPickupItem();
           }
+          // Weapon loot drop
+          if (enemy.loot && Math.random() < enemy.loot.dropChance) {
+            const lootId = enemy.loot.weaponId;
+            if (!game.player.ownedWeapons.includes(lootId)) {
+              game.player.ownedWeapons.push(lootId);
+              const w = getWeapon(lootId);
+              game.particles.push(createParticle(enemy.x, enemy.y - 44, w.name + '!', '#ffd54f', 2));
+              SFX.playPickupItem();
+            }
+          }
           // Quest progress
           const questsDone = updateKillProgress(game.player, enemy.type);
           for (const q of questsDone) {
