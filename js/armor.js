@@ -13,6 +13,12 @@ export const ARMOR = {
     def: 1, bonusHp: 0, price: 15,
     color: '#8d6e63', accent: '#a1887f',
   },
+  chain_helmet: {
+    id: 'chain_helmet', slot: 'helmet',
+    name: 'Кольчужный шлем', desc: '+2 DEF',
+    def: 2, bonusHp: 0, price: 30,
+    color: '#607d8b', accent: '#78909c',
+  },
   iron_helmet: {
     id: 'iron_helmet', slot: 'helmet',
     name: 'Железный шлем', desc: '+3 DEF',
@@ -33,6 +39,12 @@ export const ARMOR = {
     def: 2, bonusHp: 0, price: 25,
     color: '#8d6e63', accent: '#a1887f',
   },
+  chain_chest: {
+    id: 'chain_chest', slot: 'chest',
+    name: 'Кольчуга', desc: '+3 DEF +5 HP',
+    def: 3, bonusHp: 5, price: 45,
+    color: '#607d8b', accent: '#78909c',
+  },
   iron_chest: {
     id: 'iron_chest', slot: 'chest',
     name: 'Железный доспех', desc: '+5 DEF +10 HP',
@@ -52,6 +64,12 @@ export const ARMOR = {
     name: 'Кожаные поножи', desc: '+1 DEF',
     def: 1, bonusHp: 0, price: 20,
     color: '#8d6e63', accent: '#a1887f',
+  },
+  chain_legs: {
+    id: 'chain_legs', slot: 'legs',
+    name: 'Кольчужные поножи', desc: '+2 DEF',
+    def: 2, bonusHp: 0, price: 35,
+    color: '#607d8b', accent: '#78909c',
   },
   iron_legs: {
     id: 'iron_legs', slot: 'legs',
