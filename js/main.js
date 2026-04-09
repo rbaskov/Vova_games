@@ -1,5 +1,5 @@
 import { initInput, isKeyDown, isKeyPressed, getMovementInput } from './input.js';
-import { detectMobile, initTouchControls, renderTouchControls, renderMenuTouchControls, isMobileDevice, setTapAnywhereMode, getJoystickFlick } from './touch.js';
+import { detectMobile, initTouchControls, renderTouchControls, renderMenuTouchControls, renderMobilePanels, isMobileDevice, setTapAnywhereMode, getJoystickFlick, getGameOffsetX, getMobileCanvasWidth } from './touch.js';
 import { createTileMap, renderMap, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
@@ -29,6 +29,7 @@ import * as SFX from './audio.js';
 // --- Game States ---
 export const STATE = {
   MENU: 'MENU',
+  CLASS_SELECT: 'CLASS_SELECT',
   PLAY: 'PLAY',
   DIALOG: 'DIALOG',
   INVENTORY: 'INVENTORY',
@@ -63,8 +64,65 @@ export const game = {
   showQuestLog: false,
   arenaWave: 0,
   arenaTimer: 0,
-  companions: [], // hired followers
+  companions: [],
+  selectedClass: 0,
+  playerClass: null, // 'knight','archer','landsknecht','standard','gladiator'
+  hasHorse: false,
 };
+
+// --- Class Definitions ---
+const CLASSES = [
+  {
+    id: 'knight', name: 'Рыцарь',
+    desc: 'Тяжёлая броня и топор. Может купить коня!',
+    weapon: 'knight_axe',
+    ownedWeapons: ['knight_axe'],
+    armor: { helmet: 'knight_helmet', chest: null, legs: null, shield: 'iron_shield' },
+    ownedArmor: ['knight_helmet', 'iron_shield'],
+    coins: 0, potions: 2, hp: 120, atk: 7,
+    color: '#b0bec5',
+  },
+  {
+    id: 'archer', name: 'Лучник',
+    desc: 'Быстрый, стреляет издалека.',
+    weapon: 'bow',
+    ownedWeapons: ['bow'],
+    armor: { helmet: 'leather_helmet', chest: 'leather_chest', legs: null, shield: null },
+    ownedArmor: ['leather_helmet', 'leather_chest'],
+    coins: 0, potions: 3, hp: 80, atk: 4,
+    color: '#8d6e63',
+  },
+  {
+    id: 'landsknecht', name: 'Ландскнехт',
+    desc: 'Копейщик в кольчуге. Дальний удар.',
+    weapon: 'spear',
+    ownedWeapons: ['spear'],
+    armor: { helmet: 'iron_helmet', chest: 'chain_chest', legs: 'leather_legs', shield: null },
+    ownedArmor: ['iron_helmet', 'chain_chest', 'leather_legs'],
+    coins: 0, potions: 2, hp: 100, atk: 5,
+    color: '#78909c',
+  },
+  {
+    id: 'standard', name: 'Стандарт',
+    desc: 'Меч и мешок монет. Классика.',
+    weapon: 'iron_sword',
+    ownedWeapons: ['iron_sword'],
+    armor: { helmet: null, chest: null, legs: null, shield: null },
+    ownedArmor: [],
+    coins: 50, potions: 3, hp: 100, atk: 5,
+    color: '#f0c040',
+  },
+  {
+    id: 'gladiator', name: 'Гладиатор',
+    desc: 'Боец арены. Стальной меч и щит.',
+    weapon: 'steel_sword',
+    ownedWeapons: ['steel_sword'],
+    armor: { helmet: 'gladiator_helmet', chest: 'gladiator_chest', legs: 'gladiator_legs', shield: 'wooden_shield' },
+    ownedArmor: ['gladiator_helmet', 'gladiator_chest', 'gladiator_legs', 'wooden_shield'],
+    coins: 0, potions: 2, hp: 110, atk: 6,
+    color: '#cd7f32',
+  },
+];
 
 // --- Map Registry ---
 const MAP_REGISTRY = {
@@ -113,9 +171,14 @@ function createPlayer(startX, startY) {
 
 // --- Companion System ---
 const COMPANION_TYPES = {
-  merc_sword: { name: 'Дарен', weapon: 'sword', atk: 15, range: 40, attackSpeed: 0.5, speed: 90, color: '#607d8b' },
-  merc_spear: { name: 'Рольф', weapon: 'spear', atk: 18, range: 56, attackSpeed: 0.6, speed: 80, color: '#607d8b' },
-  merc_bow:   { name: 'Ивар',  weapon: 'bow',   atk: 12, range: 180, attackSpeed: 1.2, speed: 70, color: '#607d8b' },
+  merc_sword:  { name: 'Дарен',   weapon: 'sword', atk: 15, range: 40,  attackSpeed: 0.5, speed: 90, hp: 120, maxHp: 120, color: '#607d8b' },
+  merc_spear:  { name: 'Рольф',   weapon: 'spear', atk: 18, range: 56,  attackSpeed: 0.6, speed: 80, hp: 100, maxHp: 100, color: '#607d8b' },
+  merc_bow:    { name: 'Ивар',    weapon: 'bow',   atk: 12, range: 180, attackSpeed: 1.2, speed: 70, hp: 80,  maxHp: 80,  color: '#607d8b' },
+  merc_axe:    { name: 'Гром',    weapon: 'axe',   atk: 22, range: 38,  attackSpeed: 0.7, speed: 75, hp: 150, maxHp: 150, color: '#5d4037' },
+  merc_tank:   { name: 'Бронк',   weapon: 'sword', atk: 10, range: 36,  attackSpeed: 0.6, speed: 60, hp: 250, maxHp: 250, color: '#455a64' },
+  merc_fast:   { name: 'Зефир',   weapon: 'sword', atk: 20, range: 42,  attackSpeed: 0.3, speed: 120,hp: 70,  maxHp: 70,  color: '#1565c0' },
+  merc_healer: { name: 'Лиана',   weapon: 'heal',  atk: 0,  range: 100, attackSpeed: 2.0, speed: 85, hp: 60,  maxHp: 60,  color: '#2e7d32' },
+  merc_mage:   { name: 'Аркан',   weapon: 'magic', atk: 25, range: 160, attackSpeed: 1.5, speed: 65, hp: 65,  maxHp: 65,  color: '#6a1b9a' },
 };
 
 function createCompanion(type, x, y) {
@@ -130,6 +193,10 @@ function createCompanion(type, x, y) {
     speed: t.speed,
     color: t.color,
     x, y,
+    hp: t.hp,
+    maxHp: t.maxHp,
+    alive: true,
+    invincibleTimer: 0,
     facing: 'down',
     moving: false,
     attackTimer: 0,
@@ -144,7 +211,50 @@ function updateCompanions(dt) {
   const p = game.player;
   if (!p) return;
 
+  // Remove dead companions
+  game.companions = game.companions.filter(c => c.alive);
+
   for (const c of game.companions) {
+    // Invincibility timer
+    if (c.invincibleTimer > 0) c.invincibleTimer -= dt;
+
+    // Enemies damage companions
+    for (const e of game.enemies) {
+      if (!e.alive || c.invincibleTimer > 0) continue;
+      const dx = c.x - e.x;
+      const dy = c.y - e.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 35) {
+        const dmg = Math.max(1, (e.atk || 5) - 5); // companions have ~5 DEF
+        c.hp -= dmg;
+        c.invincibleTimer = 0.5;
+        game.particles.push(createParticle(c.x, c.y - 8, `-${dmg}`, '#ff8888'));
+        if (c.hp <= 0) {
+          c.alive = false;
+          game.particles.push(createParticle(c.x, c.y - 16, `${c.name} погиб!`, '#ff4444', 2));
+        }
+      }
+    }
+    // Boss damages companions
+    if (game.boss && game.boss.alive && c.invincibleTimer <= 0) {
+      const dx = c.x - game.boss.x;
+      const dy = c.y - game.boss.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 45) {
+        const phase = game.boss.phases[game.boss.phaseIndex || 0];
+        const dmg = phase ? phase.atk : game.boss.atk;
+        c.hp -= dmg;
+        c.invincibleTimer = 0.5;
+        game.particles.push(createParticle(c.x, c.y - 8, `-${dmg}`, '#ff8888'));
+        if (c.hp <= 0) {
+          c.alive = false;
+          game.particles.push(createParticle(c.x, c.y - 16, `${c.name} погиб!`, '#ff4444', 2));
+        }
+      }
+    }
+
+    if (!c.alive) continue;
+
     // Find nearest enemy
     let nearestEnemy = null;
     let nearestDist = Infinity;
@@ -165,6 +275,39 @@ function updateCompanions(dt) {
     c.moving = false;
     c.attacking = false;
 
+    // Healer always follows player and heals periodically
+    if (c.weapon === 'heal') {
+      if (distToPlayer > 60) {
+        moveCompanionToward(c, p.x, p.y, c.speed, dt);
+        c.moving = true;
+        const dx = p.x - c.x;
+        const dy = p.y - c.y;
+        if (Math.abs(dx) > Math.abs(dy)) c.facing = dx > 0 ? 'right' : 'left';
+        else c.facing = dy > 0 ? 'down' : 'up';
+      }
+      c.attackTimer -= dt;
+      if (c.attackTimer <= 0) {
+        c.attackTimer = c.attackSpeed;
+        let healed = false;
+        if (p.hp < p.maxHp) {
+          const heal = 15;
+          p.hp = Math.min(p.maxHp, p.hp + heal);
+          game.particles.push(createParticle(p.x, p.y - 16, `+${heal} HP`, '#44cc44'));
+          healed = true;
+        }
+        for (const ally of game.companions) {
+          if (ally !== c && ally.alive && ally.hp < ally.maxHp) {
+            const heal = 10;
+            ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+            game.particles.push(createParticle(ally.x, ally.y - 16, `+${heal}`, '#44cc44'));
+            healed = true;
+          }
+        }
+        if (healed) c.attacking = true;
+      }
+      continue;
+    }
+
     if (nearestEnemy && nearestDist < 200) {
       // Attack mode
       if (nearestDist > c.range * 0.7) {
@@ -182,19 +325,24 @@ function updateCompanions(dt) {
           c.attacking = true;
           c.attackTimer = c.attackSpeed;
 
-          if (c.weapon === 'bow') {
-            // Shoot arrow
+          if (c.weapon === 'bow' || c.weapon === 'magic') {
+            // Ranged projectile
             const dx = nearestEnemy.x - c.x;
             const dy = nearestEnemy.y - c.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const arrow = {
+            const spd = c.weapon === 'magic' ? 160 : 200;
+            const proj = {
               x: c.x + 12, y: c.y + 12,
-              vx: (dx / dist) * 200, vy: (dy / dist) * 200,
+              vx: (dx / dist) * spd, vy: (dy / dist) * spd,
               damage: c.atk, isArrow: true, lifetime: 2,
+              isMagic: c.weapon === 'magic',
             };
-            game.projectiles.push(arrow);
+            game.projectiles.push(proj);
+            if (c.weapon === 'magic') {
+              game.particles.push(createParticle(c.x, c.y - 8, '✦', '#b388ff', 0.5));
+            }
           } else {
-            // Melee hit
+            // Melee hit (sword, spear, axe)
             if (nearestEnemy.isBoss) {
               if (nearestEnemy.hitTimer <= 0) {
                 nearestEnemy.hp -= c.atk;
@@ -267,9 +415,15 @@ function moveCompanionToward(c, tx, ty, speed, dt) {
 
 function renderCompanions(ctx, cam) {
   for (const c of game.companions) {
+    if (!c.alive) continue;
     const sx = c.x - cam.x;
     const sy = c.y - cam.y;
     if (sx < -40 || sx > game.width + 40 || sy < -40 || sy > game.height + 40) continue;
+
+    // Flash when hit
+    if (c.invincibleTimer > 0 && Math.floor(c.invincibleTimer * 10) % 2 === 0) {
+      ctx.globalAlpha = 0.4;
+    }
 
     const s = 2;
     ctx.save();
@@ -280,47 +434,43 @@ function renderCompanions(ctx, cam) {
     const f = c.moving ? game.animFrame : 0;
     const armBob = f % 2 === 0 ? 0 : s;
 
-    // Iron helmet
-    ctx.fillStyle = '#78909c';
+    // Helmet (colored per companion)
+    const cc = c.color;
+    ctx.fillStyle = cc;
     ctx.fillRect(5*s, 0, 6*s, 4*s);
-    ctx.fillStyle = '#90a4ae';
+    ctx.fillStyle = '#ddd';
     ctx.fillRect(6*s, 0, 4*s, 2*s);
-    // Visor
     ctx.fillStyle = '#222';
     ctx.fillRect(6*s, 2.5*s, 4*s, 1*s);
 
-    // Chainmail body
-    ctx.fillStyle = '#78909c';
+    // Body armor
+    ctx.fillStyle = cc;
     ctx.fillRect(5*s, 4*s, 6*s, 7*s);
-    ctx.fillStyle = '#90a4ae';
+    ctx.fillStyle = '#ddd';
     ctx.fillRect(6*s, 5*s, 4*s, 5*s);
-    // Chain texture
-    ctx.fillStyle = '#607d8b';
-    ctx.fillRect(6*s, 6*s, 1*s, 1*s);
-    ctx.fillRect(8*s, 7*s, 1*s, 1*s);
-    ctx.fillRect(7*s, 9*s, 1*s, 1*s);
 
     // Arms
-    ctx.fillStyle = '#78909c';
+    ctx.fillStyle = cc;
     ctx.fillRect(3*s, 5*s + armBob, 2*s, 5*s);
     ctx.fillRect(11*s, 5*s - armBob, 2*s, 5*s);
 
-    // Iron legs
-    ctx.fillStyle = '#607d8b';
+    // Legs
+    ctx.fillStyle = cc;
     ctx.fillRect(6*s, 11*s, 2*s, 4*s);
     ctx.fillRect(9*s, 11*s, 2*s, 4*s);
-    // Boots
-    ctx.fillStyle = '#455a64';
+    ctx.fillStyle = '#333';
     ctx.fillRect(5*s, 14*s, 3*s, 2*s);
     ctx.fillRect(8*s, 14*s, 3*s, 2*s);
 
-    // Iron shield (left hand)
-    ctx.fillStyle = '#607d8b';
-    ctx.fillRect(1*s, 5*s + armBob, 3*s, 5*s);
-    ctx.fillStyle = '#90a4ae';
-    ctx.fillRect(1.5*s, 6*s + armBob, 2*s, 3*s);
-    ctx.fillStyle = '#b0bec5';
-    ctx.fillRect(2.2*s, 6*s + armBob, 0.6*s, 5*s);
+    // Shield (left hand, not for healer/mage)
+    if (c.weapon !== 'heal' && c.weapon !== 'magic') {
+      ctx.fillStyle = '#607d8b';
+      ctx.fillRect(1*s, 5*s + armBob, 3*s, 5*s);
+      ctx.fillStyle = '#90a4ae';
+      ctx.fillRect(1.5*s, 6*s + armBob, 2*s, 3*s);
+      ctx.fillStyle = '#b0bec5';
+      ctx.fillRect(2.2*s, 6*s + armBob, 0.6*s, 5*s);
+    }
 
     // Weapon (right hand)
     if (c.weapon === 'sword') {
@@ -338,15 +488,52 @@ function renderCompanions(ctx, cam) {
       ctx.fillRect(12*s, 3*s, 1.5*s, 8*s);
       ctx.fillStyle = '#ddd';
       ctx.fillRect(13*s, 3*s, 0.5*s, 8*s);
+    } else if (c.weapon === 'axe') {
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(12*s, 1*s - armBob, 1*s, 10*s);
+      ctx.fillStyle = '#999';
+      ctx.fillRect(10.5*s, -1*s - armBob, 4*s, 3*s);
+      ctx.fillStyle = '#bbb';
+      ctx.fillRect(10*s, -1*s - armBob, 1.5*s, 3*s);
+    } else if (c.weapon === 'heal') {
+      // Staff with green orb
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(12*s, 0 - armBob, 1*s, 12*s);
+      ctx.fillStyle = '#44cc44';
+      ctx.fillRect(11*s, -2*s - armBob, 3*s, 3*s);
+      ctx.fillStyle = '#66ff66';
+      ctx.fillRect(11.5*s, -1.5*s - armBob, 2*s, 2*s);
+    } else if (c.weapon === 'magic') {
+      // Staff with purple orb
+      ctx.fillStyle = '#4a148c';
+      ctx.fillRect(12*s, 0 - armBob, 1*s, 12*s);
+      ctx.fillStyle = '#e040fb';
+      ctx.fillRect(10.5*s, -3*s - armBob, 4*s, 4*s);
+      ctx.fillStyle = '#ea80fc';
+      ctx.fillRect(11*s, -2.5*s - armBob, 3*s, 3*s);
+      ctx.fillStyle = '#f8bbd0';
+      ctx.fillRect(11.5*s, -2*s - armBob, 2*s, 2*s);
     }
 
     ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // HP bar above companion
+    const hpW = 28;
+    const hpH = 3;
+    const hpX = sx + 2;
+    const hpY = sy - 12;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(hpX, hpY, hpW, hpH);
+    const hpRatio = Math.max(0, c.hp / c.maxHp);
+    ctx.fillStyle = hpRatio > 0.3 ? '#44cc44' : '#ff4444';
+    ctx.fillRect(hpX, hpY, hpW * hpRatio, hpH);
 
     // Name label
     ctx.font = '6px "Press Start 2P"';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#90caf9';
-    ctx.fillText(c.name, sx + 16, sy - 4);
+    ctx.fillText(c.name, sx + 16, sy - 14);
     ctx.textAlign = 'left';
   }
 }
@@ -411,7 +598,7 @@ function loadMap(mapKey, spawnX, spawnY) {
   unstickPlayer();
 
   // Camera
-  game.camera = createCamera(game.width, game.height);
+  game.camera = createCamera(640, 480);
 
   // NPCs from map data
   game.npcs = tileMap.npcs.map(n => ({
@@ -498,6 +685,8 @@ function checkPortals() {
   const portal = isPortal(game.currentMap, centerCol, centerRow);
   if (portal) {
     game.player._companions = game.companions.map(c => c.type);
+    game.player._playerClass = game.playerClass;
+    game.player._hasHorse = game.hasHorse;
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
     game.portalCooldown = 0.5;
@@ -650,6 +839,19 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action === 'buy_horse') {
+    if (game.playerClass !== 'knight') {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Только для рыцаря!', '#ff4444'));
+    } else if (game.hasHorse) {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Конь уже есть!', '#ff9800'));
+    } else if (p.coins >= 300) {
+      p.coins -= 300;
+      game.hasHorse = true;
+      game.particles.push(createParticle(p.x, p.y - 8, 'Боевой конь!', '#f0c040', 2));
+      SFX.playPickupItem();
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   } else if (action.startsWith('hire_merc_')) {
     const mercType = action.slice(5); // 'merc_sword', 'merc_spear', 'merc_bow'
     const maxCompanions = p.level + 1;
@@ -717,6 +919,9 @@ function updatePlayer(dt) {
     p.invincibleTimer -= dt;
   }
 
+  // Horse bonus for combat
+  p._atkMultiplier = game.hasHorse ? 1.5 : 1;
+
   // Cooldowns handled by updateCooldowns() in game loop
 
   // Movement (keyboard + touch joystick)
@@ -764,8 +969,9 @@ function updatePlayer(dt) {
   }
 
   // Apply movement with collision
-  const moveX = dx * MOVE_SPEED * dt;
-  const moveY = dy * MOVE_SPEED * dt;
+  const actualSpeed = game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED;
+  const moveX = dx * actualSpeed * dt;
+  const moveY = dy * actualSpeed * dt;
 
   // X axis
   const newX = p.x + moveX;
@@ -865,6 +1071,7 @@ function drawMountains(ctx) {
 
 function renderMenu(ctx, dt) {
   const { width, height } = game;
+  const cx = getGameOffsetX() + 320; // center of game area
 
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0, 0, width, height);
@@ -883,13 +1090,13 @@ function renderMenu(ctx, dt) {
   ctx.font = '24px "Press Start 2P"';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#2a1a00';
-  ctx.fillText('ХРОНИКИ', width / 2 + 2, 122);
-  ctx.fillText('ЭЛЬДОРИИ', width / 2 + 2, 162);
+  ctx.fillText('ХРОНИКИ', cx + 2, 122);
+  ctx.fillText('ЭЛЬДОРИИ', cx + 2, 162);
 
   // Title
   ctx.fillStyle = '#f0c040';
-  ctx.fillText('ХРОНИКИ', width / 2, 120);
-  ctx.fillText('ЭЛЬДОРИИ', width / 2, 160);
+  ctx.fillText('ХРОНИКИ', cx, 120);
+  ctx.fillText('ЭЛЬДОРИИ', cx, 160);
 
   // Menu prompts — different for mobile vs desktop
   if (isMobileDevice()) {
@@ -900,30 +1107,195 @@ function renderMenu(ctx, dt) {
       ctx.font = '14px "Press Start 2P"';
       ctx.fillStyle = '#ffffff';
       if (hasSave()) {
-        ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 330);
+        ctx.fillText('ENTER=Новая  C=Продолжить', cx, 330);
       } else {
-        ctx.fillText('НАЖМИ ENTER', width / 2, 330);
+        ctx.fillText('НАЖМИ ENTER', cx, 330);
       }
       ctx.font = '10px "Press Start 2P"';
       ctx.fillStyle = '#b388ff';
-      ctx.fillText('S = Песочница', width / 2, 360);
+      ctx.fillText('S = Песочница', cx, 360);
     }
   }
 
   // Footer
   ctx.font = '10px "Press Start 2P"';
   ctx.fillStyle = '#555';
-  ctx.fillText('VOVA GAMES 2026', width / 2, 460);
+  ctx.fillText('VOVA GAMES 2026', cx, 460);
+}
+
+// --- Class Select Screen ---
+function renderClassSelect(ctx) {
+  const cx = getGameOffsetX() + 320;
+
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, game.width, game.height);
+
+  // Title
+  ctx.font = '16px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f0c040';
+  ctx.fillText('ВЫБЕРИ КЛАСС', cx, 40);
+
+  // Draw class cards
+  const cardW = 100, cardH = 320, spacing = 10;
+  const totalW = CLASSES.length * (cardW + spacing) - spacing;
+  const startX = cx - totalW / 2;
+
+  for (let i = 0; i < CLASSES.length; i++) {
+    const cls = CLASSES[i];
+    const x = startX + i * (cardW + spacing);
+    const y = 60;
+    const selected = i === game.selectedClass;
+
+    // Card background
+    ctx.fillStyle = selected ? '#1a1a3a' : '#111';
+    ctx.fillRect(x, y, cardW, cardH);
+
+    // Border
+    ctx.strokeStyle = selected ? cls.color : '#333';
+    ctx.lineWidth = selected ? 3 : 1;
+    ctx.strokeRect(x, y, cardW, cardH);
+
+    // Class icon (simple character preview)
+    const iconX = x + cardW / 2;
+    const iconY = y + 50;
+    drawClassIcon(ctx, iconX, iconY, cls, selected);
+
+    // Class name
+    ctx.font = '7px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = selected ? cls.color : '#888';
+    ctx.fillText(cls.name, x + cardW / 2, y + 100);
+
+    // Description (word wrap)
+    if (selected) {
+      ctx.font = '6px "Press Start 2P"';
+      ctx.fillStyle = '#ccc';
+      const words = cls.desc.split(' ');
+      let line = '', lineY = y + 120;
+      for (const word of words) {
+        const test = line ? line + ' ' + word : word;
+        if (ctx.measureText(test).width > cardW - 10) {
+          ctx.fillText(line, x + cardW / 2, lineY);
+          line = word;
+          lineY += 12;
+        } else {
+          line = test;
+        }
+      }
+      if (line) ctx.fillText(line, x + cardW / 2, lineY);
+
+      // Stats
+      lineY += 16;
+      ctx.fillStyle = '#cc2222';
+      ctx.fillText(`HP: ${cls.hp}`, x + cardW / 2, lineY);
+      lineY += 12;
+      ctx.fillStyle = '#ff9800';
+      ctx.fillText(`ATK: ${cls.atk}`, x + cardW / 2, lineY);
+      if (cls.coins > 0) {
+        lineY += 12;
+        ctx.fillStyle = '#f0c040';
+        ctx.fillText(`$: ${cls.coins}`, x + cardW / 2, lineY);
+      }
+
+      // Equipment list
+      lineY += 16;
+      ctx.fillStyle = '#90caf9';
+      const wep = getWeapon(cls.weapon);
+      if (wep) ctx.fillText(wep.name, x + cardW / 2, lineY);
+      lineY += 12;
+      for (const slot of ['helmet', 'chest', 'legs', 'shield']) {
+        if (cls.armor[slot]) {
+          const arm = getArmor(cls.armor[slot]);
+          if (arm) {
+            ctx.fillText(arm.name, x + cardW / 2, lineY);
+            lineY += 12;
+          }
+        }
+      }
+    }
+
+    // Number key hint
+    ctx.font = '8px "Press Start 2P"';
+    ctx.fillStyle = selected ? '#fff' : '#555';
+    ctx.fillText(`${i + 1}`, x + cardW / 2, y + cardH - 8);
+  }
+
+  // Instructions
+  ctx.font = '8px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#666';
+  ctx.fillText(isMobileDevice() ? 'Джойстик=выбор  ⚔=Начать' : '← → = выбор    ENTER = начать    ESC = назад', cx, 470);
+
+  ctx.textAlign = 'left';
+}
+
+function drawClassIcon(ctx, x, y, cls, selected) {
+  const s = 3;
+  // Simple character silhouette with class color
+  const c = selected ? cls.color : '#555';
+
+  // Head
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(x - 2*s, y - 6*s, 4*s, 4*s);
+
+  // Helmet (if class has one)
+  if (cls.armor.helmet) {
+    ctx.fillStyle = c;
+    ctx.fillRect(x - 3*s, y - 7*s, 6*s, 3*s);
+  }
+
+  // Body
+  ctx.fillStyle = c;
+  ctx.fillRect(x - 3*s, y - 2*s, 6*s, 6*s);
+
+  // Legs
+  ctx.fillStyle = selected ? '#555' : '#333';
+  ctx.fillRect(x - 2*s, y + 4*s, 2*s, 4*s);
+  ctx.fillRect(x, y + 4*s, 2*s, 4*s);
+
+  // Shield (left)
+  if (cls.armor.shield) {
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(x - 5*s, y - 1*s, 2*s, 4*s);
+  }
+
+  // Weapon (right)
+  const wep = getWeapon(cls.weapon);
+  if (wep) {
+    ctx.fillStyle = wep.color;
+    if (wep.type === 'bow') {
+      ctx.fillRect(x + 4*s, y - 4*s, 1*s, 7*s);
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(x + 5*s, y - 4*s, 0.5*s, 7*s);
+    } else if (wep.type === 'spear') {
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(x + 4*s, y - 8*s, 1*s, 12*s);
+      ctx.fillStyle = '#bbb';
+      ctx.fillRect(x + 3.5*s, y - 9*s, 2*s, 2*s);
+    } else if (wep.type === 'axe') {
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(x + 4*s, y - 5*s, 1*s, 8*s);
+      ctx.fillStyle = '#999';
+      ctx.fillRect(x + 3*s, y - 6*s, 3*s, 2*s);
+    } else {
+      // sword
+      ctx.fillRect(x + 4*s, y - 5*s, 1*s, 8*s);
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(x + 3*s, y + 2*s, 3*s, 1*s);
+    }
+  }
 }
 
 // --- HUD ---
 function renderHUD(ctx) {
   const p = game.player;
   if (!p) return;
+  const GW = 640; // game area width
 
   // Top bar background
   ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, game.width, 36);
+  ctx.fillRect(0, 0, GW, 36);
 
   // HP bar
   const hpBarX = 8;
@@ -982,17 +1354,17 @@ function renderHUD(ctx) {
   ctx.textAlign = 'right';
   if (game.sandbox) {
     ctx.fillStyle = '#b388ff';
-    ctx.fillText('ПЕСОЧНИЦА', game.width - 8, hpBarY + 10);
+    ctx.fillText('ПЕСОЧНИЦА', GW - 8, hpBarY + 10);
   } else {
     ctx.fillStyle = '#aaa';
-    ctx.fillText(game.currentMap ? game.currentMap.name : '', game.width - 8, hpBarY + 10);
+    ctx.fillText(game.currentMap ? game.currentMap.name : '', GW - 8, hpBarY + 10);
   }
 
   // Arena wave counter
   if (game.currentMapName === 'arena') {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#f0c040';
-    ctx.fillText(`РАУНД ${game.arenaWave}`, game.width / 2, hpBarY + 10);
+    ctx.fillText(`РАУНД ${game.arenaWave}`, GW / 2, hpBarY + 10);
   }
 
   // Reset textAlign
@@ -1006,8 +1378,8 @@ function renderMinimap(ctx) {
   if (!map || !p) return;
 
   const mmW = 72, mmH = 72;
-  const mmX = game.width - mmW - 8;
-  const mmY = game.height - mmH - 8;
+  const mmX = 640 - mmW - 8;
+  const mmY = 480 - mmH - 8;
 
   // Background
   ctx.fillStyle = '#111';
@@ -1049,7 +1421,7 @@ function renderMinimap(ctx) {
 // --- Help Overlay ---
 function renderHelpOverlay(ctx) {
   const x = 60, y = 40;
-  const w = game.width - 120, h = game.height - 80;
+  const w = 640 - 120, h = 480 - 80;
 
   // Dark background
   ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -1063,7 +1435,7 @@ function renderHelpOverlay(ctx) {
   ctx.font = '14px "Press Start 2P"';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffd54f';
-  ctx.fillText('УПРАВЛЕНИЕ', game.width / 2, y + 36);
+  ctx.fillText('УПРАВЛЕНИЕ', 320, y + 36);
 
   // Lines
   ctx.font = '8px "Press Start 2P"';
@@ -1083,13 +1455,13 @@ function renderHelpOverlay(ctx) {
   ];
   let lineY = y + 70;
   for (const line of lines) {
-    ctx.fillText(line, game.width / 2, lineY);
+    ctx.fillText(line, 320, lineY);
     lineY += 28;
   }
 
   // Footer
   ctx.fillStyle = '#aaa';
-  ctx.fillText('Нажми H чтобы закрыть', game.width / 2, y + h - 20);
+  ctx.fillText('Нажми H чтобы закрыть', 320, y + h - 20);
   ctx.textAlign = 'left';
 }
 
@@ -1099,9 +1471,25 @@ function renderPlay(ctx) {
   const map = game.currentMap;
   if (!map || !cam) return;
 
-  // Clear
+  const gOffset = getGameOffsetX();
+
+  // Clear entire canvas (including panels)
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0, 0, game.width, game.height);
+
+  // Render side panels
+  if (isMobileDevice()) {
+    renderMobilePanels(ctx, game.width, game.height);
+  }
+
+  // Clip and translate to game area
+  ctx.save();
+  if (gOffset > 0) {
+    ctx.beginPath();
+    ctx.rect(gOffset, 0, 640, 480);
+    ctx.clip();
+    ctx.translate(gOffset, 0);
+  }
 
   // Map tiles
   renderMap(ctx, map, cam, game.animFrame);
@@ -1184,15 +1572,18 @@ function renderPlay(ctx) {
   renderHUD(ctx);
 
   // Ability bar
-  renderAbilityBar(ctx, game.player, game.width, game.height);
+  renderAbilityBar(ctx, game.player, 640, 480);
 
   // Boss HP bar (on top of HUD)
   if (game.boss && game.boss.alive) {
-    renderBossHPBar(ctx, game.boss, game.width);
+    renderBossHPBar(ctx, game.boss, 640);
   }
 
   // Minimap
   renderMinimap(ctx);
+
+  // Restore from game area clip/translate
+  ctx.restore();
 }
 
 // --- Game Loop ---
@@ -1223,15 +1614,9 @@ function gameLoop(timestamp) {
     case STATE.MENU:
       renderMenu(ctx, dt);
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
-        deleteSave();
-        game.player = null;
-        game.checkpoint = null;
-        game.sandbox = false;
-        game.state = STATE.PLAY;
-        loadMap('village');
-        saveCheckpoint();
+        game.selectedClass = 0;
+        game.state = STATE.CLASS_SELECT;
         SFX.resumeAudio();
-        SFX.playMusic('village');
       }
       if (isKeyPressed('KeyS')) {
         deleteSave();
@@ -1290,7 +1675,56 @@ function gameLoop(timestamp) {
               }
             }
           }
+          // Restore class and horse
+          game.playerClass = save.playerClass || null;
+          game.hasHorse = save.hasHorse || false;
         }
+      }
+      break;
+
+    case STATE.CLASS_SELECT:
+      renderClassSelect(ctx);
+      // Navigate classes
+      if (isKeyPressed('ArrowLeft') || isKeyPressed('KeyA')) {
+        game.selectedClass = (game.selectedClass - 1 + CLASSES.length) % CLASSES.length;
+      }
+      if (isKeyPressed('ArrowRight') || isKeyPressed('KeyD')) {
+        game.selectedClass = (game.selectedClass + 1) % CLASSES.length;
+      }
+      // Mobile joystick flick
+      if (isMobileDevice()) {
+        const flick = getJoystickFlick();
+        if (flick.dx < 0) game.selectedClass = (game.selectedClass - 1 + CLASSES.length) % CLASSES.length;
+        if (flick.dx > 0) game.selectedClass = (game.selectedClass + 1) % CLASSES.length;
+      }
+      // Confirm selection
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
+        const cls = CLASSES[game.selectedClass];
+        deleteSave();
+        game.player = null;
+        game.checkpoint = null;
+        game.sandbox = false;
+        game.playerClass = cls.id;
+        game.hasHorse = false;
+        game.state = STATE.PLAY;
+        loadMap('village');
+        // Apply class stats
+        const p = game.player;
+        p.hp = cls.hp;
+        p.maxHp = cls.hp;
+        p.atk = cls.atk;
+        p.coins = cls.coins;
+        p.potions = cls.potions;
+        p.weapon = cls.weapon;
+        p.ownedWeapons = [...cls.ownedWeapons];
+        p.equippedArmor = { ...cls.armor };
+        p.ownedArmor = [...cls.ownedArmor];
+        saveCheckpoint();
+        SFX.playMusic('village');
+      }
+      // Back to menu
+      if (isKeyPressed('Escape')) {
+        game.state = STATE.MENU;
       }
       break;
 
@@ -1500,7 +1934,8 @@ function gameLoop(timestamp) {
           const bx = game.boss.x + game.boss.width / 2;
           const by = game.boss.y + game.boss.height / 2;
           const d = Math.sqrt((hx - bx) ** 2 + (hy - by) ** 2);
-          const totalAtk = getTotalAtk(game.player);
+          let totalAtk = getTotalAtk(game.player);
+          if (game.hasHorse) totalAtk = Math.floor(totalAtk * 1.5);
           if (d < range + 20) {
             // Boss block chance (e.g. rock_demon has 60%)
             if (game.boss.blockChance && Math.random() < game.boss.blockChance) {
@@ -1682,6 +2117,14 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
       if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
       if (isKeyPressed('KeyM')) SFX.toggleMusic();
+      if (isKeyPressed('Escape')) {
+        game.player._companions = game.companions.map(c => c.type);
+        game.player._playerClass = game.playerClass;
+        game.player._hasHorse = game.hasHorse;
+        saveGame(game.player, game.currentMapName);
+        game.state = STATE.MENU;
+        SFX.stopMusic();
+      }
       if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
         resetInventorySelection();
         game.state = STATE.INVENTORY;
@@ -1721,7 +2164,7 @@ function gameLoop(timestamp) {
           ctx.font = '8px "Press Start 2P"';
           ctx.textAlign = 'center';
           ctx.fillStyle = '#ffd54f';
-          ctx.fillText('[E] Говорить', game.width / 2, game.height - 20);
+          ctx.fillText('[E] Говорить', 320, 460);
           ctx.textAlign = 'left';
         }
       }
@@ -1733,25 +2176,22 @@ function gameLoop(timestamp) {
           ctx.font = '8px "Press Start 2P"';
           ctx.textAlign = 'center';
           ctx.fillStyle = '#ffd54f';
-          ctx.fillText('[H] Справка', game.width / 2, 56);
+          ctx.fillText('[H] Справка', 320, 56);
           ctx.textAlign = 'left';
         }
       }
 
-      // --- Quest tracker ---
-      renderQuestTracker(ctx, game.player, game.width);
-
-      // --- Help overlay ---
-      if (game.showHelp) {
-        renderHelpOverlay(ctx);
+      // --- Overlays (in game area) ---
+      {
+        const gOff = getGameOffsetX();
+        if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
+        renderQuestTracker(ctx, game.player, 640);
+        if (game.showHelp) renderHelpOverlay(ctx);
+        if (game.showQuestLog) renderQuestLog(ctx, game.player, 640, 480);
+        if (gOff > 0) ctx.restore();
       }
 
-      // --- Quest log overlay ---
-      if (game.showQuestLog) {
-        renderQuestLog(ctx, game.player, game.width, game.height);
-      }
-
-      // Touch controls overlay
+      // Touch controls overlay (full canvas, outside game area)
       renderTouchControls(ctx, game.width, game.height);
       break;
 
@@ -1775,8 +2215,11 @@ function gameLoop(timestamp) {
       // Render play scene underneath + dialog overlay
       updateParticles(game.particles, dt);
       renderPlay(ctx);
-      renderDialog(ctx, game.width, game.height);
-      // Show touch controls in dialog (for joystick navigation + E confirm)
+      { const gOff = getGameOffsetX();
+        if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
+        renderDialog(ctx, 640, 480);
+        if (gOff > 0) ctx.restore();
+      }
       if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
       break;
 
@@ -1805,35 +2248,34 @@ function gameLoop(timestamp) {
       }
       // Render
       renderPlay(ctx);
-      renderInventory(ctx, game.player, game.width, game.height, game.sandbox);
-      // Show touch controls in inventory (for joystick navigation + Space/E use)
+      { const gOff = getGameOffsetX();
+        if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
+        renderInventory(ctx, game.player, 640, 480, game.sandbox);
+        if (gOff > 0) ctx.restore();
+      }
       if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
       break;
 
-    case STATE.GAMEOVER:
-      // Keep rendering the play scene underneath
+    case STATE.GAMEOVER: {
       renderPlay(ctx);
-      // Dark overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
       ctx.fillRect(0, 0, game.width, game.height);
-      // GAME OVER text
+      const goCx = getGameOffsetX() + 320;
       ctx.font = '24px "Press Start 2P"';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#cc2222';
-      ctx.fillText('GAME OVER', game.width / 2, game.height / 2 - 20);
-      // Show checkpoint hint
+      ctx.fillText('GAME OVER', goCx, 220);
       if (game.checkpoint) {
         ctx.font = '8px "Press Start 2P"';
         ctx.fillStyle = '#b388ff';
-        ctx.fillText('Респавн на чекпоинте', game.width / 2, game.height / 2 + 10);
+        ctx.fillText('Респавн на чекпоинте', goCx, 250);
       }
-      // Prompt
       {
         const blink = Math.sin(game.totalTime * 3) > 0;
         if (blink) {
           ctx.font = '12px "Press Start 2P"';
           ctx.fillStyle = '#ffffff';
-          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', game.width / 2, game.height / 2 + 40);
+          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', goCx, 280);
         }
       }
       ctx.textAlign = 'left';
@@ -1849,30 +2291,28 @@ function gameLoop(timestamp) {
           game.enemies = [];
           game.particles = [];
         }
-      }
-      break;
+      } break;
 
-    case STATE.WIN:
+    case STATE.WIN: {
       renderPlay(ctx);
       // Dark overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
       ctx.fillRect(0, 0, game.width, game.height);
-      // Victory text
+      const winCx = getGameOffsetX() + 320;
       ctx.font = '24px "Press Start 2P"';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f0c040';
-      ctx.fillText('ПОБЕДА!', game.width / 2, game.height / 2 - 50);
+      ctx.fillText('ПОБЕДА!', winCx, 190);
       ctx.font = '10px "Press Start 2P"';
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('Тёмный маг повержен!', game.width / 2, game.height / 2);
-      ctx.fillText('Эльдория спасена!', game.width / 2, game.height / 2 + 24);
-      // Blinking prompt
+      ctx.fillText('Тёмный маг повержен!', winCx, 240);
+      ctx.fillText('Эльдория спасена!', winCx, 264);
       {
         const blink = Math.sin(game.totalTime * 3) > 0;
         if (blink) {
           ctx.font = '12px "Press Start 2P"';
           ctx.fillStyle = '#ffffff';
-          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', game.width / 2, game.height / 2 + 70);
+          ctx.fillText(isMobileDevice() ? 'НАЖМИ СЮДА' : 'НАЖМИ ENTER', winCx, 310);
         }
       }
       ctx.textAlign = 'left';
@@ -1884,7 +2324,7 @@ function gameLoop(timestamp) {
         game.projectiles = [];
         game.boss = null;
       }
-      break;
+    } break;
   }
 
   requestAnimationFrame(gameLoop);
@@ -1892,17 +2332,26 @@ function gameLoop(timestamp) {
 
 // --- Start Game ---
 function resizeCanvas() {
-  // On mobile, stretch to fill entire screen (game adapts to any ratio)
   const maxW = window.innerWidth;
   const maxH = window.innerHeight;
 
   if (isMobileDevice()) {
-    // Fill entire viewport — the game renders at 640x480 internal but fills screen
+    // Mobile: game area is 640x480, but canvas is wider to fit side panels
+    // Scale based on screen height to keep game area proportional
+    const screenRatio = maxW / maxH;
+    const gameRatio = 640 / 480;
+    // Canvas height = 480 always, width = enough for game + panels
+    const totalW = Math.round(480 * screenRatio);
+    canvas.width = totalW;
+    canvas.height = 480;
+    game.width = totalW;
+    game.height = 480;
+    // Fill screen
     canvas.style.width = maxW + 'px';
     canvas.style.height = maxH + 'px';
   } else {
     // Desktop: maintain aspect ratio
-    const ratio = canvas.width / canvas.height;
+    const ratio = 640 / 480;
     let w, h;
     if (maxW / maxH > ratio) {
       h = maxH;

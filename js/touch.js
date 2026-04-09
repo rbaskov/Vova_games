@@ -6,19 +6,24 @@ let joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 };
 let touchButtons = {};  // button name → pressed this frame
 let touchHeld = {};     // button name → currently held
 let isMobile = false;
-let tapAnywhereMode = false; // When true, any touch = Space press
+let tapAnywhereMode = false;
 
 // Joystick flick detection for menu/dialog navigation
-let lastFlickX = 0; // -1, 0, 1
+let lastFlickX = 0;
 let lastFlickY = 0;
 const FLICK_THRESHOLD = 0.5;
 
-const JOYSTICK_RADIUS = 60;
+const JOYSTICK_RADIUS = 50;
 const DEAD_ZONE = 8;
 
-let buttonAreas = []; // { id, x, y, r, key, label, color }
-let menuButtonAreas = []; // menu-specific buttons
-let joystickArea = { x: 0, y: 0 }; // center of joystick zone
+// Panel dimensions (set in updateLayout)
+let leftPanelW = 0;
+let rightPanelW = 0;
+let gameAreaX = 0; // offset where game renders
+
+let buttonAreas = [];
+let menuButtonAreas = [];
+let joystickArea = { x: 0, y: 0 };
 let canvasRect = null;
 let scaleX = 1;
 let scaleY = 1;
@@ -34,6 +39,16 @@ export function isMobileDevice() {
 
 export function setTapAnywhereMode(enabled) {
   tapAnywhereMode = enabled;
+}
+
+// Returns the X offset for game rendering (left panel width)
+export function getGameOffsetX() {
+  return isMobile ? leftPanelW : 0;
+}
+
+// Returns total canvas width (game + panels)
+export function getMobileCanvasWidth() {
+  return isMobile ? (leftPanelW + 640 + rightPanelW) : 640;
 }
 
 export function initTouchControls(canvas) {
@@ -60,39 +75,61 @@ export function initTouchControls(canvas) {
 
 function updateLayout(canvas) {
   canvasRect = canvas.getBoundingClientRect();
-  if (canvasRect.width === 0) return; // canvas not visible yet, skip
+  if (canvasRect.width === 0) return;
   scaleX = canvasRect.width / canvas.width;
   scaleY = canvasRect.height / canvas.height;
 
   const w = canvas.width;
   const h = canvas.height;
 
-  // Joystick on left side, higher up to avoid edge
-  joystickArea = { x: 90, y: h - 100 };
+  // Calculate panel sizes based on actual canvas dimensions
+  // Game area is always 640 wide, panels fill the rest
+  leftPanelW = Math.floor((w - 640) / 2);
+  rightPanelW = w - 640 - leftPanelW;
+  gameAreaX = leftPanelW;
 
-  // Main action buttons - right side, large and spaced
-  const R = 30; // base button radius — bigger for thumbs
-  const bx = w - 70;
-  const by = h - 90;
+  // Joystick centered in left panel
+  const jx = leftPanelW / 2;
+  const jy = h * 0.6;
+  joystickArea = { x: jx, y: jy };
 
+  // Right panel buttons — ergonomic layout for right thumb
+  const rpCenter = 640 + leftPanelW + rightPanelW / 2;
+  const R = 28;
+
+  // Diamond layout for main actions (right thumb zone, lower area)
+  const mainY = h * 0.6;
   buttonAreas = [
-    { id: 'attack', x: bx, y: by, r: R + 6, key: 'Space', label: '⚔', color: '#e74c3c' },
-    { id: 'interact', x: bx - 70, y: by + 10, r: R, key: 'KeyE', label: 'E', color: '#3498db' },
-    { id: 'potion', x: bx + 10, y: by - 70, r: R, key: 'KeyQ', label: '♥', color: '#2ecc71' },
-    { id: 'inv', x: bx - 60, y: by - 60, r: R - 4, key: 'KeyI', label: 'I', color: '#9b59b6' },
-    // Abilities bottom center
-    { id: 'ability1', x: w / 2 - 55, y: h - 38, r: R - 4, key: 'Digit1', label: '1', color: '#8d6e63' },
-    { id: 'ability2', x: w / 2, y: h - 38, r: R - 4, key: 'Digit2', label: '2', color: '#ef6c00' },
-    { id: 'ability3', x: w / 2 + 55, y: h - 38, r: R - 4, key: 'Digit3', label: '3', color: '#0288d1' },
-    // Quest log — top right area
-    { id: 'quest', x: w - 30, y: 52, r: R - 6, key: 'KeyJ', label: 'J', color: '#f0c040' },
+    // Main attack — big center button
+    { id: 'attack', x: rpCenter, y: mainY, r: R + 8, key: 'Space', label: '⚔', color: '#e74c3c' },
+    // Around the attack button
+    { id: 'interact', x: rpCenter - 52, y: mainY, r: R - 2, key: 'KeyE', label: 'E', color: '#3498db' },
+    { id: 'potion', x: rpCenter, y: mainY - 52, r: R - 2, key: 'KeyQ', label: '♥', color: '#2ecc71' },
+    { id: 'inv', x: rpCenter + 52, y: mainY, r: R - 2, key: 'KeyI', label: 'I', color: '#9b59b6' },
+
+    // Abilities row — top of right panel
+    { id: 'ability1', x: rpCenter - 42, y: h * 0.18, r: R - 6, key: 'Digit1', label: '1', color: '#8d6e63' },
+    { id: 'ability2', x: rpCenter, y: h * 0.18, r: R - 6, key: 'Digit2', label: '2', color: '#ef6c00' },
+    { id: 'ability3', x: rpCenter + 42, y: h * 0.18, r: R - 6, key: 'Digit3', label: '3', color: '#0288d1' },
+
+    // Quest log and Menu — top corners of right panel
+    { id: 'quest', x: rpCenter + 42, y: h * 0.06, r: R - 8, key: 'KeyJ', label: 'J', color: '#f0c040' },
+    { id: 'menu', x: rpCenter - 42, y: h * 0.06, r: R - 8, key: 'Escape', label: '☰', color: '#aaa' },
   ];
 
-  // Menu-specific touch areas
+  // Left panel extra buttons
+  // Music toggle — top of left panel
+  buttonAreas.push(
+    { id: 'music', x: leftPanelW / 2, y: h * 0.06, r: R - 8, key: 'KeyM', label: 'M', color: '#666' },
+    { id: 'help', x: leftPanelW / 2, y: h * 0.18, r: R - 8, key: 'KeyH', label: '?', color: '#666' },
+  );
+
+  // Menu touch areas (centered in game area)
+  const gameCenterX = gameAreaX + 320;
   menuButtonAreas = [
-    { id: 'start', x: w / 2, y: 310, r: 60, w: 280, h: 50, key: 'Enter', label: 'ИГРАТЬ' },
-    { id: 'continue', x: w / 2, y: 370, r: 60, w: 280, h: 40, key: 'KeyC', label: 'ПРОДОЛЖИТЬ' },
-    { id: 'sandbox', x: w / 2, y: 420, r: 60, w: 200, h: 36, key: 'KeyS', label: 'ПЕСОЧНИЦА' },
+    { id: 'start', x: gameCenterX, y: 310, r: 60, w: 260, h: 46, key: 'Enter', label: 'ИГРАТЬ' },
+    { id: 'continue', x: gameCenterX, y: 365, r: 60, w: 260, h: 38, key: 'KeyC', label: 'ПРОДОЛЖИТЬ' },
+    { id: 'sandbox', x: gameCenterX, y: 415, r: 60, w: 200, h: 34, key: 'KeyS', label: 'ПЕСОЧНИЦА' },
   ];
 }
 
@@ -104,7 +141,6 @@ function toCanvasCoords(touch) {
   };
 }
 
-// Check if touch hits a rectangular menu button
 function hitMenuButton(pos, btn) {
   const halfW = btn.w / 2;
   const halfH = btn.h / 2;
@@ -115,7 +151,6 @@ function hitMenuButton(pos, btn) {
 function handleTouchStart(e) {
   e.preventDefault();
 
-  // In "tap anywhere" mode, any touch = Space
   if (tapAnywhereMode) {
     touchButtons['Space'] = true;
     return;
@@ -124,7 +159,7 @@ function handleTouchStart(e) {
   for (const touch of e.changedTouches) {
     const pos = toCanvasCoords(touch);
 
-    // Check menu buttons
+    // Check menu buttons first
     for (const btn of menuButtonAreas) {
       if (hitMenuButton(pos, btn)) {
         touchButtons[btn.key] = true;
@@ -138,8 +173,7 @@ function handleTouchStart(e) {
     for (const btn of buttonAreas) {
       const dx = pos.x - btn.x;
       const dy = pos.y - btn.y;
-      // Generous hit area (1.8x radius) for easier tapping
-      if (dx * dx + dy * dy < btn.r * btn.r * 3.2) {
+      if (dx * dx + dy * dy < btn.r * btn.r * 3.0) {
         touchButtons[btn.key] = true;
         touchHeld[btn.key] = true;
         hitButton = true;
@@ -147,8 +181,8 @@ function handleTouchStart(e) {
       }
     }
 
-    // If no button hit and on left side, start joystick
-    if (!hitButton && pos.x < 220) {
+    // If no button hit and in left panel area, start joystick
+    if (!hitButton && pos.x < leftPanelW + 40) {
       joystick.active = true;
       joystick.touchId = touch.identifier;
       joystick.startX = pos.x;
@@ -167,7 +201,6 @@ function handleTouchMove(e) {
       let dx = pos.x - joystick.startX;
       let dy = pos.y - joystick.startY;
 
-      // Clamp to radius
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > JOYSTICK_RADIUS) {
         dx = (dx / dist) * JOYSTICK_RADIUS;
@@ -189,13 +222,10 @@ function handleTouchEnd(e) {
       joystick.dy = 0;
     }
   }
-  // Release held buttons for ended touches only
-  // Simple approach: release all when any touch ends
-  // More precise: track which touch held which button
   touchHeld = {};
 }
 
-// Called by input.js to merge touch state
+// Called by input.js
 export function getTouchJoystick() {
   return { dx: joystick.dx, dy: joystick.dy };
 }
@@ -212,24 +242,38 @@ export function isTouchButtonHeld(key) {
   return !!touchHeld[key];
 }
 
-// Returns a one-shot directional flick from joystick (for dialog/inventory navigation)
 export function getJoystickFlick() {
   let flickX = 0, flickY = 0;
-
   const curX = joystick.dx > FLICK_THRESHOLD ? 1 : (joystick.dx < -FLICK_THRESHOLD ? -1 : 0);
   const curY = joystick.dy > FLICK_THRESHOLD ? 1 : (joystick.dy < -FLICK_THRESHOLD ? -1 : 0);
-
-  // Trigger only on transition from 0 to non-zero
   if (curX !== 0 && lastFlickX === 0) flickX = curX;
   if (curY !== 0 && lastFlickY === 0) flickY = curY;
-
   lastFlickX = curX;
   lastFlickY = curY;
-
   return { dx: flickX, dy: flickY };
 }
 
-// Render touch controls overlay — gameplay
+// --- Render ---
+
+// Render side panels background
+export function renderMobilePanels(ctx, width, height) {
+  if (!isMobile || leftPanelW <= 0) return;
+
+  // Left panel — dark background
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 0, leftPanelW, height);
+
+  // Right panel
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(leftPanelW + 640, 0, rightPanelW, height);
+
+  // Subtle border lines
+  ctx.fillStyle = '#222';
+  ctx.fillRect(leftPanelW - 1, 0, 2, height);
+  ctx.fillRect(leftPanelW + 640, 0, 2, height);
+}
+
+// Render gameplay touch controls (on panels)
 export function renderTouchControls(ctx, width, height) {
   if (!isMobile) return;
 
@@ -238,14 +282,14 @@ export function renderTouchControls(ctx, width, height) {
   const jy = joystickArea.y;
 
   // Joystick base
-  ctx.globalAlpha = 0.2;
+  ctx.globalAlpha = 0.15;
   ctx.fillStyle = '#fff';
   ctx.beginPath();
   ctx.arc(jx, jy, JOYSTICK_RADIUS, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.globalAlpha = 0.4;
-  ctx.strokeStyle = '#fff';
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = '#556';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(jx, jy, JOYSTICK_RADIUS, 0, Math.PI * 2);
@@ -255,34 +299,31 @@ export function renderTouchControls(ctx, width, height) {
   const knobX = jx + joystick.dx * JOYSTICK_RADIUS;
   const knobY = jy + joystick.dy * JOYSTICK_RADIUS;
   ctx.globalAlpha = 0.6;
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#aab';
   ctx.beginPath();
-  ctx.arc(knobX, knobY, 22, 0, Math.PI * 2);
+  ctx.arc(knobX, knobY, 18, 0, Math.PI * 2);
   ctx.fill();
 
   // Action buttons
   for (const btn of buttonAreas) {
     const held = touchHeld[btn.key];
 
-    // Button circle
-    ctx.globalAlpha = held ? 0.6 : 0.3;
+    ctx.globalAlpha = held ? 0.7 : 0.35;
     ctx.fillStyle = btn.color;
     ctx.beginPath();
     ctx.arc(btn.x, btn.y, btn.r, 0, Math.PI * 2);
     ctx.fill();
 
-    // Border
-    ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4;
+    ctx.strokeStyle = '#556';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(btn.x, btn.y, btn.r, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Label
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.9;
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.max(10, btn.r * 0.65)}px "Press Start 2P"`;
+    ctx.font = `${Math.max(9, btn.r * 0.55)}px "Press Start 2P"`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(btn.label, btn.x, btn.y + 1);
@@ -298,18 +339,14 @@ export function renderMenuTouchControls(ctx, width, height, hasSaveData) {
   if (!isMobile) return;
 
   ctx.globalAlpha = 0.9;
-
-  // "ИГРАТЬ" button
   const start = menuButtonAreas[0];
   drawMenuButton(ctx, start.x, start.y, start.w, start.h, start.label, '#f0c040', '#000');
 
-  // "ПРОДОЛЖИТЬ" button (only if save exists)
   if (hasSaveData) {
     const cont = menuButtonAreas[1];
     drawMenuButton(ctx, cont.x, cont.y, cont.w, cont.h, cont.label, '#3498db', '#fff');
   }
 
-  // "ПЕСОЧНИЦА" button
   const sandbox = menuButtonAreas[2];
   drawMenuButton(ctx, sandbox.x, sandbox.y, sandbox.w, sandbox.h, sandbox.label, '#b388ff', '#000');
 
@@ -320,10 +357,8 @@ function drawMenuButton(ctx, x, y, w, h, label, bgColor, textColor) {
   const halfW = w / 2;
   const halfH = h / 2;
 
-  // Background
   ctx.fillStyle = bgColor;
   ctx.globalAlpha = 0.85;
-  // Rounded rect
   const r = 8;
   ctx.beginPath();
   ctx.moveTo(x - halfW + r, y - halfH);
@@ -337,16 +372,14 @@ function drawMenuButton(ctx, x, y, w, h, label, bgColor, textColor) {
   ctx.quadraticCurveTo(x - halfW, y - halfH, x - halfW + r, y - halfH);
   ctx.fill();
 
-  // Border
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
   ctx.globalAlpha = 0.5;
   ctx.stroke();
 
-  // Text
   ctx.globalAlpha = 1;
   ctx.fillStyle = textColor;
-  ctx.font = `${Math.min(14, h * 0.4)}px "Press Start 2P"`;
+  ctx.font = `${Math.min(13, h * 0.4)}px "Press Start 2P"`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, x, y + 1);

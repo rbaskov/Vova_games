@@ -87,6 +87,12 @@ export const kingdomMap = {
     { id: 'merc_sword', col: 8, row: 12, name: 'Мечник Дарен', bodyColor: '#607d8b', headDetail: '#90a4ae' },
     { id: 'merc_spear', col: 14, row: 19, name: 'Копейщик Рольф', bodyColor: '#607d8b', headDetail: '#90a4ae' },
     { id: 'merc_bow', col: 20, row: 12, name: 'Лучник Ивар', bodyColor: '#607d8b', headDetail: '#90a4ae' },
+    { id: 'merc_axe', col: 3, row: 16, name: 'Топорщик Гром', bodyColor: '#5d4037', headDetail: '#8d6e63' },
+    { id: 'merc_tank', col: 27, row: 16, name: 'Бронк-Щитоносец', bodyColor: '#455a64', headDetail: '#78909c' },
+    { id: 'merc_fast', col: 8, row: 6, name: 'Зефир-Клинок', bodyColor: '#1565c0', headDetail: '#42a5f5' },
+    { id: 'merc_healer', col: 20, row: 20, name: 'Целительница Лиана', bodyColor: '#2e7d32', headDetail: '#66bb6a' },
+    { id: 'merc_mage', col: 14, row: 6, name: 'Маг Аркан', bodyColor: '#6a1b9a', headDetail: '#ab47bc' },
+    { id: 'stablemaster', col: 2, row: 20, name: 'Конюх', bodyColor: '#795548', headDetail: '#a1887f' },
   ],
   spawns: [],
 };

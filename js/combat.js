@@ -96,7 +96,8 @@ export function playerAttackEnemies(player, enemies) {
         continue; // blocked — no damage
       }
 
-      const dmg = calcDamage(getTotalAtk(player), 0);
+      const rawAtk = getTotalAtk(player);
+      const dmg = calcDamage(Math.floor(rawAtk * (player._atkMultiplier || 1)), 0);
       enemy.hp -= dmg;
       enemy.hitTimer = 0.3;
 
