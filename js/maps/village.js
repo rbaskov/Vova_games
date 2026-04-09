@@ -29,7 +29,7 @@ const tiles = [
   // Row 8
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 9 — horizontal dirt path, elder stands here, portal to kingdom on left
-  [T,P,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
+  [T,P,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,P,T],
   // Row 10 — checkpoint crystal
   [T,G,G,G,G,G,G,G,G,G,G,G,C,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 11
@@ -61,11 +61,13 @@ export const villageMap = {
   portals: [
     { col: 17, row: 18, target: 'forest', spawnX: 15, spawnY: 1 },
     { col: 1, row: 9, target: 'kingdom', spawnX: 14, spawnY: 22 },
+    { col: 28, row: 9, target: 'dungeon', spawnX: 0, spawnY: 0 },
   ],
   npcs: [
     { id: 'blacksmith', col: 4, row: 4, name: 'Кузнец', bodyColor: '#884422', headDetail: '#aa3311' },
     { id: 'elder', col: 9, row: 9, name: 'Старейшина', bodyColor: '#335588', headDetail: '#eeeeee' },
     { id: 'merchant', col: 18, row: 9, name: 'Торговец', bodyColor: '#228844', headDetail: '#cc8800' },
+    { id: 'dungeon_guard', col: 27, row: 8, name: 'Страж подземелий', bodyColor: '#4a148c', headDetail: '#7c4dff' },
   ],
   spawns: [],
 };

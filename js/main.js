@@ -19,6 +19,7 @@ import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
+import { generateDungeon } from './dungeon.js';
 import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
 
 // --- Game States ---
@@ -98,9 +99,28 @@ function createPlayer(startX, startY) {
   };
 }
 
+// --- Dungeon state ---
+let dungeonDepth = 0;
+
 // --- Load Map ---
 function loadMap(mapKey, spawnX, spawnY) {
-  const mapData = MAP_REGISTRY[mapKey];
+  let mapData;
+
+  if (mapKey === 'dungeon') {
+    // Generate new dungeon level 1
+    dungeonDepth = 1;
+    mapData = generateDungeon(dungeonDepth);
+    MAP_REGISTRY._currentDungeon = mapData;
+  } else if (mapKey === '_dungeon_next') {
+    // Go deeper into dungeon
+    dungeonDepth++;
+    mapData = generateDungeon(dungeonDepth);
+    MAP_REGISTRY._currentDungeon = mapData;
+    mapKey = 'dungeon_' + dungeonDepth;
+  } else {
+    mapData = MAP_REGISTRY[mapKey];
+  }
+
   if (!mapData) return;
 
   const tileMap = createTileMap(mapData);
