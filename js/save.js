@@ -5,6 +5,7 @@ export function saveGame(player, currentMapName) {
     hp: player.hp, maxHp: player.maxHp, atk: player.atk,
     xp: player.xp, level: player.level, coins: player.coins,
     potions: player.potions, artifacts: { ...player.artifacts },
+    defeatedBosses: [...(player.defeatedBosses || [])],
     currentMap: currentMapName,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));

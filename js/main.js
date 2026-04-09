@@ -80,6 +80,7 @@ function createPlayer(startX, startY) {
     artifacts: { earth: false, fire: false, water: false },
     cooldowns: { earth: 0, fire: 0, water: 0 },
     invincibleTimer: 0,
+    defeatedBosses: [],
   };
 }
 
@@ -129,9 +130,9 @@ function loadMap(mapKey, spawnX, spawnY) {
     }
   }
 
-  // Boss from map data
+  // Boss from map data (skip if already defeated)
   game.boss = null;
-  if (mapData.boss) {
+  if (mapData.boss && !game.player.defeatedBosses.includes(mapData.boss.type)) {
     game.boss = createBoss(mapData.boss.type, mapData.boss.col, mapData.boss.row);
   }
 }
@@ -663,6 +664,7 @@ function gameLoop(timestamp) {
           p.coins = save.coins;
           p.potions = save.potions;
           p.artifacts = { ...save.artifacts };
+          p.defeatedBosses = [...(save.defeatedBosses || [])];
         }
       }
       break;
@@ -801,6 +803,7 @@ function gameLoop(timestamp) {
             game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${game.player.atk}`, '#ffffff'));
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
+              game.player.defeatedBosses.push(game.boss.type);
               // Rewards
               game.player.xp += game.boss.xp;
               game.player.coins += game.boss.coins;
