@@ -2,6 +2,14 @@
 
 Пиксельная Action-RPG в браузере. HTML5 Canvas + Vanilla JavaScript. Без зависимостей.
 
+![Главное меню](docs/screenshots/menu.png)
+
+## Скриншоты
+
+| Выбор класса | Геймплей |
+|:---:|:---:|
+| ![Классы](docs/screenshots/class_select.png) | ![Деревня](docs/screenshots/gameplay.png) |
+
 ## Запуск
 
 ```bash
