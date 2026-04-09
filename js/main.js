@@ -17,6 +17,7 @@ import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 import { getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
+import { getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
 
 // --- Game States ---
 export const STATE = {
@@ -86,6 +87,8 @@ function createPlayer(startX, startY) {
     defeatedBosses: [],
     weapon: 'iron_sword',
     ownedWeapons: ['iron_sword'],
+    equippedArmor: { helmet: null, chest: null, legs: null },
+    ownedArmor: [],
   };
 }
 
@@ -213,6 +216,8 @@ function saveCheckpoint() {
     artifacts: { ...p.artifacts },
     weapon: p.weapon,
     ownedWeapons: [...p.ownedWeapons],
+    equippedArmor: { ...p.equippedArmor },
+    ownedArmor: [...(p.ownedArmor || [])],
     defeatedBosses: [...p.defeatedBosses],
   };
 }
@@ -256,6 +261,8 @@ function respawnAtCheckpoint() {
   p.artifacts = { ...cp.artifacts };
   p.weapon = cp.weapon;
   p.ownedWeapons = [...cp.ownedWeapons];
+  p.equippedArmor = { ...cp.equippedArmor };
+  p.ownedArmor = [...(cp.ownedArmor || [])];
   p.defeatedBosses = [...cp.defeatedBosses];
   p.invincibleTimer = 1.5; // brief invincibility after respawn
   p.attacking = false;
@@ -288,12 +295,28 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action.startsWith('buy_armor_')) {
+    // Armor purchase
+    const armorId = action.slice(10); // remove 'buy_armor_'
+    const a = getArmor(armorId);
+    if (!a) return;
+    if (p.ownedArmor.includes(armorId)) {
+      // Already owned — equip it
+      p.equippedArmor[a.slot] = armorId;
+      game.particles.push(createParticle(p.x, p.y - 8, a.name, '#4fc3f7'));
+    } else if (p.coins >= a.price) {
+      p.coins -= a.price;
+      p.ownedArmor.push(armorId);
+      p.equippedArmor[a.slot] = armorId;
+      game.particles.push(createParticle(p.x, p.y - 8, a.name + '!', '#ffd54f'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   } else if (action.startsWith('buy_')) {
     // Weapon purchase
     const weaponId = action.slice(4); // remove 'buy_'
     const w = getWeapon(weaponId);
     if (p.ownedWeapons.includes(weaponId)) {
-      // Already owned — equip it
       p.weapon = weaponId;
       game.particles.push(createParticle(p.x, p.y - 8, w.name, '#4fc3f7'));
     } else if (p.coins >= w.price) {
@@ -548,7 +571,11 @@ function renderHUD(ctx) {
   // Weapon name
   const curW = getWeapon(p.weapon);
   ctx.fillStyle = curW.color;
-  ctx.fillText(curW.name, 390, hpBarY + 10);
+  const def = getTotalDef(game.player);
+  if (def > 0) {
+    ctx.fillStyle = '#78909c';
+    ctx.fillText(`DEF ${def}`, 380, hpBarY + 10);
+  }
 
   // Map name
   ctx.textAlign = 'right';
@@ -702,6 +729,8 @@ function renderPlay(ctx) {
       ctx.globalAlpha = 0.4;
     }
     drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    // Draw armor overlay
+    drawArmorOnHero(ctx, px, py, p.facing, p.equippedArmor, 2);
     // Draw weapon on hero
     if (p.attacking) {
       const atkProgress = 1 - (p.attackTimer / getAttackSpeed(p)); // 0→1
@@ -779,6 +808,8 @@ function gameLoop(timestamp) {
           p.defeatedBosses = [...(save.defeatedBosses || [])];
           p.weapon = save.weapon || 'iron_sword';
           p.ownedWeapons = [...(save.ownedWeapons || ['iron_sword'])];
+          p.equippedArmor = { ...(save.equippedArmor || { helmet: null, chest: null, legs: null }) };
+          p.ownedArmor = [...(save.ownedArmor || [])];
         }
       }
       break;
@@ -875,7 +906,7 @@ function gameLoop(timestamp) {
           const d = Math.sqrt((px - bx) ** 2 + (py - by) ** 2);
           if (d < 40) {
             const phase = game.boss.phases[game.boss.phaseIndex];
-            const dmg = phase.atk;
+            const dmg = Math.max(1, phase.atk - getTotalDef(game.player));
             game.player.hp -= dmg;
             game.player.invincibleTimer = 0.5;
             // Knockback (with collision check)
@@ -980,7 +1011,7 @@ function gameLoop(timestamp) {
           const pry = proj.y + proj.height / 2;
           const d = Math.sqrt((px - prx) ** 2 + (py - pry) ** 2);
           if (d < 24 && game.player.invincibleTimer <= 0) {
-            game.player.hp -= proj.damage;
+            game.player.hp -= Math.max(1, proj.damage - getTotalDef(game.player));
             game.player.invincibleTimer = 0.5;
             game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${proj.damage}`, '#ff4444'));
             game.projectiles.splice(i, 1);

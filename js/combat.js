@@ -4,6 +4,7 @@
 
 import { isSolid, TILE_SIZE } from './tilemap.js';
 import { getTotalAtk, getWeaponRange, getKnockback, getWeapon } from './weapons.js';
+import { getTotalDef } from './armor.js';
 
 // Safe knockback: only apply if target won't end up inside a wall
 function safeKnockback(entity, dx, dy, w, h, map) {
@@ -125,7 +126,7 @@ export function enemyAttackPlayer(enemies, player, dt) {
     const d = dist(px, py, ex, ey);
 
     if (d < 30) {
-      const dmg = calcDamage(enemy.atk, 0);
+      const dmg = calcDamage(enemy.atk, getTotalDef(player));
       player.hp -= dmg;
       totalDamage += dmg;
       player.invincibleTimer = 0.5;

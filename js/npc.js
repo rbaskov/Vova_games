@@ -39,7 +39,37 @@ export const DIALOGS = {
       choices: [
         { text: 'Зелье HP (10$)', action: 'buy_potion', next: 0 },
         { text: 'Большое зелье (25$)', action: 'buy_big_potion', next: 0 },
+        { text: 'Доспехи...', next: 1 },
         { text: 'Уйти', next: null },
+      ],
+    },
+    {
+      text: 'У меня лучшие доспехи! Выбирай:',
+      choices: [
+        { text: 'Кож. шлем (15$)', action: 'buy_armor_leather_helmet', next: 1 },
+        { text: 'Кож. доспех (25$)', action: 'buy_armor_leather_chest', next: 1 },
+        { text: 'Кож. поножи (20$)', action: 'buy_armor_leather_legs', next: 1 },
+        { text: 'Дороже...', next: 2 },
+        { text: 'Назад', next: 0 },
+      ],
+    },
+    {
+      text: 'Для серьёзных воинов!',
+      choices: [
+        { text: 'Жел. шлем (45$)', action: 'buy_armor_iron_helmet', next: 2 },
+        { text: 'Жел. доспех (70$)', action: 'buy_armor_iron_chest', next: 2 },
+        { text: 'Жел. поножи (50$)', action: 'buy_armor_iron_legs', next: 2 },
+        { text: 'Ещё дороже...', next: 3 },
+        { text: 'Назад', next: 1 },
+      ],
+    },
+    {
+      text: 'Мифриловые доспехи — лучшие в Эльдории!',
+      choices: [
+        { text: 'Миф. шлем (110$)', action: 'buy_armor_mithril_helmet', next: 3 },
+        { text: 'Миф. доспех (160$)', action: 'buy_armor_mithril_chest', next: 3 },
+        { text: 'Миф. поножи (120$)', action: 'buy_armor_mithril_legs', next: 3 },
+        { text: 'Назад', next: 2 },
       ],
     },
   ],

@@ -4,6 +4,7 @@
 
 import { drawPotionSprite, drawCoinSprite } from './sprites.js';
 import { WEAPONS, getWeapon, getTotalAtk } from './weapons.js';
+import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorIcon } from './armor.js';
 
 let selectedSlot = 0;
 
@@ -57,6 +58,23 @@ function getItems(player) {
       action: (p) => {
         p.weapon = wid;
       },
+      actionLabel: '[ENTER] Экипировать',
+    });
+  }
+
+  // Owned armor (not currently equipped in that slot)
+  for (const aid of (player.ownedArmor || [])) {
+    const a = ARMOR[aid];
+    if (!a) continue;
+    if (player.equippedArmor && player.equippedArmor[a.slot] === aid) continue;
+    items.push({
+      id: aid,
+      name: a.name,
+      desc: `+${a.def} DEF${a.bonusHp ? ` +${a.bonusHp} HP` : ''}`,
+      count: 1,
+      color: a.color,
+      drawIcon: (ctx, x, y) => drawArmorIcon(ctx, x, y, aid),
+      action: (p) => { p.equippedArmor[a.slot] = aid; },
       actionLabel: '[ENTER] Экипировать',
     });
   }
@@ -205,6 +223,7 @@ export function renderInventory(ctx, player, width, height) {
   const statLines = [
     { label: 'HP', value: `${player.hp}/${player.maxHp}`, color: '#e53935' },
     { label: 'ATK', value: `${getTotalAtk(player)} (${player.atk}+${getWeapon(player.weapon).bonusAtk})`, color: '#ffd54f' },
+    { label: 'DEF', value: `${getTotalDef(player)}`, color: '#78909c' },
     { label: 'LVL', value: `${player.level}`, color: '#4fc3f7' },
     { label: 'XP', value: `${player.xp}/${player.level * 50}`, color: '#b388ff' },
     { label: '$', value: `${player.coins}`, color: '#ffd54f' },
@@ -228,20 +247,44 @@ export function renderInventory(ctx, player, width, height) {
   ctx.font = '7px "Press Start 2P"';
   ctx.fillText('ЭКИПИРОВКА', statsX, equipY);
 
-  // Current weapon
-  const curWeapon = getWeapon(player.weapon);
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(statsX, equipY + 10, 28, 28);
-  ctx.strokeStyle = curWeapon.color;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(statsX, equipY + 10, 28, 28);
-  drawWeaponIcon(ctx, statsX + 2, equipY + 12, curWeapon);
-  ctx.fillStyle = curWeapon.color;
-  ctx.font = '7px "Press Start 2P"';
-  ctx.fillText(curWeapon.name, statsX + 34, equipY + 22);
-  ctx.fillStyle = '#aaa';
+  // Equipment slots in a column
+  const slotSize = 24;
+  const slotGap = 4;
+  const equipped = player.equippedArmor || {};
+  const equipSlots = [
+    { label: 'W', item: getWeapon(player.weapon), drawFn: (ctx, x, y) => drawWeaponIcon(ctx, x, y, getWeapon(player.weapon)) },
+    { label: 'H', item: getArmor(equipped.helmet), drawFn: (ctx, x, y) => equipped.helmet && drawArmorIcon(ctx, x, y, equipped.helmet) },
+    { label: 'C', item: getArmor(equipped.chest), drawFn: (ctx, x, y) => equipped.chest && drawArmorIcon(ctx, x, y, equipped.chest) },
+    { label: 'L', item: getArmor(equipped.legs), drawFn: (ctx, x, y) => equipped.legs && drawArmorIcon(ctx, x, y, equipped.legs) },
+  ];
+
+  for (let i = 0; i < equipSlots.length; i++) {
+    const sl = equipSlots[i];
+    const sx = statsX + i * (slotSize + slotGap + 2);
+    const sy = equipY + 10;
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(sx, sy, slotSize + 8, slotSize + 8);
+    ctx.strokeStyle = sl.item ? sl.item.color || '#555' : '#333';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(sx, sy, slotSize + 8, slotSize + 8);
+
+    if (sl.item && sl.drawFn) {
+      sl.drawFn(ctx, sx, sy);
+    }
+
+    // Slot label
+    ctx.fillStyle = '#555';
+    ctx.font = '5px "Press Start 2P"';
+    ctx.fillText(sl.label, sx + 1, sy + slotSize + 6);
+  }
+
+  // Name of equipped items below slots
+  const infoEqY = equipY + slotSize + 24;
   ctx.font = '6px "Press Start 2P"';
-  ctx.fillText(`+${curWeapon.bonusAtk} ATK  ${curWeapon.type}`, statsX + 34, equipY + 34);
+  ctx.fillStyle = '#aaa';
+  const eqNames = equipSlots.map(sl => sl.item ? sl.item.name : '-').join(' | ');
+  ctx.fillText(eqNames.substring(0, 40), statsX, infoEqY);
 
   // === Right side: Item Grid ===
   const gridX = panelX + panelW / 2 + 10;

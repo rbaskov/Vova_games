@@ -8,6 +8,8 @@ export function saveGame(player, currentMapName) {
     defeatedBosses: [...(player.defeatedBosses || [])],
     weapon: player.weapon || 'iron_sword',
     ownedWeapons: [...(player.ownedWeapons || ['iron_sword'])],
+    equippedArmor: { ...(player.equippedArmor || { helmet: null, chest: null, legs: null }) },
+    ownedArmor: [...(player.ownedArmor || [])],
     currentMap: currentMapName,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
