@@ -59,6 +59,15 @@ function drawBandit(ctx, x, y, facing, frame, weapon) {
     ctx.fillRect(12*s, 4*s, 1.5*s, 8*s);
     ctx.fillStyle = '#ddd';
     ctx.fillRect(13*s, 4*s, 0.5*s, 8*s);
+  } else if (weapon === 'axe') {
+    // Axe handle
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(12*s, 2*s - armBob, 1*s, 10*s);
+    // Axe head
+    ctx.fillStyle = '#777';
+    ctx.fillRect(11*s, 0 - armBob, 4*s, 3*s);
+    ctx.fillStyle = '#999';
+    ctx.fillRect(10.5*s, 0 - armBob, 1.5*s, 3*s);
   }
 
   ctx.restore();
@@ -74,6 +83,10 @@ function drawDarkSwordsman(ctx, x, y, facing, frame) {
 
 function drawDarkSpearman(ctx, x, y, facing, frame) {
   drawBandit(ctx, x, y, facing, frame, 'spear');
+}
+
+function drawDarkAxeman(ctx, x, y, facing, frame) {
+  drawBandit(ctx, x, y, facing, frame, 'axe');
 }
 
 // --- Enemy Type Definitions ---
@@ -110,6 +123,15 @@ const ENEMY_TYPES = {
     ai: 'archer', aggroRange: 220,
     weapon: 'bow', shootInterval: 2.0,
     loot: { weaponId: 'bandit_bow', dropChance: 1.0 },
+  },
+  bandit_axe: {
+    hp: 55, maxHp: 55, atk: 16, speed: 45, xp: 40, coins: 18,
+    width: 32, height: 34,
+    draw: (ctx, x, y, f) => drawDarkAxeman(ctx, x, y, 'right', f),
+    drawFacing: drawDarkAxeman,
+    ai: 'swordsman', aggroRange: 160,
+    weapon: 'axe', blockChance: 0.15,
+    loot: { weaponId: 'bandit_axe', dropChance: 1.0 },
   },
 };
 

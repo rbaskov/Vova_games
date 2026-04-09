@@ -178,6 +178,18 @@ export const WEAPONS = {
     price: 40,
     color: '#795548',
   },
+  bandit_axe: {
+    id: 'bandit_axe',
+    name: 'Ржавый топор бандита',
+    desc: '+3 ATK, тяжёлый и грубый',
+    type: 'axe',
+    bonusAtk: 3,
+    range: 42,
+    attackSpeed: 0.5,
+    knockback: 32,
+    price: 35,
+    color: '#6d6d6d',
+  },
 };
 
 export function getWeapon(id) {

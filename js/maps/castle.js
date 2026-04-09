@@ -72,6 +72,7 @@ export const castleMap = {
     { type: 'bandit_spear', col: 22, row: 9 },
     { type: 'bandit_archer', col: 14, row: 12 },
     { type: 'bandit_archer', col: 20, row: 16 },
+    { type: 'bandit_axe', col: 14, row: 9 },
   ],
   boss: { type: 'dark_mage', col: 14, row: 5 },
 };

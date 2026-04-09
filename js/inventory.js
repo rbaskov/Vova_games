@@ -255,6 +255,27 @@ function drawBanditWeaponIcon(ctx, x, y, w) {
     ctx.fillRect(cx - 4, cy - 1, 10, 2);
     ctx.fillStyle = '#9e9e9e';
     ctx.fillRect(cx + 5, cy - 2, 3, 4);
+  } else if (w.id === 'bandit_axe') {
+    // Rusty chipped axe
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 2, 2, 14);
+    // Rusty head with chips
+    ctx.fillStyle = '#6d6d6d';
+    ctx.fillRect(cx - 5, cy - 7, 8, 6);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx - 5, cy - 7, 2, 6);
+    // Chips/damage
+    ctx.fillStyle = '#4a4a4a';
+    ctx.fillRect(cx - 5, cy - 5, 1, 2);
+    ctx.fillRect(cx + 1, cy - 7, 1, 1);
+    // Rust spots
+    ctx.fillStyle = '#8b4513';
+    ctx.fillRect(cx - 3, cy - 4, 2, 1);
+    ctx.fillRect(cx + 1, cy - 3, 1, 2);
+    // Wrapped grip
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(cx - 1, cy + 4, 4, 2);
+    ctx.fillRect(cx - 1, cy + 8, 4, 2);
   }
 }
 

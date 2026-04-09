@@ -42,6 +42,7 @@ const ENEMY_POOLS = [
     { type: 'bandit_sword', weight: 3 },
     { type: 'bandit_spear', weight: 2 },
     { type: 'bandit_archer', weight: 3 },
+    { type: 'bandit_axe', weight: 2 },
   ],
 ];
 
