@@ -1,7 +1,7 @@
 import { initInput, isKeyDown, isKeyPressed, getMovementInput } from './input.js';
 import { detectMobile, initTouchControls, renderTouchControls, renderMenuTouchControls, renderMobilePanels, isMobileDevice, setTapAnywhereMode, getJoystickFlick, getGameOffsetX, getMobileCanvasWidth } from './touch.js';
-import { createTileMap, renderMap, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
-import { createCamera, updateCamera } from './camera.js';
+import { createTileMap, renderMap, renderOpenWorld, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
+import { createCamera, updateCamera, updateCameraOpenWorld } from './camera.js';
 import { villageMap } from './maps/village.js';
 import { forestMap } from './maps/forest.js';
 import { canyonMap } from './maps/canyon.js';
@@ -10,7 +10,7 @@ import { castleMap } from './maps/castle.js';
 import { kingdomMap } from './maps/kingdom.js';
 import { hellpitMap } from './maps/hellpit.js';
 import { arenaMap } from './maps/arena.js';
-import { drawHero, drawNPC, TILE } from './sprites.js';
+import { drawHero, drawNPC, TILE, SOLID_TILES } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies, setProjectileCallback } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { createParticle, updateParticles, renderParticles } from './particles.js';
@@ -27,6 +27,8 @@ import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgr
 import { generateEvents, openChest, updateAmbush, updateBuff, getBuffAtkMultiplier, getBuffSpeedMultiplier, isBuffInvincible, getBuffVampirism, applyBuff, getTraderDialog, drawChest, drawBuffStone, drawSecretPortal, drawEliteIndicator } from './events.js';
 import { generateQuest, hasActiveGenQuest, getCompletedGenQuest, acceptGenQuest, claimGenReward, updateGenKillProgress, updateGenBossProgress, updateGenVisitProgress, updateGenArenaProgress, getActiveGenQuests } from './questgen.js';
 import * as SFX from './audio.js';
+import { createWorldGen, CHUNK_W, CHUNK_H } from './worldgen.js';
+import { createChunkManager } from './chunks.js';
 
 // --- Game States ---
 export const STATE = {
@@ -70,6 +72,12 @@ export const game = {
   selectedClass: 0,
   playerClass: null, // 'knight','archer','landsknecht','standard','gladiator'
   hasHorse: false,
+  openWorld: false,
+  chunkManager: null,
+  worldGen: null,
+  worldSeed: null,
+  chunkEnemies: new Map(),
+  chunkKills: new Map(),
 };
 
 // --- Class Definitions ---
@@ -358,6 +366,10 @@ function updateCompanions(dt) {
                 game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 8, `-${c.atk}`, '#90caf9'));
                 if (nearestEnemy.hp <= 0) {
                   nearestEnemy.alive = false;
+                  if (game.openWorld && nearestEnemy._chunkKey !== undefined) {
+                    if (!game.chunkKills.has(nearestEnemy._chunkKey)) game.chunkKills.set(nearestEnemy._chunkKey, new Set());
+                    game.chunkKills.get(nearestEnemy._chunkKey).add(nearestEnemy._spawnIndex);
+                  }
                   p.xp += nearestEnemy.xp;
                   p.coins += nearestEnemy.coins;
                   game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 8, `+${nearestEnemy.xp} XP`, '#cc66ff'));
@@ -405,12 +417,12 @@ function moveCompanionToward(c, tx, ty, speed, dt) {
   // Simple collision check
   const nx = c.x + vx;
   const ny = c.y + vy;
-  if (!collidesWithMap(nx, ny, c.hitW, c.hitH)) {
+  if (!collides(nx, ny, c.hitW, c.hitH)) {
     c.x = nx;
     c.y = ny;
-  } else if (!collidesWithMap(nx, c.y, c.hitW, c.hitH)) {
+  } else if (!collides(nx, c.y, c.hitW, c.hitH)) {
     c.x = nx;
-  } else if (!collidesWithMap(c.x, ny, c.hitW, c.hitH)) {
+  } else if (!collides(c.x, ny, c.hitW, c.hitH)) {
     c.y = ny;
   }
 }
@@ -647,6 +659,133 @@ function loadMap(mapKey, spawnX, spawnY) {
   }
 }
 
+// --- Open World ---
+function syncChunkEnemies() {
+  const cm = game.chunkManager;
+  const newEnemies = [];
+
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const cx = cm.centerCX + dx;
+      const cy = cm.centerCY + dy;
+      const k = `${cx},${cy}`;
+
+      if (!game.chunkEnemies.has(k)) {
+        const chunk = cm.getChunk(cx, cy);
+        const kills = game.chunkKills.get(k) || new Set();
+        const enemies = [];
+
+        chunk.spawns.forEach((s, i) => {
+          if (kills.has(i)) return;
+          const enemy = spawnEnemy(s.type, s.col, s.row);
+          if (enemy) {
+            enemy.x = (cx * CHUNK_W + s.col) * TILE_SIZE;
+            enemy.y = (cy * CHUNK_H + s.row) * TILE_SIZE;
+            enemy.originX = enemy.x;
+            enemy.originY = enemy.y;
+            enemy.hp = Math.floor(enemy.hp * s.tier);
+            enemy.maxHp = enemy.hp;
+            enemy.atk = Math.floor(enemy.atk * s.tier);
+            enemy._chunkKey = k;
+            enemy._spawnIndex = i;
+            enemies.push(enemy);
+          }
+        });
+
+        game.chunkEnemies.set(k, enemies);
+      }
+
+      newEnemies.push(...game.chunkEnemies.get(k));
+    }
+  }
+
+  // Unload distant chunk enemies
+  for (const [k] of game.chunkEnemies) {
+    const [ecx, ecy] = k.split(',').map(Number);
+    if (Math.abs(ecx - cm.centerCX) > 1 || Math.abs(ecy - cm.centerCY) > 1) {
+      game.chunkEnemies.delete(k);
+    }
+  }
+
+  game.enemies = newEnemies;
+}
+
+function createOpenWorldMapProxy() {
+  // A proxy map object that routes isSolid/getTile calls to chunkManager
+  // This allows enemies.js AI to use map-based collision in open world
+  return {
+    width: 999999,
+    height: 999999,
+    tiles: null,
+    portals: [],
+    getTileAt(col, row) {
+      return game.chunkManager ? game.chunkManager.getTileAtWorld(col, row) : 0;
+    },
+  };
+}
+
+function enterOpenWorld(seed, playerWorldX, playerWorldY) {
+  game.openWorld = true;
+  game.worldSeed = seed || Math.floor(Math.random() * 2147483647);
+  game.worldGen = createWorldGen(game.worldSeed);
+  game.chunkManager = createChunkManager(game.worldGen);
+  game.chunkEnemies = new Map();
+  game.chunkKills = new Map();
+  game.currentMap = createOpenWorldMapProxy();
+  game.currentMapName = 'openworld';
+  game.boss = null;
+  game.npcs = [];
+  game.chests = [];
+  game.buffStones = [];
+  game.secretPortals = [];
+  game._ambush = null;
+  game.activeBuff = null;
+
+  const px = playerWorldX !== undefined ? playerWorldX : 15 * TILE_SIZE;
+  const py = playerWorldY !== undefined ? playerWorldY : 10 * TILE_SIZE;
+
+  if (!game.player) {
+    game.player = createPlayer(0, 0);
+  }
+  game.player.x = px;
+  game.player.y = py;
+
+  game.player._map = game.currentMap;
+  game.camera = createCamera(640, 480);
+
+  const { cx, cy } = game.chunkManager.pixelToChunk(px, py);
+  game.chunkManager.updateCenter(cx, cy);
+  syncChunkEnemies();
+
+  // Teleport companions
+  for (let i = 0; i < game.companions.length; i++) {
+    game.companions[i].x = game.player.x + (i + 1) * 20;
+    game.companions[i].y = game.player.y + 30;
+  }
+}
+
+function exitOpenWorld() {
+  game.openWorld = false;
+  game.chunkManager = null;
+  game.worldGen = null;
+  game.chunkEnemies = null;
+  game.chunkKills = null;
+  loadMap('village', 14, 10);
+}
+
+function getOpenWorldSaveState() {
+  if (!game.openWorld) return null;
+  const kills = {};
+  for (const [k, v] of game.chunkKills) kills[k] = [...v];
+  return {
+    seed: game.worldSeed,
+    playerX: game.player.x,
+    playerY: game.player.y,
+    changes: game.chunkManager.serializeChanges(),
+    kills,
+  };
+}
+
 // --- Collision ---
 function collidesWithMap(x, y, w, h) {
   const map = game.currentMap;
@@ -664,10 +803,29 @@ function collidesWithMap(x, y, w, h) {
   );
 }
 
+function collidesWithOpenWorld(x, y, w, h) {
+  const left = Math.floor(x / TILE_SIZE);
+  const right = Math.floor((x + w - 1) / TILE_SIZE);
+  const top = Math.floor(y / TILE_SIZE);
+  const bottom = Math.floor((y + h - 1) / TILE_SIZE);
+  const cm = game.chunkManager;
+  return (
+    SOLID_TILES.has(cm.getTileAtWorld(left, top)) ||
+    SOLID_TILES.has(cm.getTileAtWorld(right, top)) ||
+    SOLID_TILES.has(cm.getTileAtWorld(left, bottom)) ||
+    SOLID_TILES.has(cm.getTileAtWorld(right, bottom))
+  );
+}
+
+function collides(x, y, w, h) {
+  if (game.openWorld) return collidesWithOpenWorld(x, y, w, h);
+  return collidesWithMap(x, y, w, h);
+}
+
 // --- Unstick: push player out of solid tiles ---
 function unstickPlayer() {
   const p = game.player;
-  if (!collidesWithMap(p.x, p.y, p.hitW, p.hitH)) return;
+  if (!collides(p.x, p.y, p.hitW, p.hitH)) return;
 
   // Try nudging in 4 directions (1px increments up to 32px)
   for (let dist = 1; dist <= TILE_SIZE; dist++) {
@@ -676,7 +834,7 @@ function unstickPlayer() {
       [dist, dist], [-dist, -dist], [dist, -dist], [-dist, dist],
     ];
     for (const [dx, dy] of offsets) {
-      if (!collidesWithMap(p.x + dx, p.y + dy, p.hitW, p.hitH)) {
+      if (!collides(p.x + dx, p.y + dy, p.hitW, p.hitH)) {
         p.x += dx;
         p.y += dy;
         return;
@@ -689,6 +847,7 @@ function unstickPlayer() {
 function checkPortals() {
   // Grace period after teleport to prevent instant re-teleport
   if (game.portalCooldown > 0) return;
+  if (game.openWorld) return; // No portals in open world
 
   const p = game.player;
   const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
@@ -698,6 +857,15 @@ function checkPortals() {
     game.player._companions = game.companions.map(c => c.type);
     game.player._playerClass = game.playerClass;
     game.player._hasHorse = game.hasHorse;
+
+    if (portal.target === 'openworld') {
+      saveGame(game.player, 'openworld');
+      enterOpenWorld(game.worldSeed);
+      game.portalCooldown = 0.5;
+      SFX.playPortal();
+      return;
+    }
+
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
     game.portalCooldown = 0.5;
@@ -731,6 +899,7 @@ function saveCheckpoint() {
 }
 
 function checkCheckpoint() {
+  if (game.openWorld) return; // No checkpoints in open world
   const p = game.player;
   const col = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
   const row = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
@@ -1018,13 +1187,13 @@ function updatePlayer(dt) {
 
   // X axis
   const newX = p.x + moveX;
-  if (!collidesWithMap(newX, p.y, p.hitW, p.hitH)) {
+  if (!collides(newX, p.y, p.hitW, p.hitH)) {
     p.x = newX;
   }
 
   // Y axis
   const newY = p.y + moveY;
-  if (!collidesWithMap(p.x, newY, p.hitW, p.hitH)) {
+  if (!collides(p.x, newY, p.hitW, p.hitH)) {
     p.y = newY;
   }
 
@@ -1051,13 +1220,24 @@ function updatePlayer(dt) {
   checkCheckpoint();
 
   // Update camera
-  updateCamera(
-    game.camera,
-    p.x + p.hitW / 2,
-    p.y + p.hitH / 2,
-    game.currentMap.width,
-    game.currentMap.height
-  );
+  if (game.openWorld) {
+    const { cx, cy } = game.chunkManager.pixelToChunk(
+      p.x + p.hitW / 2,
+      p.y + p.hitH / 2
+    );
+    if (game.chunkManager.updateCenter(cx, cy)) {
+      syncChunkEnemies();
+    }
+    updateCameraOpenWorld(game.camera, p.x + p.hitW / 2, p.y + p.hitH / 2);
+  } else {
+    updateCamera(
+      game.camera,
+      p.x + p.hitW / 2,
+      p.y + p.hitH / 2,
+      game.currentMap.width,
+      game.currentMap.height
+    );
+  }
 }
 
 // --- Menu ---
@@ -1585,7 +1765,7 @@ function renderHUD(ctx) {
     ctx.fillText('ПЕСОЧНИЦА', GW - 8, hpBarY + 10);
   } else {
     ctx.fillStyle = '#aaa';
-    ctx.fillText(game.currentMap ? game.currentMap.name : '', GW - 8, hpBarY + 10);
+    ctx.fillText(game.openWorld ? 'Открытый мир' : (game.currentMap ? game.currentMap.name : ''), GW - 8, hpBarY + 10);
   }
 
   // Arena wave counter
@@ -1603,7 +1783,41 @@ function renderHUD(ctx) {
 function renderMinimap(ctx) {
   const map = game.currentMap;
   const p = game.player;
-  if (!map || !p) return;
+  if (!p) return;
+  if (!map && !game.openWorld) return;
+
+  // Open world minimap: show enemies relative to player
+  if (game.openWorld) {
+    const mmW = 72, mmH = 72;
+    const mmX = 640 - mmW - 8;
+    const mmY = 480 - mmH - 8;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+    ctx.fillStyle = '#1a2a10';
+    ctx.fillRect(mmX, mmY, mmW, mmH);
+    // Show enemies as red dots relative to player center
+    const viewRange = CHUNK_W * TILE_SIZE * 1.5;
+    const scaleX = mmW / (viewRange * 2);
+    const scaleY = mmH / (viewRange * 2);
+    ctx.fillStyle = '#ff3333';
+    for (const e of game.enemies) {
+      if (!e.alive) continue;
+      const rx = (e.x - p.x) * scaleX + mmW / 2;
+      const ry = (e.y - p.y) * scaleY + mmH / 2;
+      if (rx >= 0 && rx <= mmW && ry >= 0 && ry <= mmH) {
+        ctx.fillRect(mmX + rx - 1, mmY + ry - 1, 3, 3);
+      }
+    }
+    // Player dot at center
+    ctx.fillStyle = '#00ffff';
+    ctx.fillRect(mmX + mmW / 2 - 2, mmY + mmH / 2 - 2, 4, 4);
+    return;
+  }
+
+  if (!map) return;
 
   const mmW = 72, mmH = 72;
   const mmX = 640 - mmW - 8;
@@ -1697,7 +1911,8 @@ function renderHelpOverlay(ctx) {
 function renderPlay(ctx) {
   const cam = game.camera;
   const map = game.currentMap;
-  if (!map || !cam) return;
+  if (!cam) return;
+  if (!map && !game.openWorld) return;
 
   const gOffset = getGameOffsetX();
 
@@ -1720,7 +1935,11 @@ function renderPlay(ctx) {
   }
 
   // Map tiles
-  renderMap(ctx, map, cam, game.animFrame);
+  if (game.openWorld) {
+    renderOpenWorld(ctx, game.chunkManager, cam);
+  } else {
+    renderMap(ctx, map, cam, game.animFrame);
+  }
 
   // NPCs
   for (const npc of game.npcs) {
@@ -1945,7 +2164,30 @@ function gameLoop(timestamp) {
         if (save) {
           game.player = null;
           game.state = STATE.PLAY;
-          loadMap(save.currentMap);
+
+          // Check if save is open world
+          if (save.currentMap === 'openworld' && save.openWorld) {
+            game.player = createPlayer(0, 0);
+            game.playerClass = save.playerClass || null;
+            game.hasHorse = save.hasHorse || false;
+            enterOpenWorld(save.openWorld.seed, save.openWorld.playerX, save.openWorld.playerY);
+            // Restore open world changes
+            if (save.openWorld.changes) {
+              game.chunkManager.loadChanges(save.openWorld.changes);
+            }
+            // Restore chunk kills
+            if (save.openWorld.kills) {
+              for (const [k, arr] of Object.entries(save.openWorld.kills)) {
+                game.chunkKills.set(k, new Set(arr));
+              }
+              // Re-sync enemies with kill data
+              game.chunkEnemies = new Map();
+              syncChunkEnemies();
+            }
+          } else {
+            loadMap(save.currentMap);
+          }
+
           // Restore player stats from save
           const p = game.player;
           p.hp = save.hp;
@@ -2107,6 +2349,11 @@ function gameLoop(timestamp) {
       {
         const killed = playerAttackEnemies(game.player, game.enemies);
         for (const enemy of killed) {
+          // Track open world chunk kills
+          if (game.openWorld && enemy._chunkKey !== undefined) {
+            if (!game.chunkKills.has(enemy._chunkKey)) game.chunkKills.set(enemy._chunkKey, new Set());
+            game.chunkKills.get(enemy._chunkKey).add(enemy._spawnIndex);
+          }
           game.player.xp += enemy.xp;
           game.player.coins += enemy.coins;
           SFX.playKillEnemy();
@@ -2218,6 +2465,10 @@ function gameLoop(timestamp) {
       {
         const projKilled = updateProjectiles(game.projectiles, game.enemies, dt);
         for (const enemy of projKilled) {
+          if (game.openWorld && enemy._chunkKey !== undefined) {
+            if (!game.chunkKills.has(enemy._chunkKey)) game.chunkKills.set(enemy._chunkKey, new Set());
+            game.chunkKills.get(enemy._chunkKey).add(enemy._spawnIndex);
+          }
           game.player.xp += enemy.xp;
           game.player.coins += enemy.coins;
           game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
@@ -2280,7 +2531,7 @@ function gameLoop(timestamp) {
             const kbY = Math.sin(angle) * 30;
             const testX = game.player.x + kbX;
             const testY = game.player.y + kbY;
-            if (!collidesWithMap(testX, testY, game.player.hitW, game.player.hitH)) {
+            if (!collides(testX, testY, game.player.hitW, game.player.hitH)) {
               game.player.x = testX;
               game.player.y = testY;
             }
@@ -2499,7 +2750,7 @@ function gameLoop(timestamp) {
         game.player._companions = game.companions.map(c => c.type);
         game.player._playerClass = game.playerClass;
         game.player._hasHorse = game.hasHorse;
-        saveGame(game.player, game.currentMapName);
+        saveGame(game.player, game.currentMapName, getOpenWorldSaveState());
         game.state = STATE.MENU;
         SFX.stopMusic();
       }

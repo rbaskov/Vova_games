@@ -20,6 +20,8 @@ export function createTileMap(data) {
 }
 
 export function getTile(map, col, row) {
+  // Open world proxy: delegate to custom lookup
+  if (map && map.getTileAt) return map.getTileAt(col, row);
   if (row < 0 || row >= map.height || col < 0 || col >= map.width) return -1;
   return map.tiles[row][col];
 }
