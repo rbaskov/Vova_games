@@ -131,6 +131,12 @@ export const ARMOR = {
     def: 7, bonusHp: 15, price: 190,
     color: '#b0bec5', accent: '#cfd8dc',
   },
+  iomerida_legs: {
+    id: 'iomerida_legs', slot: 'legs',
+    name: 'Поножи Иомерида', desc: '+900 DEF +60 HP',
+    def: 900, bonusHp: 60, price: 550,
+    color: '#00e676', accent: '#69f0ae',
+  },
 
   // === SHIELDS ===
   wooden_shield: {
@@ -439,6 +445,23 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
       ctx.fillRect(9*s, 12*s, 3*s, 1*s);
       ctx.fillRect(5*s, 14*s, 1*s, 1*s); // shin plate
       ctx.fillRect(10*s, 14*s, 1*s, 1*s);
+    } else if (lid === 'iomerida_legs') {
+      // Iomerida — divine greaves with emerald glow
+      ctx.fillRect(4*s, 12*s, 3*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 3*s, 4*s);
+      ctx.fillStyle = legs.accent;
+      ctx.fillRect(4*s, 12*s, 3*s, 1*s);
+      ctx.fillRect(9*s, 12*s, 3*s, 1*s);
+      ctx.fillRect(5*s, 14*s, 1*s, 2*s);
+      ctx.fillRect(10*s, 14*s, 1*s, 2*s);
+      // Emerald gems
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(5*s, 12.5*s, 0.5*s, 0.5*s);
+      ctx.fillRect(10*s, 12.5*s, 0.5*s, 0.5*s);
+      // Glow particles
+      ctx.fillStyle = '#69f0ae';
+      ctx.fillRect(3.5*s, 13*s, 0.5*s, 0.5*s);
+      ctx.fillRect(12*s, 14*s, 0.5*s, 0.5*s);
     } else {
       ctx.fillRect(5*s, 12*s, 2*s, 4*s);
       ctx.fillRect(9*s, 12*s, 2*s, 4*s);

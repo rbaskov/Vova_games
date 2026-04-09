@@ -109,6 +109,7 @@ export const DIALOGS = {
       choices: [
         { text: 'Шлем Ферида (500$)', action: 'buy_armor_ferida_helmet', next: 7 },
         { text: 'Кольчуга Эзаниллы (400$)', action: 'buy_armor_ezanilla_chest', next: 7 },
+        { text: 'Поножи Иомерида (550$)', action: 'buy_armor_iomerida_legs', next: 7 },
         { text: 'Назад', next: 6 },
       ],
     },
