@@ -97,6 +97,7 @@ export const DIALOGS = {
       text: 'Рыцарские доспехи — для легенд! Лучшая защита в мире.',
       choices: [
         { text: 'Рыц. шлем (180$)', action: 'buy_armor_knight_helmet', next: 6 },
+        { text: 'Шлем Ферида (500$)', action: 'buy_armor_ferida_helmet', next: 6 },
         { text: 'Рыц. доспех (250$)', action: 'buy_armor_knight_chest', next: 6 },
         { text: 'Эзанилла (400$)', action: 'buy_armor_ezanilla_chest', next: 6 },
         { text: 'Рыц. поножи (190$)', action: 'buy_armor_knight_legs', next: 6 },

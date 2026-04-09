@@ -43,6 +43,12 @@ export const ARMOR = {
     def: 7, bonusHp: 15, price: 180,
     color: '#b0bec5', accent: '#cfd8dc',
   },
+  ferida_helmet: {
+    id: 'ferida_helmet', slot: 'helmet',
+    name: 'Шлем Ферида', desc: '+800 DEF +50 HP',
+    def: 800, bonusHp: 50, price: 500,
+    color: '#ff6f00', accent: '#ffab00',
+  },
 
   // === CHESTPLATES ===
   leather_chest: {
@@ -269,6 +275,24 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
       // Plume
       ctx.fillStyle = '#c62828';
       ctx.fillRect(7*s, -2*s, 2*s, 3*s);
+    } else if (hid === 'ferida_helmet') {
+      // Ferida — legendary flaming crown helmet
+      ctx.fillRect(4*s, 0, 8*s, 4*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(5*s, 0, 6*s, 2*s);
+      // Flame crown spikes
+      ctx.fillStyle = '#ff6f00';
+      ctx.fillRect(5*s, -2*s, 1*s, 3*s);
+      ctx.fillRect(7*s, -3*s, 2*s, 4*s);
+      ctx.fillRect(10*s, -2*s, 1*s, 3*s);
+      ctx.fillStyle = '#ffab00';
+      ctx.fillRect(7.5*s, -2*s, 1*s, 2*s);
+      // Glowing eyes
+      if (facing !== 'up') {
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(6*s, 2*s, 1.5*s, 1*s);
+        ctx.fillRect(8.5*s, 2*s, 1.5*s, 1*s);
+      }
     } else {
       // Fallback
       ctx.fillRect(5*s, 0, 6*s, 3*s);
