@@ -2,6 +2,9 @@ import { tileDrawers, SOLID_TILES } from './sprites.js';
 
 export const TILE_SIZE = 32;
 
+let cachedCanvas = null;
+let cachedMapRef = null;
+
 export function createTileMap(data) {
   return {
     width: data.width,
@@ -29,19 +32,38 @@ export function isPortal(map, col, row) {
   return map.portals.find(p => p.col === col && p.row === row) || null;
 }
 
-export function renderMap(ctx, map, camera, animFrame) {
-  const startCol = Math.max(0, Math.floor(camera.x / TILE_SIZE));
-  const startRow = Math.max(0, Math.floor(camera.y / TILE_SIZE));
-  const endCol = Math.min(map.width, startCol + Math.ceil(camera.width / TILE_SIZE) + 2);
-  const endRow = Math.min(map.height, startRow + Math.ceil(camera.height / TILE_SIZE) + 2);
+// Pre-render entire map to offscreen canvas (called once per map load)
+function cacheMap(map) {
+  const w = map.width * TILE_SIZE;
+  const h = map.height * TILE_SIZE;
+  cachedCanvas = document.createElement('canvas');
+  cachedCanvas.width = w;
+  cachedCanvas.height = h;
+  const offCtx = cachedCanvas.getContext('2d');
 
-  for (let row = startRow; row < endRow; row++) {
-    for (let col = startCol; col < endCol; col++) {
+  for (let row = 0; row < map.height; row++) {
+    for (let col = 0; col < map.width; col++) {
       const tileType = map.tiles[row][col];
-      const screenX = col * TILE_SIZE - camera.x;
-      const screenY = row * TILE_SIZE - camera.y;
       const drawFn = tileDrawers[tileType];
-      if (drawFn) drawFn(ctx, screenX, screenY);
+      if (drawFn) drawFn(offCtx, col * TILE_SIZE, row * TILE_SIZE);
     }
+  }
+  cachedMapRef = map;
+}
+
+export function renderMap(ctx, map, camera, animFrame) {
+  // Cache map on first render or map change
+  if (cachedMapRef !== map) {
+    cacheMap(map);
+  }
+
+  // Blit only the visible portion from cached canvas
+  const sx = Math.floor(camera.x);
+  const sy = Math.floor(camera.y);
+  const sw = Math.min(camera.width, cachedCanvas.width - sx);
+  const sh = Math.min(camera.height, cachedCanvas.height - sy);
+
+  if (sw > 0 && sh > 0) {
+    ctx.drawImage(cachedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
   }
 }

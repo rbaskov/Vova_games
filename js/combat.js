@@ -81,6 +81,7 @@ export function playerAttackEnemies(player, enemies) {
 
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
+    if (enemy.hitTimer > 0) continue; // already hit this swing
 
     const ex = enemy.x + enemy.width / 2;
     const ey = enemy.y + enemy.height / 2;
