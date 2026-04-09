@@ -2,6 +2,30 @@
 // combat.js — Combat System: Damage, XP, Leveling
 // ============================================================
 
+import { isSolid, TILE_SIZE } from './tilemap.js';
+
+// Safe knockback: only apply if target won't end up inside a wall
+function safeKnockback(entity, dx, dy, w, h, map) {
+  const newX = entity.x + dx;
+  const newY = entity.y + dy;
+
+  const left = Math.floor(newX / TILE_SIZE);
+  const right = Math.floor((newX + w - 1) / TILE_SIZE);
+  const top = Math.floor(newY / TILE_SIZE);
+  const bottom = Math.floor((newY + h - 1) / TILE_SIZE);
+
+  const blocked =
+    isSolid(map, left, top) ||
+    isSolid(map, right, top) ||
+    isSolid(map, left, bottom) ||
+    isSolid(map, right, bottom);
+
+  if (!blocked) {
+    entity.x = newX;
+    entity.y = newY;
+  }
+}
+
 export function calcDamage(atk, defense) {
   return Math.max(1, atk - defense);
 }
@@ -62,10 +86,9 @@ export function playerAttackEnemies(player, enemies) {
       enemy.hp -= dmg;
       enemy.hitTimer = 0.3;
 
-      // Knockback 20px away from player
+      // Knockback 20px away from player (with collision check)
       const angle = Math.atan2(ey - cy, ex - cx);
-      enemy.x += Math.cos(angle) * 20;
-      enemy.y += Math.sin(angle) * 20;
+      safeKnockback(enemy, Math.cos(angle) * 20, Math.sin(angle) * 20, enemy.width, enemy.height || 26, player._map);
 
       if (enemy.hp <= 0) {
         enemy.alive = false;
@@ -100,10 +123,9 @@ export function enemyAttackPlayer(enemies, player, dt) {
       totalDamage += dmg;
       player.invincibleTimer = 0.5;
 
-      // Knockback player 30px away from enemy
+      // Knockback player 30px away from enemy (with collision check)
       const angle = Math.atan2(py - ey, px - ex);
-      player.x += Math.cos(angle) * 30;
-      player.y += Math.sin(angle) * 30;
+      safeKnockback(player, Math.cos(angle) * 30, Math.sin(angle) * 30, player.hitW, player.hitH, player._map);
 
       break; // Only one hit per frame
     }

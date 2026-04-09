@@ -104,6 +104,12 @@ function loadMap(mapKey, spawnX, spawnY) {
     game.player = createPlayer(sx, sy);
   }
 
+  // Give player a reference to current map for collision checks (knockback)
+  game.player._map = tileMap;
+
+  // Make sure player isn't stuck inside a wall
+  unstickPlayer();
+
   // Camera
   game.camera = createCamera(game.width, game.height);
 
@@ -145,6 +151,27 @@ function collidesWithMap(x, y, w, h) {
     isSolid(map, left, bottom) ||
     isSolid(map, right, bottom)
   );
+}
+
+// --- Unstick: push player out of solid tiles ---
+function unstickPlayer() {
+  const p = game.player;
+  if (!collidesWithMap(p.x, p.y, p.hitW, p.hitH)) return;
+
+  // Try nudging in 4 directions (1px increments up to 32px)
+  for (let dist = 1; dist <= TILE_SIZE; dist++) {
+    const offsets = [
+      [dist, 0], [-dist, 0], [0, dist], [0, -dist],
+      [dist, dist], [-dist, -dist], [dist, -dist], [-dist, dist],
+    ];
+    for (const [dx, dy] of offsets) {
+      if (!collidesWithMap(p.x + dx, p.y + dy, p.hitW, p.hitH)) {
+        p.x += dx;
+        p.y += dy;
+        return;
+      }
+    }
+  }
 }
 
 // --- Check Portals ---
@@ -735,10 +762,16 @@ function gameLoop(timestamp) {
             const dmg = phase.atk;
             game.player.hp -= dmg;
             game.player.invincibleTimer = 0.5;
-            // Knockback
+            // Knockback (with collision check)
             const angle = Math.atan2(py - by, px - bx);
-            game.player.x += Math.cos(angle) * 30;
-            game.player.y += Math.sin(angle) * 30;
+            const kbX = Math.cos(angle) * 30;
+            const kbY = Math.sin(angle) * 30;
+            const testX = game.player.x + kbX;
+            const testY = game.player.y + kbY;
+            if (!collidesWithMap(testX, testY, game.player.hitW, game.player.hitH)) {
+              game.player.x = testX;
+              game.player.y = testY;
+            }
             game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
             if (game.player.hp <= 0) {
               game.player.hp = 0;
