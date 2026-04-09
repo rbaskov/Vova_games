@@ -2,7 +2,9 @@ import { initInput, isKeyDown, isKeyPressed } from './input.js';
 import { createTileMap, renderMap, isSolid, isPortal, TILE_SIZE } from './tilemap.js';
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
+import { forestMap } from './maps/forest.js';
 import { drawHero, drawNPC } from './sprites.js';
+import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
 
 // --- Game States ---
 export const STATE = {
@@ -39,6 +41,7 @@ export const game = {
 // --- Map Registry ---
 const MAP_REGISTRY = {
   village: villageMap,
+  forest: forestMap,
 };
 
 // --- Player Creation ---
@@ -96,7 +99,13 @@ function loadMap(mapKey, spawnX, spawnY) {
   }));
 
   // Enemies from spawns
-  game.enemies = []; // Will be populated by enemy system later
+  game.enemies = [];
+  if (tileMap.spawns) {
+    for (const s of tileMap.spawns) {
+      const enemy = spawnEnemy(s.type, s.col, s.row);
+      if (enemy) game.enemies.push(enemy);
+    }
+  }
 }
 
 // --- Collision ---
@@ -396,6 +405,9 @@ function renderPlay(ctx) {
     }
   }
 
+  // Enemies
+  renderEnemies(ctx, game.enemies, cam, game.animFrame);
+
   // Player
   const p = game.player;
   if (p) {
@@ -442,6 +454,7 @@ function gameLoop(timestamp) {
 
     case STATE.PLAY:
       updatePlayer(dt);
+      updateEnemies(game.enemies, game.player, game.currentMap, dt);
       renderPlay(ctx);
       break;
 
