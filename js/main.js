@@ -3,6 +3,9 @@ import { createTileMap, renderMap, isSolid, isPortal, TILE_SIZE } from './tilema
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
 import { forestMap } from './maps/forest.js';
+import { canyonMap } from './maps/canyon.js';
+import { caveMap } from './maps/cave.js';
+import { castleMap } from './maps/castle.js';
 import { drawHero, drawNPC } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
@@ -48,6 +51,9 @@ export const game = {
 const MAP_REGISTRY = {
   village: villageMap,
   forest: forestMap,
+  canyon: canyonMap,
+  cave: caveMap,
+  castle: castleMap,
 };
 
 // --- Player Creation ---
