@@ -7,7 +7,8 @@ export const DIALOGS = {
         { text: 'Копьё (40$)', action: 'buy_spear', next: 0 },
         { text: 'Лук (80$)', action: 'buy_bow', next: 0 },
         { text: 'Топоры...', next: 1 },
-        { text: 'Ещё оружие...', next: 2 },
+        { text: 'Двуручники...', next: 2 },
+        { text: 'Ещё оружие...', next: 3 },
         { text: 'Уйти', next: null },
       ],
     },
@@ -22,11 +23,20 @@ export const DIALOGS = {
       ],
     },
     {
+      text: 'Двуручные мечи — огромный урон, но без щита!',
+      choices: [
+        { text: 'Жел. двуручник (80$)', action: 'buy_iron_greatsword', next: 2 },
+        { text: 'Стал. двуручник (160$)', action: 'buy_steel_greatsword', next: 2 },
+        { text: 'Рыц. двуручник (300$)', action: 'buy_knight_greatsword', next: 2 },
+        { text: 'Назад', next: 0 },
+      ],
+    },
+    {
       text: 'Для опытных воинов у меня есть кое-что особенное!',
       choices: [
-        { text: 'Мифриловый меч (120$)', action: 'buy_mithril_sword', next: 2 },
-        { text: 'Огненное копьё (100$)', action: 'buy_fire_spear', next: 2 },
-        { text: 'Арбалет (150$)', action: 'buy_crossbow', next: 2 },
+        { text: 'Мифриловый меч (120$)', action: 'buy_mithril_sword', next: 3 },
+        { text: 'Огненное копьё (100$)', action: 'buy_fire_spear', next: 3 },
+        { text: 'Арбалет (150$)', action: 'buy_crossbow', next: 3 },
         { text: 'Назад', next: 0 },
       ],
     },

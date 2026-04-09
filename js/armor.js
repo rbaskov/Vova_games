@@ -192,6 +192,9 @@ export function getArmor(id) {
 
 // Check if shield blocks a projectile. Returns: 'blocked' | 'reflected' | null
 export function tryBlockProjectile(player) {
+  // Two-handed weapons disable shield
+  if (player._twoHanded) return null;
+
   const shieldId = player.equippedArmor && player.equippedArmor.shield;
   if (!shieldId) return null;
   const shield = ARMOR[shieldId];
@@ -479,9 +482,9 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
     }
   }
 
-  // Shield (on left arm)
+  // Shield (on left arm) — hidden with two-handed weapons
   const shield = ARMOR[equippedArmor.shield];
-  if (shield) {
+  if (shield && !equippedArmor._twoHanded) {
     ctx.fillStyle = shield.color;
     ctx.fillRect(1 * s, 7 * s, 4 * s, 6 * s);
     ctx.fillStyle = shield.accent;

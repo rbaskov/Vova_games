@@ -868,6 +868,11 @@ function renderPlay(ctx) {
     ctx.rotate(lean);
     ctx.translate(-heroCX, -heroCY);
 
+    // Two-handed weapon check
+    const isTwoHanded = getWeapon(p.weapon).twoHanded || false;
+    p._twoHanded = isTwoHanded;
+    p.equippedArmor._twoHanded = isTwoHanded;
+
     drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
     drawArmorOnHero(ctx, px, py, p.facing, p.equippedArmor, 2);
     if (p.attacking) {

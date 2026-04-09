@@ -391,6 +391,55 @@ function drawWeaponIcon(ctx, x, y, w) {
     ctx.fillRect(cx - 1, cy + 4, 2, 4);
     ctx.fillStyle = '#bdbdbd';
     ctx.fillRect(cx - 1, cy - 6, 2, 4);
+  } else if (id === 'iron_greatsword') {
+    // Wide iron greatsword
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(cx - 2, cy - 12, 4, 18);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 1, cy - 12, 2, 5);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 5, cy + 5, 10, 2);
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(cx - 1, cy + 7, 2, 4);
+    // "2H" mark
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 5, cy + 5, 1, 2);
+    ctx.fillRect(cx + 4, cy + 5, 1, 2);
+  } else if (id === 'steel_greatsword') {
+    // Blue steel greatsword, fuller groove
+    ctx.fillStyle = '#90caf9';
+    ctx.fillRect(cx - 2, cy - 13, 5, 20);
+    ctx.fillStyle = '#bbdefb';
+    ctx.fillRect(cx, cy - 13, 1, 8);
+    ctx.fillStyle = '#42a5f5';
+    ctx.fillRect(cx - 1, cy - 5, 3, 6);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 6, cy + 6, 12, 2);
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 1, cy + 6, 3, 2);
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(cx - 1, cy + 8, 2, 4);
+  } else if (id === 'knight_greatsword') {
+    // Ornate knight greatsword with gem and cross guard
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 2, cy - 14, 5, 22);
+    ctx.fillStyle = '#eceff1';
+    ctx.fillRect(cx, cy - 14, 1, 8);
+    ctx.fillStyle = '#cfd8dc';
+    ctx.fillRect(cx - 1, cy - 6, 3, 8);
+    // Ornate guard
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 7, cy + 7, 14, 2);
+    ctx.fillRect(cx - 8, cy + 6, 2, 4);
+    ctx.fillRect(cx + 6, cy + 6, 2, 4);
+    // Gem
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(cx - 1, cy + 7, 3, 2);
+    // Grip
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(cx - 1, cy + 9, 2, 4);
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 2, cy + 12, 4, 2);
   } else if (id === 'iron_axe') {
     // Simple iron axe
     ctx.fillStyle = '#5d4037';

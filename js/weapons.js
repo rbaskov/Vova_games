@@ -90,6 +90,47 @@ export const WEAPONS = {
     color: '#78909c',
   },
 
+  // === TWO-HANDED SWORDS (no shield) ===
+  iron_greatsword: {
+    id: 'iron_greatsword',
+    name: 'Железный двуручник',
+    desc: '+6 ATK, широкий удар',
+    type: 'greatsword',
+    bonusAtk: 6,
+    range: 56,
+    attackSpeed: 0.45,
+    knockback: 35,
+    price: 80,
+    color: '#78909c',
+    twoHanded: true,
+  },
+  steel_greatsword: {
+    id: 'steel_greatsword',
+    name: 'Стальной двуручник',
+    desc: '+10 ATK, сокрушающий',
+    type: 'greatsword',
+    bonusAtk: 10,
+    range: 60,
+    attackSpeed: 0.4,
+    knockback: 42,
+    price: 160,
+    color: '#90caf9',
+    twoHanded: true,
+  },
+  knight_greatsword: {
+    id: 'knight_greatsword',
+    name: 'Рыцарский двуручник',
+    desc: '+15 ATK, легендарный',
+    type: 'greatsword',
+    bonusAtk: 15,
+    range: 64,
+    attackSpeed: 0.38,
+    knockback: 50,
+    price: 300,
+    color: '#b0bec5',
+    twoHanded: true,
+  },
+
   // === BATTLE AXES ===
   iron_axe: {
     id: 'iron_axe',
@@ -241,6 +282,9 @@ export function drawWeaponAttack(ctx, x, y, facing, weapon, s, progress = 0.5) {
       break;
     case 'axe':
       drawAxeSwing(ctx, x, y, facing, w, s, progress);
+      break;
+    case 'greatsword':
+      drawGreatswordSwing(ctx, x, y, facing, w, s, progress);
       break;
   }
 }
@@ -475,6 +519,95 @@ function drawBowShot(ctx, x, y, facing, w, s, progress) {
   }
 }
 
+// Greatsword: wide two-handed sweep with afterimage
+function drawGreatswordSwing(ctx, x, y, facing, w, s, progress) {
+  const cx = x + 8 * s;
+  const cy = y + 10 * s;
+  const len = 16 * s; // longer than normal sword
+  const bright = lightenColor(w.color);
+
+  const swingRange = Math.PI * 1.0; // wider arc
+  const swingOffset = -swingRange / 2;
+  const angle = swingOffset + progress * swingRange;
+
+  let baseAngle;
+  switch (facing) {
+    case 'right': baseAngle = -Math.PI / 2; break;
+    case 'left':  baseAngle = Math.PI / 2; break;
+    case 'up':    baseAngle = Math.PI; break;
+    case 'down':  baseAngle = 0; break;
+  }
+
+  const totalAngle = baseAngle + angle;
+  const tipX = cx + Math.sin(totalAngle) * len;
+  const tipY = cy + Math.cos(totalAngle) * len;
+  const midX = cx + Math.sin(totalAngle) * (len * 0.4);
+  const midY = cy + Math.cos(totalAngle) * (len * 0.4);
+
+  // Afterimage trail (3 fading copies)
+  if (progress > 0.1 && progress < 0.9) {
+    for (let t = 1; t <= 3; t++) {
+      const trailP = Math.max(0, progress - t * 0.08);
+      const trailAngle = baseAngle + swingOffset + trailP * swingRange;
+      const tx = cx + Math.sin(trailAngle) * len;
+      const ty = cy + Math.cos(trailAngle) * len;
+      ctx.globalAlpha = 0.15 / t;
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 4 * s;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Main blade (thick)
+  ctx.strokeStyle = w.color;
+  ctx.lineWidth = 5 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+
+  // Bright edge
+  ctx.strokeStyle = bright;
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(midX, midY);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+
+  // Guard (crossguard)
+  const guardAngle = totalAngle + Math.PI / 2;
+  const gx1 = cx + Math.sin(guardAngle) * 4 * s;
+  const gy1 = cy + Math.cos(guardAngle) * 4 * s;
+  const gx2 = cx - Math.sin(guardAngle) * 4 * s;
+  const gy2 = cy - Math.cos(guardAngle) * 4 * s;
+  ctx.strokeStyle = '#8d6e63';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(gx1, gy1);
+  ctx.lineTo(gx2, gy2);
+  ctx.stroke();
+
+  // Impact slash arc
+  if (progress > 0.3 && progress < 0.7) {
+    const intensity = 1 - Math.abs(progress - 0.5) * 4;
+    ctx.globalAlpha = intensity * 0.4;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const arcStart = baseAngle + swingOffset + (progress - 0.2) * swingRange;
+    const arcEnd = baseAngle + swingOffset + progress * swingRange;
+    ctx.arc(cx, cy, len + 2, arcStart, arcEnd);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
 // Axe: heavy overhead swing
 function drawAxeSwing(ctx, x, y, facing, w, s, progress) {
   const cx = x + 8 * s;
@@ -595,6 +728,26 @@ export function drawWeaponRest(ctx, x, y, weapon, s) {
       ctx.moveTo(x + 14 * s, y + 4 * s);
       ctx.lineTo(x + 14 * s, y + 16 * s);
       ctx.stroke();
+      break;
+    case 'greatsword':
+      // Greatsword on back (diagonal, longer)
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + 12 * s, y + 14 * s);
+      ctx.lineTo(x + 18 * s, y - 2 * s);
+      ctx.stroke();
+      // Bright edge
+      ctx.strokeStyle = lightenColor(w.color);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 16 * s, y + 2 * s);
+      ctx.lineTo(x + 18 * s, y - 2 * s);
+      ctx.stroke();
+      // Guard
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(x + 11 * s, y + 13 * s, 4 * s, 2 * s);
       break;
     case 'axe':
       // Axe resting on shoulder
