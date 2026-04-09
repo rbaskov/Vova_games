@@ -280,54 +280,382 @@ export function renderBoss(ctx, boss, camera, animFrame) {
   const sx = boss.x - camera.x;
   const sy = boss.y - camera.y;
 
-  // Off-screen culling
   if (sx < -boss.width * 2 || sx > camera.width + boss.width * 2 ||
       sy < -boss.height * 2 || sy > camera.height + boss.height * 2) {
     return;
   }
 
   ctx.save();
+  if (boss.hitTimer > 0) ctx.globalAlpha = 0.5;
 
-  // Hit flash
-  if (boss.hitTimer > 0) {
-    ctx.globalAlpha = 0.5;
+  const f = animFrame % 4;
+  const bob = (f === 1 || f === 3) ? 2 : 0;
+
+  switch (boss.type) {
+    case 'forest_guardian': drawForestGuardian(ctx, sx, sy, f, bob, boss); break;
+    case 'fire_dragon':     drawFireDragon(ctx, sx, sy, f, bob, boss); break;
+    case 'ice_lich':        drawIceLich(ctx, sx, sy, f, bob, boss); break;
+    case 'dark_knight':     drawDarkKnight(ctx, sx, sy, f, bob, boss); break;
+    case 'dark_mage':       drawDarkMage(ctx, sx, sy, f, bob, boss); break;
+    default:
+      ctx.fillStyle = boss.color1;
+      ctx.fillRect(sx, sy, boss.width, boss.height);
   }
 
-  // Outer rectangle (body)
-  ctx.fillStyle = boss.color1;
-  ctx.fillRect(sx, sy, boss.width, boss.height);
-
-  // Inner rectangle
-  const inset = 6;
-  ctx.fillStyle = boss.color2;
-  ctx.fillRect(sx + inset, sy + inset, boss.width - inset * 2, boss.height - inset * 2);
-
-  // Eyes — white with red pupils
-  const eyeY = sy + 12;
-  const eyeSize = 6;
-  const pupilSize = 3;
-  const leftEyeX = sx + boss.width * 0.3;
-  const rightEyeX = sx + boss.width * 0.7 - eyeSize;
-
-  // White sclera
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(leftEyeX, eyeY, eyeSize, eyeSize);
-  ctx.fillRect(rightEyeX, eyeY, eyeSize, eyeSize);
-
-  // Red pupils
-  ctx.fillStyle = '#ff0000';
-  ctx.fillRect(leftEyeX + 1.5, eyeY + 1.5, pupilSize, pupilSize);
-  ctx.fillRect(rightEyeX + 1.5, eyeY + 1.5, pupilSize, pupilSize);
-
-  // Charge indicator — flashing border when charging
+  // Charge indicator
   if (boss.charging) {
     ctx.strokeStyle = '#ffff00';
     ctx.lineWidth = 3;
-    ctx.strokeRect(sx - 2, sy - 2, boss.width + 4, boss.height + 4);
+    ctx.strokeRect(sx - 3, sy - 3, boss.width + 6, boss.height + 6);
   }
 
-  ctx.globalAlpha = 1.0;
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(sx + 4, sy + boss.height - 2, boss.width - 8, 4);
+
+  ctx.globalAlpha = 1;
   ctx.restore();
+}
+
+// === FOREST GUARDIAN — A massive tree ent ===
+function drawForestGuardian(ctx, x, y, f, bob, boss) {
+  // Trunk
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(x + 14, y + 18, 20, 28);
+  ctx.fillStyle = '#4e342e';
+  ctx.fillRect(x + 18, y + 22, 4, 20);
+  ctx.fillRect(x + 28, y + 26, 3, 14);
+
+  // Roots / legs
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(x + 8, y + 40 + bob, 10, 8);
+  ctx.fillRect(x + 30, y + 40 - bob, 10, 8);
+
+  // Canopy (leafy head)
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(x + 4, y + 2, 40, 20);
+  ctx.fillRect(x + 8, y - 2, 32, 8);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(x + 10, y + 4, 28, 12);
+  ctx.fillRect(x + 14, y, 20, 6);
+  // Leaf highlights
+  ctx.fillStyle = '#66bb6a';
+  ctx.fillRect(x + 12, y + 2, 6, 4);
+  ctx.fillRect(x + 26, y + 6, 8, 4);
+  ctx.fillRect(x + 16, y + 10, 6, 4);
+
+  // Eyes (glowing yellow in foliage)
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillRect(x + 14, y + 10, 6, 5);
+  ctx.fillRect(x + 28, y + 10, 6, 5);
+  ctx.fillStyle = '#f44336';
+  ctx.fillRect(x + 16, y + 12, 3, 3);
+  ctx.fillRect(x + 30, y + 12, 3, 3);
+
+  // Branch arms
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(x - 2, y + 14 + bob, 16, 4);
+  ctx.fillRect(x + 34, y + 14 - bob, 16, 4);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(x - 4, y + 10 + bob, 8, 6);
+  ctx.fillRect(x + 42, y + 10 - bob, 8, 6);
+}
+
+// === FIRE DRAGON — Wings, horns, tail ===
+function drawFireDragon(ctx, x, y, f, bob, boss) {
+  const wingFlap = (f % 2 === 0) ? -4 : 4;
+
+  // Wings
+  ctx.fillStyle = '#bf360c';
+  // Left wing
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 16);
+  ctx.lineTo(x - 10, y + 4 + wingFlap);
+  ctx.lineTo(x - 6, y + 20 + wingFlap);
+  ctx.lineTo(x + 6, y + 24);
+  ctx.fill();
+  // Right wing
+  ctx.beginPath();
+  ctx.moveTo(x + 48, y + 16);
+  ctx.lineTo(x + 66, y + 4 + wingFlap);
+  ctx.lineTo(x + 62, y + 20 + wingFlap);
+  ctx.lineTo(x + 50, y + 24);
+  ctx.fill();
+
+  // Wing membrane
+  ctx.fillStyle = '#e65100';
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 18);
+  ctx.lineTo(x - 4, y + 8 + wingFlap);
+  ctx.lineTo(x + 2, y + 22);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 48, y + 18);
+  ctx.lineTo(x + 60, y + 8 + wingFlap);
+  ctx.lineTo(x + 54, y + 22);
+  ctx.fill();
+
+  // Body
+  ctx.fillStyle = '#d84315';
+  ctx.fillRect(x + 10, y + 12, 36, 26);
+  ctx.fillStyle = '#ff5722';
+  ctx.fillRect(x + 14, y + 16, 28, 18);
+
+  // Belly scales
+  ctx.fillStyle = '#ff8a65';
+  ctx.fillRect(x + 18, y + 22, 20, 8);
+
+  // Head
+  ctx.fillStyle = '#d84315';
+  ctx.fillRect(x + 16, y + 2, 24, 14);
+  ctx.fillStyle = '#ff5722';
+  ctx.fillRect(x + 18, y + 4, 20, 10);
+
+  // Horns
+  ctx.fillStyle = '#4e342e';
+  ctx.fillRect(x + 14, y - 4, 4, 8);
+  ctx.fillRect(x + 38, y - 4, 4, 8);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x + 15, y - 4, 2, 3);
+  ctx.fillRect(x + 39, y - 4, 2, 3);
+
+  // Eyes
+  ctx.fillStyle = '#ffeb3b';
+  ctx.fillRect(x + 20, y + 6, 6, 5);
+  ctx.fillRect(x + 32, y + 6, 6, 5);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 23, y + 8, 3, 3);
+  ctx.fillRect(x + 34, y + 8, 3, 3);
+
+  // Snout / mouth
+  ctx.fillStyle = '#bf360c';
+  ctx.fillRect(x + 22, y + 12, 12, 4);
+  // Fire breath hint (phase 2+)
+  if (boss.phaseIndex >= 1 && f % 2 === 0) {
+    ctx.fillStyle = '#ff6d00';
+    ctx.fillRect(x + 24, y + 16, 8, 4);
+    ctx.fillStyle = '#ffd600';
+    ctx.fillRect(x + 26, y + 18, 4, 4);
+  }
+
+  // Tail
+  ctx.fillStyle = '#d84315';
+  ctx.fillRect(x + 2, y + 30, 12, 4);
+  ctx.fillRect(x - 2, y + 28, 6, 4);
+  ctx.fillStyle = '#ff5722';
+  ctx.fillRect(x - 6, y + 26, 6, 4);
+
+  // Legs
+  ctx.fillStyle = '#bf360c';
+  ctx.fillRect(x + 14, y + 36 + bob, 8, 10);
+  ctx.fillRect(x + 34, y + 36 - bob, 8, 10);
+  // Claws
+  ctx.fillStyle = '#4e342e';
+  ctx.fillRect(x + 12, y + 44 + bob, 4, 3);
+  ctx.fillRect(x + 32, y + 44 - bob, 4, 3);
+}
+
+// === ICE LICH — Floating robed skeleton with ice crown ===
+function drawIceLich(ctx, x, y, f, bob, boss) {
+  const float = Math.sin(f * 1.5) * 3;
+
+  // Robe (flowing shape)
+  ctx.fillStyle = '#1a237e';
+  ctx.fillRect(x + 8, y + 20 + float, 32, 30);
+  ctx.fillRect(x + 4, y + 36 + float, 40, 16);
+  ctx.fillStyle = '#283593';
+  ctx.fillRect(x + 12, y + 24 + float, 24, 22);
+
+  // Robe trim
+  ctx.fillStyle = '#42a5f5';
+  ctx.fillRect(x + 8, y + 48 + float, 32, 3);
+
+  // Skeletal hands
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(x + 2, y + 26 + float - bob, 8, 4);
+  ctx.fillRect(x + 38, y + 26 + float + bob, 8, 4);
+  // Ice orbs in hands
+  ctx.fillStyle = '#4fc3f7';
+  ctx.fillRect(x - 2, y + 24 + float - bob, 6, 6);
+  ctx.fillRect(x + 44, y + 24 + float + bob, 6, 6);
+  ctx.fillStyle = '#e1f5fe';
+  ctx.fillRect(x, y + 25 + float - bob, 2, 2);
+  ctx.fillRect(x + 46, y + 25 + float + bob, 2, 2);
+
+  // Skull
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(x + 14, y + 4 + float, 20, 18);
+  ctx.fillStyle = '#bdbdbd';
+  ctx.fillRect(x + 16, y + 6 + float, 16, 12);
+
+  // Eye sockets (glowing blue)
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 17, y + 8 + float, 6, 7);
+  ctx.fillRect(x + 27, y + 8 + float, 6, 7);
+  ctx.fillStyle = '#29b6f6';
+  ctx.fillRect(x + 18, y + 9 + float, 4, 4);
+  ctx.fillRect(x + 28, y + 9 + float, 4, 4);
+  // Eye glow pulse
+  if (f % 2 === 0) {
+    ctx.fillStyle = '#e1f5fe';
+    ctx.fillRect(x + 19, y + 10 + float, 2, 2);
+    ctx.fillRect(x + 29, y + 10 + float, 2, 2);
+  }
+
+  // Jaw
+  ctx.fillStyle = '#bdbdbd';
+  ctx.fillRect(x + 18, y + 16 + float, 12, 4);
+  ctx.fillStyle = '#9e9e9e';
+  ctx.fillRect(x + 20, y + 18 + float, 8, 3);
+
+  // Ice crown
+  ctx.fillStyle = '#4fc3f7';
+  ctx.fillRect(x + 14, y + 2 + float, 4, 6);
+  ctx.fillRect(x + 22, y - 2 + float, 4, 8);
+  ctx.fillRect(x + 30, y + 2 + float, 4, 6);
+  ctx.fillStyle = '#e1f5fe';
+  ctx.fillRect(x + 15, y + float, 2, 3);
+  ctx.fillRect(x + 23, y - 2 + float, 2, 3);
+  ctx.fillRect(x + 31, y + float, 2, 3);
+}
+
+// === DARK KNIGHT — Heavy armored warrior ===
+function drawDarkKnight(ctx, x, y, f, bob, boss) {
+  // Legs
+  ctx.fillStyle = '#263238';
+  ctx.fillRect(x + 10, y + 34 + bob, 8, 12);
+  ctx.fillRect(x + 24, y + 34 - bob, 8, 12);
+  // Boots
+  ctx.fillStyle = '#37474f';
+  ctx.fillRect(x + 8, y + 42 + bob, 10, 6);
+  ctx.fillRect(x + 22, y + 42 - bob, 10, 6);
+
+  // Body armor
+  ctx.fillStyle = '#37474f';
+  ctx.fillRect(x + 6, y + 14, 28, 22);
+  ctx.fillStyle = '#455a64';
+  ctx.fillRect(x + 10, y + 16, 20, 16);
+  // Chest emblem (red)
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(x + 17, y + 20, 6, 8);
+  ctx.fillRect(x + 14, y + 22, 12, 4);
+
+  // Shoulder pauldrons
+  ctx.fillStyle = '#37474f';
+  ctx.fillRect(x + 2, y + 12, 10, 8);
+  ctx.fillRect(x + 28, y + 12, 10, 8);
+  ctx.fillStyle = '#546e7a';
+  ctx.fillRect(x + 4, y + 14, 6, 4);
+  ctx.fillRect(x + 30, y + 14, 6, 4);
+
+  // Arms
+  ctx.fillStyle = '#455a64';
+  ctx.fillRect(x + 2, y + 20 + bob, 6, 14);
+  ctx.fillRect(x + 32, y + 20 - bob, 6, 14);
+
+  // Shield (left hand)
+  ctx.fillStyle = '#263238';
+  ctx.fillRect(x - 4, y + 22 + bob, 10, 14);
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(x - 2, y + 26 + bob, 6, 6);
+
+  // Sword (right hand)
+  ctx.fillStyle = '#90a4ae';
+  ctx.fillRect(x + 36, y + 10 - bob, 3, 22);
+  ctx.fillStyle = '#cfd8dc';
+  ctx.fillRect(x + 36, y + 8 - bob, 3, 6);
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(x + 34, y + 30 - bob, 7, 3);
+
+  // Helmet
+  ctx.fillStyle = '#37474f';
+  ctx.fillRect(x + 8, y + 2, 24, 14);
+  ctx.fillStyle = '#455a64';
+  ctx.fillRect(x + 12, y + 4, 16, 8);
+  // Visor slit (glowing red eyes)
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 12, y + 8, 16, 4);
+  ctx.fillStyle = '#f44336';
+  ctx.fillRect(x + 14, y + 9, 4, 2);
+  ctx.fillRect(x + 22, y + 9, 4, 2);
+  // Helmet crest
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(x + 18, y - 2, 4, 6);
+}
+
+// === DARK MAGE — Robed sorcerer with staff and dark magic ===
+function drawDarkMage(ctx, x, y, f, bob, boss) {
+  const pulse = Math.sin(f * 2) * 2;
+
+  // Robe
+  ctx.fillStyle = '#1a0033';
+  ctx.fillRect(x + 8, y + 16, 32, 34);
+  ctx.fillRect(x + 4, y + 36, 40, 16);
+  ctx.fillStyle = '#2a0050';
+  ctx.fillRect(x + 12, y + 20, 24, 26);
+
+  // Robe trim (purple glow)
+  ctx.fillStyle = '#7c4dff';
+  ctx.fillRect(x + 8, y + 48, 32, 3);
+  ctx.fillRect(x + 8, y + 16, 2, 32);
+  ctx.fillRect(x + 38, y + 16, 2, 32);
+
+  // Hood
+  ctx.fillStyle = '#1a0033';
+  ctx.fillRect(x + 10, y + 2, 28, 18);
+  ctx.fillRect(x + 8, y + 6, 32, 12);
+  ctx.fillStyle = '#2a0050';
+  ctx.fillRect(x + 14, y + 6, 20, 12);
+
+  // Face in shadow (only eyes visible)
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 14, y + 8, 20, 8);
+  // Glowing purple eyes
+  ctx.fillStyle = '#e040fb';
+  ctx.fillRect(x + 16, y + 10, 5, 4);
+  ctx.fillRect(x + 27, y + 10, 5, 4);
+  ctx.fillStyle = '#ea80fc';
+  ctx.fillRect(x + 17, y + 11, 3, 2);
+  ctx.fillRect(x + 28, y + 11, 3, 2);
+
+  // Staff (left hand)
+  ctx.fillStyle = '#4a148c';
+  ctx.fillRect(x, y + 4 + bob, 4, 44);
+  ctx.fillStyle = '#6a1b9a';
+  ctx.fillRect(x + 1, y + 6 + bob, 2, 38);
+  // Staff orb
+  ctx.fillStyle = '#e040fb';
+  ctx.fillRect(x - 4, y - 2 + bob + pulse, 12, 10);
+  ctx.fillStyle = '#ea80fc';
+  ctx.fillRect(x - 2, y + bob + pulse, 8, 6);
+  ctx.fillStyle = '#f8bbd0';
+  ctx.fillRect(x, y + 1 + bob + pulse, 4, 3);
+
+  // Dark magic hand (right, casting)
+  ctx.fillStyle = '#e0d0ff';
+  ctx.fillRect(x + 40, y + 22 - bob, 6, 4);
+  // Magic particles
+  if (f % 2 === 0) {
+    ctx.fillStyle = '#7c4dff';
+    ctx.fillRect(x + 44, y + 18 - bob, 4, 4);
+    ctx.fillRect(x + 38, y + 16 - bob, 3, 3);
+    ctx.fillStyle = '#e040fb';
+    ctx.fillRect(x + 46, y + 22 - bob, 3, 3);
+  }
+
+  // Floating dark orbs around mage (phase 2+)
+  if (boss.phaseIndex >= 1) {
+    const orbAngle = (f * 0.8);
+    for (let i = 0; i < 3; i++) {
+      const a = orbAngle + i * (Math.PI * 2 / 3);
+      const ox = x + 24 + Math.cos(a) * 26;
+      const oy = y + 28 + Math.sin(a) * 18;
+      ctx.fillStyle = '#7c4dff';
+      ctx.fillRect(ox - 3, oy - 3, 6, 6);
+      ctx.fillStyle = '#b388ff';
+      ctx.fillRect(ox - 1, oy - 1, 3, 3);
+    }
+  }
 }
 
 // --- Render Boss HP Bar (top of screen) ---
