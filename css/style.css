@@ -7,12 +7,23 @@ body {
   justify-content: center;
   height: 100vh;
   overflow: hidden;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   border: 4px solid #333;
+}
+
+/* Mobile: remove border, fill screen */
+@media (max-width: 768px), (pointer: coarse) {
+  canvas {
+    border: none;
+  }
 }
 
 .hidden { display: none; }

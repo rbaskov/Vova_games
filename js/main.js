@@ -1,4 +1,5 @@
-import { initInput, isKeyDown, isKeyPressed } from './input.js';
+import { initInput, isKeyDown, isKeyPressed, getMovementInput } from './input.js';
+import { detectMobile, initTouchControls, renderTouchControls, isMobileDevice } from './touch.js';
 import { createTileMap, renderMap, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
@@ -438,19 +439,16 @@ function updatePlayer(dt) {
 
   // Cooldowns handled by updateCooldowns() in game loop
 
-  // Movement
-  let dx = 0;
-  let dy = 0;
+  // Movement (keyboard + touch joystick)
+  const move = getMovementInput();
+  let dx = move.dx;
+  let dy = move.dy;
 
-  if (isKeyDown('KeyW') || isKeyDown('ArrowUp')) dy -= 1;
-  if (isKeyDown('KeyS') || isKeyDown('ArrowDown')) dy += 1;
-  if (isKeyDown('KeyA') || isKeyDown('ArrowLeft')) dx -= 1;
-  if (isKeyDown('KeyD') || isKeyDown('ArrowRight')) dx += 1;
-
-  // Diagonal normalization
-  if (dx !== 0 && dy !== 0) {
-    dx *= 0.707;
-    dy *= 0.707;
+  // Normalize if from keyboard (values are -1/0/1)
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len > 1) {
+    dx /= len;
+    dy /= len;
   }
 
   p.moving = dx !== 0 || dy !== 0;
@@ -882,7 +880,10 @@ function gameLoop(timestamp) {
   switch (game.state) {
     case STATE.MENU:
       renderMenu(ctx, dt);
-      if (isKeyPressed('Enter')) {
+      if (isMobileDevice()) {
+        renderTouchControls(ctx, game.width, game.height);
+      }
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         deleteSave();
         game.player = null;
         game.checkpoint = null;
@@ -1255,6 +1256,9 @@ function gameLoop(timestamp) {
       if (game.showQuestLog) {
         renderQuestLog(ctx, game.player, game.width, game.height);
       }
+
+      // Touch controls overlay
+      renderTouchControls(ctx, game.width, game.height);
       break;
 
     case STATE.DIALOG:
@@ -1375,14 +1379,40 @@ function gameLoop(timestamp) {
 }
 
 // --- Start Game ---
+function resizeCanvas() {
+  const ratio = canvas.width / canvas.height;
+  const maxW = window.innerWidth;
+  const maxH = window.innerHeight;
+
+  let w, h;
+  if (maxW / maxH > ratio) {
+    h = maxH;
+    w = h * ratio;
+  } else {
+    w = maxW;
+    h = w / ratio;
+  }
+
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+}
+
 function startGame() {
   game.canvas = document.getElementById('game');
   game.ctx = game.canvas.getContext('2d');
   game.width = game.canvas.width;
   game.height = game.canvas.height;
 
+  detectMobile();
   initInput();
+  initTouchControls(canvas);
   SFX.initAudio();
+
+  // Resize canvas for mobile
+  if (isMobileDevice()) {
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+  }
   initStars();
 
   requestAnimationFrame((timestamp) => {
