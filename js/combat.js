@@ -110,6 +110,9 @@ export function playerAttackEnemies(player, enemies) {
         enemy.alive = false;
         killed.push(enemy);
       }
+
+      // Spears hit only one target per thrust
+      if (weapon.type === 'spear') break;
     }
   }
 

@@ -37,6 +37,7 @@ export const DIALOGS = {
       choices: [
         { text: 'Мифриловый меч (120$)', action: 'buy_mithril_sword', next: 3 },
         { text: 'Огненное копьё (100$)', action: 'buy_fire_spear', next: 3 },
+        { text: 'Рыцарское копьё (200$)', action: 'buy_knight_spear', next: 3 },
         { text: 'Арбалет (150$)', action: 'buy_crossbow', next: 3 },
         { text: 'Назад', next: 0 },
       ],
@@ -319,7 +320,7 @@ export const DIALOGS = {
   ],
   stablemaster: [
     {
-      text: 'Конюх: У меня есть отличный боевой конь! Только для рыцарей — ускорение и мощные удары с седла. 300 монет.',
+      text: 'Конюх: У меня есть отличный боевой конь! Ускорение и мощные удары с седла. 300 монет.',
       choices: [
         { text: 'Купить коня (300$)', action: 'buy_horse', next: null },
         { text: 'Не сейчас', next: null },

@@ -357,6 +357,20 @@ function drawWeaponIcon(ctx, x, y, w) {
     ctx.fillRect(cx - 1, cy - 12, 4, 4);
     ctx.fillStyle = '#fff';
     ctx.fillRect(cx, cy - 11, 2, 2);
+  } else if (id === 'knight_spear') {
+    // Knight spear — ornate silver with gold guard
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(cx, cy - 4, 2, 18);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 2, cy - 12, 6, 9);
+    ctx.fillStyle = '#cfd8dc';
+    ctx.fillRect(cx - 1, cy - 14, 4, 4);
+    // Gold guard
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 3, cy + 2, 8, 2);
+    // Gold pommel
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 1, cy + 12, 4, 2);
   } else if (id === 'spear') {
     // Basic wooden spear
     ctx.fillStyle = '#8d6e63';

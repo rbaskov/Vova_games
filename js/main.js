@@ -824,10 +824,22 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action === 'buy_horse') {
+    if (game.hasHorse) {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Конь уже есть!', '#ff9800'));
+    } else if (p.coins >= 300) {
+      p.coins -= 300;
+      game.hasHorse = true;
+      game.particles.push(createParticle(p.x, p.y - 8, 'Боевой конь!', '#f0c040', 2));
+      SFX.playPickupItem();
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   } else if (action.startsWith('buy_')) {
-    // Weapon purchase
-    const weaponId = action.slice(4); // remove 'buy_'
+    // Weapon purchase (generic handler — must be after specific buy_ actions)
+    const weaponId = action.slice(4);
     const w = getWeapon(weaponId);
+    if (!w) return; // unknown weapon
     if (p.ownedWeapons.includes(weaponId)) {
       p.weapon = weaponId;
       game.particles.push(createParticle(p.x, p.y - 8, w.name, '#4fc3f7'));
@@ -836,19 +848,6 @@ function handleDialogAction(action) {
       p.ownedWeapons.push(weaponId);
       p.weapon = weaponId;
       game.particles.push(createParticle(p.x, p.y - 8, w.name + '!', '#ffd54f'));
-    } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
-    }
-  } else if (action === 'buy_horse') {
-    if (game.playerClass !== 'knight') {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Только для рыцаря!', '#ff4444'));
-    } else if (game.hasHorse) {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Конь уже есть!', '#ff9800'));
-    } else if (p.coins >= 300) {
-      p.coins -= 300;
-      game.hasHorse = true;
-      game.particles.push(createParticle(p.x, p.y - 8, 'Боевой конь!', '#f0c040', 2));
-      SFX.playPickupItem();
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
@@ -1121,6 +1120,191 @@ function renderMenu(ctx, dt) {
   ctx.font = '10px "Press Start 2P"';
   ctx.fillStyle = '#555';
   ctx.fillText('VOVA GAMES 2026', cx, 460);
+}
+
+// --- Boss Dialogs ---
+const BOSS_DIALOGS = {
+  forest_guardian: [
+    { text: 'Я — Лесной Страж! Этот лес под моей защитой уже тысячу лет. Ты пришёл осквернить мои земли?', choices: [
+      { text: 'Я пришёл за артефактом Земли!', next: 1 },
+      { text: 'Я не хочу сражаться...', next: 2 },
+    ]},
+    { text: 'Дерзкий смертный! Артефакт получит лишь тот, кто одолеет меня в бою. ЗАЩИЩАЙСЯ!', choices: [
+      { text: 'К бою!', next: null },
+    ]},
+    { text: 'У тебя нет выбора. Лес сам решает, кого пропустить. А сейчас — лес говорит: СРАЖАЙСЯ!', choices: [
+      { text: 'Тогда сразимся!', next: null },
+    ]},
+  ],
+  fire_dragon: [
+    { text: '*РЁЁЁВ!* Ещё один герой, пришедший за славой? Я — Огненный Дракон, и это ущелье — мой дом!', choices: [
+      { text: 'Отдай артефакт Огня по-хорошему!', next: 1 },
+      { text: 'Какой огромный...', next: 2 },
+    ]},
+    { text: 'Ха-ха-ха! Ты смелый, но глупый. Моё пламя расплавит твою броню! ГОРИ!', choices: [
+      { text: 'Посмотрим!', next: null },
+    ]},
+    { text: 'Верно, трепещи! Уже 300 лет ни один воин не покидал моё ущелье живым. Ты будешь следующим!', choices: [
+      { text: 'Я буду первым, кто уйдёт!', next: null },
+    ]},
+  ],
+  ice_lich: [
+    { text: 'Тс-с-с... Ты чувствуешь холод? Это моя магия. Я — Ледяной Лич, повелитель этих пещер.', choices: [
+      { text: 'Мне нужен артефакт Воды!', next: 1 },
+      { text: 'Здесь так холодно...', next: 2 },
+    ]},
+    { text: 'Артефакт? Он давно слился с моей ледяной душой. Хочешь его — забери из моего мёртвого тела! Если сможешь...', choices: [
+      { text: 'Смогу!', next: null },
+    ]},
+    { text: 'Холод — это лишь начало. Скоро ты познаешь вечную тьму. Твоя душа станет ещё одним льдом в моей коллекции!', choices: [
+      { text: 'Не дождёшься!', next: null },
+    ]},
+  ],
+  dark_mage: [
+    { text: 'Наконец-то ты здесь, герой. Я ждал тебя. Я — Тёмный Маг, и скоро вся Эльдория будет моей!', choices: [
+      { text: 'Твоё правление закончится сегодня!', next: 1 },
+      { text: 'Зачем тебе это?', next: 2 },
+    ]},
+    { text: 'Глупец! Я собрал силу тысячи душ! Ты не представляешь, с чем столкнулся. Но я уважаю твою храбрость... перед смертью.', choices: [
+      { text: 'За Эльдорию!', next: null },
+    ]},
+    { text: 'Зачем? Потому что могу. Потому что этот мир слаб, а я — силён. Три артефакта у тебя? Неважно. Моя магия сильнее!', choices: [
+      { text: 'Проверим!', next: null },
+    ]},
+  ],
+  rock_demon: [
+    { text: '*Земля дрожит* ...СМЕРТНЫЙ. Ты посмел войти в мою яму? Я — ЗлойРокДемон, древнейший из демонов!', choices: [
+      { text: 'Я пришёл за твоим оружием!', next: 1 },
+      { text: 'Что ты такое?!', next: 2 },
+    ]},
+    { text: 'МОЁ ОРУЖИЕ?! Ха! Оно выковано из крови тысячи воинов! Хочешь его — умри и стань частью клинка!', choices: [
+      { text: 'Или ты умрёшь!', next: null },
+    ]},
+    { text: 'Я — пламя под землёй. Я — камень, что крушит. Мой щит не пробить, мой меч не отразить. Но ты можешь попытаться... ПОСЛЕДНИЙ РАЗ!', choices: [
+      { text: 'Начнём!', next: null },
+    ]},
+  ],
+};
+
+// --- Horse Drawing ---
+function drawHorse(ctx, x, y, facing, animFrame) {
+  const s = 2;
+  ctx.save();
+  ctx.translate(x, y);
+  const mirror = facing === 'left';
+  if (mirror) { ctx.scale(-1, 1); ctx.translate(-32, 0); }
+
+  const gallop = animFrame % 2 === 0 ? 0 : s;
+  const isSide = facing === 'left' || facing === 'right';
+
+  if (isSide) {
+    // Side view — elongated body
+    // Body
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(1*s, 6*s, 14*s, 6*s);
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(2*s, 7*s, 12*s, 4*s);
+
+    // Neck
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(12*s, 2*s, 3*s, 5*s);
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(13*s, 3*s, 2*s, 3*s);
+
+    // Head
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(14*s, 0, 4*s, 3*s);
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(15*s, 0, 2*s, 2*s);
+    // Eye
+    ctx.fillStyle = '#222';
+    ctx.fillRect(16*s, 1*s, 1*s, 1*s);
+    // Nostril
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(17*s, 2*s, 1*s, 1*s);
+
+    // Mane
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(12*s, 1*s, 2*s, 4*s);
+
+    // Legs (front pair)
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(11*s, 12*s - gallop, 2*s, 4*s + gallop);
+    ctx.fillRect(13*s, 12*s + gallop, 2*s, 4*s - gallop);
+    // Legs (back pair)
+    ctx.fillRect(2*s, 12*s + gallop, 2*s, 4*s - gallop);
+    ctx.fillRect(4*s, 12*s - gallop, 2*s, 4*s + gallop);
+
+    // Hooves
+    ctx.fillStyle = '#333';
+    ctx.fillRect(11*s, 15*s, 2*s, 1*s);
+    ctx.fillRect(13*s, 15*s, 2*s, 1*s);
+    ctx.fillRect(2*s, 15*s, 2*s, 1*s);
+    ctx.fillRect(4*s, 15*s, 2*s, 1*s);
+
+    // Tail
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(0, 5*s, 2*s, 4*s);
+    ctx.fillRect(-1*s, 7*s, 2*s, 3*s);
+
+    // Saddle
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(6*s, 5*s, 5*s, 2*s);
+    ctx.fillStyle = '#d32f2f';
+    ctx.fillRect(7*s, 5*s, 3*s, 1*s);
+    // Stirrup
+    ctx.fillStyle = '#bbb';
+    ctx.fillRect(7*s, 10*s, 1*s, 2*s);
+  } else {
+    // Front/back view — compact
+    // Body
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(3*s, 6*s, 10*s, 6*s);
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(4*s, 7*s, 8*s, 4*s);
+
+    // Head (above or below based on facing)
+    if (facing === 'down') {
+      ctx.fillStyle = '#6d4c41';
+      ctx.fillRect(5*s, 2*s, 6*s, 5*s);
+      ctx.fillStyle = '#795548';
+      ctx.fillRect(6*s, 3*s, 4*s, 3*s);
+      // Eyes
+      ctx.fillStyle = '#222';
+      ctx.fillRect(6*s, 4*s, 1*s, 1*s);
+      ctx.fillRect(9*s, 4*s, 1*s, 1*s);
+      // Ears
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(5*s, 1*s, 2*s, 2*s);
+      ctx.fillRect(9*s, 1*s, 2*s, 2*s);
+    } else {
+      // facing up — show back of head/mane
+      ctx.fillStyle = '#6d4c41';
+      ctx.fillRect(5*s, 2*s, 6*s, 5*s);
+      ctx.fillStyle = '#3e2723';
+      ctx.fillRect(6*s, 2*s, 4*s, 4*s); // mane
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(5*s, 1*s, 2*s, 2*s);
+      ctx.fillRect(9*s, 1*s, 2*s, 2*s);
+    }
+
+    // Legs
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(4*s, 12*s - gallop, 2*s, 4*s + gallop);
+    ctx.fillRect(10*s, 12*s + gallop, 2*s, 4*s - gallop);
+    // Hooves
+    ctx.fillStyle = '#333';
+    ctx.fillRect(4*s, 15*s, 2*s, 1*s);
+    ctx.fillRect(10*s, 15*s, 2*s, 1*s);
+
+    // Saddle
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(5*s, 5*s, 6*s, 2*s);
+    ctx.fillStyle = '#d32f2f';
+    ctx.fillRect(6*s, 5*s, 4*s, 1*s);
+  }
+
+  ctx.restore();
 }
 
 // --- Class Select Screen ---
@@ -1552,13 +1736,19 @@ function renderPlay(ctx) {
     p._twoHanded = isTwoHanded;
     p.equippedArmor._twoHanded = isTwoHanded;
 
-    drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
-    drawArmorOnHero(ctx, px, py, p.facing, p.equippedArmor, 2);
+    // Horse (drawn under hero)
+    if (game.hasHorse) {
+      drawHorse(ctx, px, py, p.facing, p.moving ? game.animFrame : 0);
+    }
+
+    drawHero(ctx, px, py + (game.hasHorse ? -10 : 0), p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    drawArmorOnHero(ctx, px, py + (game.hasHorse ? -10 : 0), p.facing, p.equippedArmor, 2);
+    const heroY = py + (game.hasHorse ? -10 : 0);
     if (p.attacking) {
       const atkProgress = 1 - (p.attackTimer / getAttackSpeed(p));
-      drawWeaponAttack(ctx, px, py, p.facing, p.weapon, 2, atkProgress);
+      drawWeaponAttack(ctx, px, heroY, p.facing, p.weapon, 2, atkProgress);
     } else {
-      drawWeaponRest(ctx, px, py, p.weapon, 2);
+      drawWeaponRest(ctx, px, heroY, p.weapon, 2);
     }
 
     ctx.restore();
@@ -1877,6 +2067,21 @@ function gameLoop(timestamp) {
 
       // --- Boss ---
       if (game.boss && game.boss.alive) {
+        // Boss intro dialog — triggers once when player approaches
+        if (!game.boss._dialogShown) {
+          const bdx = game.player.x - game.boss.x;
+          const bdy = game.player.y - game.boss.y;
+          const bDist = Math.sqrt(bdx * bdx + bdy * bdy);
+          if (bDist < 180) {
+            game.boss._dialogShown = true;
+            const bossDialog = BOSS_DIALOGS[game.boss.type];
+            if (bossDialog) {
+              openDialog('_boss', game.boss.name, handleDialogAction, bossDialog);
+              game.state = STATE.DIALOG;
+            }
+          }
+        }
+
         updateBoss(game.boss, game.player, game.projectiles, dt);
 
         // Boss melee damage to player
