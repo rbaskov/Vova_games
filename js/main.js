@@ -1247,7 +1247,7 @@ function gameLoop(timestamp) {
       }
       // Render
       renderPlay(ctx);
-      renderInventory(ctx, game.player, game.width, game.height);
+      renderInventory(ctx, game.player, game.width, game.height, game.sandbox);
       break;
 
     case STATE.GAMEOVER:

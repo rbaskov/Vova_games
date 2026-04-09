@@ -188,7 +188,7 @@ function drawWeaponIcon(ctx, x, y, w) {
   }
 }
 
-export function renderInventory(ctx, player, width, height) {
+export function renderInventory(ctx, player, width, height, sandbox) {
   // Dark overlay
   ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
   ctx.fillRect(0, 0, width, height);
@@ -289,9 +289,9 @@ export function renderInventory(ctx, player, width, height) {
   // === Right side: Item Grid ===
   const gridX = panelX + panelW / 2 + 10;
   const gridY = panelY + 50;
-  const cellSize = 36;
-  const gridCols = 4;
-  const gridRows = 3;
+  const cellSize = sandbox ? 30 : 36;
+  const gridCols = sandbox ? 6 : 4;
+  const gridRows = sandbox ? 5 : 3;
 
   ctx.fillStyle = '#888';
   ctx.font = '7px "Press Start 2P"';
