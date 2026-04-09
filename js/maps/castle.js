@@ -73,6 +73,12 @@ export const castleMap = {
     { type: 'bandit_archer', col: 14, row: 12 },
     { type: 'bandit_archer', col: 20, row: 16 },
     { type: 'bandit_axe', col: 14, row: 9 },
+    // Knight guards in silver armor
+    { type: 'knight_guard', col: 7, row: 5 },
+    { type: 'knight_guard', col: 22, row: 5 },
+    { type: 'knight_guard', col: 7, row: 13 },
+    { type: 'knight_guard', col: 22, row: 13 },
+    { type: 'knight_guard', col: 14, row: 2 },
   ],
   boss: { type: 'dark_mage', col: 14, row: 5 },
 };

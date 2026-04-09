@@ -257,6 +257,8 @@ export function playMusic(theme) {
     castle:  { bpm: 110, notes: [147,175,220,175, 165,196,247,196, 147,175,220,277, 247,220,196,165], type: 'sawtooth' },
     kingdom: { bpm: 95,  notes: [330,392,494,523, 494,440,392,440, 330,392,494,659, 523,494,440,392], type: 'triangle' },
     dungeon: { bpm: 100, notes: [147,165,196,165, 156,175,220,175, 147,165,196,247, 220,196,175,147], type: 'square' },
+    hellpit:  { bpm: 160, notes: [110,131,147,110, 123,147,165,123, 110,131,147,175, 165,147,131,110], type: 'sawtooth' },
+    arena:    { bpm: 140, notes: [196,247,294,330, 294,247,196,247, 220,277,330,370, 330,277,220,196], type: 'square' },
     boss:    { bpm: 150, notes: [147,175,196,147, 165,196,220,165, 147,175,196,247, 220,196,175,147], type: 'sawtooth' },
   };
 
@@ -308,6 +310,8 @@ export function getMusicTheme(mapName) {
     cave: 'cave',
     castle: 'castle',
     kingdom: 'kingdom',
+    hellpit: 'hellpit',
+    arena: 'arena',
   };
   return map[mapName] || 'village';
 }

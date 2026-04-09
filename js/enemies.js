@@ -89,6 +89,148 @@ function drawDarkAxeman(ctx, x, y, facing, frame) {
   drawBandit(ctx, x, y, facing, frame, 'axe');
 }
 
+function drawGladiator(ctx, x, y, facing, frame) {
+  const s = 2;
+  ctx.save();
+  ctx.translate(x, y);
+  const mirror = facing === 'left';
+  if (mirror) { ctx.scale(-1, 1); ctx.translate(-32, 0); }
+
+  // Gladiator helmet (bronze, open face with crest)
+  ctx.fillStyle = '#cd7f32';
+  ctx.fillRect(5*s, 0, 6*s, 4*s);
+  ctx.fillStyle = '#daa520';
+  ctx.fillRect(6*s, 0, 4*s, 2*s);
+  // Crest/mohawk
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(7*s, -2*s, 2*s, 3*s);
+  ctx.fillRect(6.5*s, -1*s, 3*s, 1*s);
+  // Face visible
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(6*s, 2*s, 4*s, 3*s);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(7*s, 3*s, 1*s, 1*s);
+  ctx.fillRect(9*s, 3*s, 1*s, 1*s);
+  // Cheek guards
+  ctx.fillStyle = '#cd7f32';
+  ctx.fillRect(5*s, 2*s, 1*s, 3*s);
+  ctx.fillRect(10*s, 2*s, 1*s, 3*s);
+
+  // Gladiator chest (bronze plates)
+  ctx.fillStyle = '#a0652f';
+  ctx.fillRect(5*s, 5*s, 6*s, 6*s);
+  ctx.fillStyle = '#cd7f32';
+  ctx.fillRect(6*s, 6*s, 4*s, 4*s);
+  // Shoulder plates
+  ctx.fillStyle = '#b8860b';
+  ctx.fillRect(3*s, 5*s, 2*s, 3*s);
+  ctx.fillRect(11*s, 5*s, 2*s, 3*s);
+
+  // Arms
+  const armBob = frame % 2 === 0 ? 0 : s;
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(3*s, 7*s + armBob, 2*s, 4*s);
+  ctx.fillRect(11*s, 7*s - armBob, 2*s, 4*s);
+
+  // Legs (leather skirt)
+  ctx.fillStyle = '#8b4513';
+  ctx.fillRect(5*s, 11*s, 6*s, 2*s);
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(6*s, 13*s, 2*s, 3*s);
+  ctx.fillRect(9*s, 13*s, 2*s, 3*s);
+  // Sandals
+  ctx.fillStyle = '#654321';
+  ctx.fillRect(5*s, 15*s, 3*s, 2*s);
+  ctx.fillRect(8*s, 15*s, 3*s, 2*s);
+
+  // Wooden shield (left hand)
+  ctx.fillStyle = '#8b4513';
+  ctx.fillRect(1*s, 6*s + armBob, 3*s, 5*s);
+  ctx.fillStyle = '#a0652f';
+  ctx.fillRect(1.5*s, 7*s + armBob, 2*s, 3*s);
+  // Metal rim
+  ctx.fillStyle = '#999';
+  ctx.fillRect(1*s, 6*s + armBob, 3*s, 0.5*s);
+  ctx.fillRect(1*s, 10.5*s + armBob, 3*s, 0.5*s);
+
+  // Steel sword (right hand)
+  ctx.fillStyle = '#bdbdbd';
+  ctx.fillRect(12*s, 3*s - armBob, 1.5*s, 9*s);
+  ctx.fillStyle = '#e0e0e0';
+  ctx.fillRect(12.2*s, 3*s - armBob, 0.6*s, 5*s);
+  // Guard
+  ctx.fillStyle = '#cd7f32';
+  ctx.fillRect(11.5*s, 11*s - armBob, 2.5*s, 1*s);
+  // Grip
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(12*s, 12*s - armBob, 1.5*s, 2*s);
+
+  ctx.restore();
+}
+
+function drawKnightGuard(ctx, x, y, facing, frame) {
+  const s = 2;
+  ctx.save();
+  ctx.translate(x, y);
+  const mirror = facing === 'left';
+  if (mirror) { ctx.scale(-1, 1); ctx.translate(-32, 0); }
+
+  // Knight helmet (silver with visor)
+  ctx.fillStyle = '#b0bec5';
+  ctx.fillRect(5*s, 0, 6*s, 5*s);
+  ctx.fillStyle = '#cfd8dc';
+  ctx.fillRect(6*s, 0, 4*s, 2*s);
+  // Visor slit
+  ctx.fillStyle = '#222';
+  ctx.fillRect(6*s, 3*s, 4*s, 1*s);
+  // Plume
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(7*s, -2*s, 2*s, 3*s);
+
+  // Knight chest armor (silver)
+  ctx.fillStyle = '#90a4ae';
+  ctx.fillRect(5*s, 5*s, 6*s, 6*s);
+  ctx.fillStyle = '#b0bec5';
+  ctx.fillRect(6*s, 6*s, 4*s, 4*s);
+  // Shoulder plates
+  ctx.fillStyle = '#78909c';
+  ctx.fillRect(3*s, 5*s, 2*s, 3*s);
+  ctx.fillRect(11*s, 5*s, 2*s, 3*s);
+
+  // Arms (armored)
+  const armBob = frame % 2 === 0 ? 0 : s;
+  ctx.fillStyle = '#90a4ae';
+  ctx.fillRect(3*s, 7*s + armBob, 2*s, 4*s);
+  ctx.fillRect(11*s, 7*s - armBob, 2*s, 4*s);
+
+  // Legs (armored)
+  ctx.fillStyle = '#78909c';
+  ctx.fillRect(6*s, 11*s, 2*s, 5*s);
+  ctx.fillRect(9*s, 11*s, 2*s, 5*s);
+  // Boots
+  ctx.fillStyle = '#607d8b';
+  ctx.fillRect(5*s, 15*s, 3*s, 2*s);
+  ctx.fillRect(8*s, 15*s, 3*s, 2*s);
+
+  // Shield (left hand)
+  ctx.fillStyle = '#78909c';
+  ctx.fillRect(1*s, 6*s + armBob, 3*s, 5*s);
+  ctx.fillStyle = '#b0bec5';
+  ctx.fillRect(1.5*s, 7*s + armBob, 2*s, 3*s);
+  // Shield cross
+  ctx.fillStyle = '#ffd54f';
+  ctx.fillRect(2*s, 7*s + armBob, 1*s, 3*s);
+  ctx.fillRect(1.5*s, 8*s + armBob, 2*s, 1*s);
+
+  // Spear (right hand)
+  ctx.fillStyle = '#8d6e63';
+  ctx.fillRect(12*s, -1*s - armBob, 1*s, 15*s);
+  ctx.fillStyle = '#cfd8dc';
+  ctx.fillRect(11.5*s, -4*s - armBob, 2*s, 4*s);
+
+  ctx.restore();
+}
+
 // --- Enemy Type Definitions ---
 const ENEMY_TYPES = {
   slime:    { hp: 30, maxHp: 30, atk: 5,  speed: 40,  xp: 10, coins: 3,  width: 28, height: 26, draw: drawSlime,    ai: 'hop',        aggroRange: 150 },
@@ -132,6 +274,22 @@ const ENEMY_TYPES = {
     ai: 'swordsman', aggroRange: 160,
     weapon: 'axe', blockChance: 0.15,
     loot: { weaponId: 'bandit_axe', dropChance: 1.0 },
+  },
+  gladiator: {
+    hp: 100, maxHp: 100, atk: 18, speed: 60, xp: 50, coins: 100,
+    width: 32, height: 34,
+    draw: (ctx, x, y, f) => drawGladiator(ctx, x, y, 'right', f),
+    drawFacing: drawGladiator,
+    ai: 'swordsman', aggroRange: 200,
+    weapon: 'sword', blockChance: 0.2,
+  },
+  knight_guard: {
+    hp: 200, maxHp: 200, atk: 25, speed: 55, xp: 80, coins: 30,
+    width: 32, height: 34,
+    draw: (ctx, x, y, f) => drawKnightGuard(ctx, x, y, 'right', f),
+    drawFacing: drawKnightGuard,
+    ai: 'spearman', aggroRange: 180,
+    weapon: 'spear', blockChance: 0.4,
   },
 };
 

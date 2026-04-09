@@ -8,6 +8,8 @@ import { canyonMap } from './maps/canyon.js';
 import { caveMap } from './maps/cave.js';
 import { castleMap } from './maps/castle.js';
 import { kingdomMap } from './maps/kingdom.js';
+import { hellpitMap } from './maps/hellpit.js';
+import { arenaMap } from './maps/arena.js';
 import { drawHero, drawNPC, TILE } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies, setProjectileCallback } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
@@ -59,6 +61,8 @@ export const game = {
   checkpoint: null,
   sandbox: false,
   showQuestLog: false,
+  arenaWave: 0,
+  arenaTimer: 0,
 };
 
 // --- Map Registry ---
@@ -69,6 +73,8 @@ const MAP_REGISTRY = {
   cave: caveMap,
   castle: castleMap,
   kingdom: kingdomMap,
+  hellpit: hellpitMap,
+  arena: arenaMap,
 };
 
 // --- Player Creation ---
@@ -186,6 +192,13 @@ function loadMap(mapKey, spawnX, spawnY) {
   game.boss = null;
   if (mapData.boss && !game.player.defeatedBosses.includes(mapData.boss.type)) {
     game.boss = createBoss(mapData.boss.type, mapData.boss.col, mapData.boss.row);
+  }
+
+  // Arena reset
+  if (mapData.arena) {
+    game.arenaWave = 0;
+    game.arenaTimer = 1.5;
+    game.arenaWaiting = true;
   }
 }
 
@@ -711,6 +724,13 @@ function renderHUD(ctx) {
     ctx.fillText(game.currentMap ? game.currentMap.name : '', game.width - 8, hpBarY + 10);
   }
 
+  // Arena wave counter
+  if (game.currentMapName === 'arena') {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f0c040';
+    ctx.fillText(`РАУНД ${game.arenaWave}`, game.width / 2, hpBarY + 10);
+  }
+
   // Reset textAlign
   ctx.textAlign = 'left';
 }
@@ -1008,6 +1028,24 @@ function gameLoop(timestamp) {
       updatePlayer(dt);
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
 
+      // --- Arena wave system ---
+      if (game.currentMapName === 'arena') {
+        const aliveCount = game.enemies.filter(e => e.alive).length;
+        if (aliveCount === 0) {
+          game.arenaTimer -= dt;
+          if (game.arenaTimer <= 0) {
+            game.arenaWave++;
+            const newEnemy = spawnEnemy('gladiator', 10, 9);
+            if (newEnemy) {
+              game.enemies = [newEnemy];
+              game.particles.push(createParticle(10 * 32, 9 * 32 - 16, `Раунд ${game.arenaWave}!`, '#f0c040', 2));
+              SFX.playPickupItem();
+            }
+            game.arenaTimer = 2.0;
+          }
+        }
+      }
+
       // --- Combat: player attacks ---
       {
         const killed = playerAttackEnemies(game.player, game.enemies);
@@ -1139,7 +1177,13 @@ function gameLoop(timestamp) {
           const d = Math.sqrt((px - bx) ** 2 + (py - by) ** 2);
           if (d < 40) {
             const phase = game.boss.phases[game.boss.phaseIndex];
-            const dmg = Math.max(1, phase.atk - getTotalDef(game.player));
+            let dmg = Math.max(1, phase.atk - getTotalDef(game.player));
+            // Boss crit chance (e.g. rock_demon has 10% for mega damage)
+            let bossCrit = false;
+            if (game.boss.critChance && Math.random() < game.boss.critChance) {
+              dmg = game.boss.critDamage;
+              bossCrit = true;
+            }
             game.player.hp -= dmg;
             game.player.invincibleTimer = 0.5;
             // Knockback (with collision check)
@@ -1151,6 +1195,9 @@ function gameLoop(timestamp) {
             if (!collidesWithMap(testX, testY, game.player.hitW, game.player.hitH)) {
               game.player.x = testX;
               game.player.y = testY;
+            }
+            if (bossCrit) {
+              game.particles.push(createParticle(game.player.x, game.player.y - 20, 'КРИТ!', '#ff1744', 2));
             }
             game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
             if (game.player.hp <= 0) {
@@ -1178,9 +1225,25 @@ function gameLoop(timestamp) {
           const d = Math.sqrt((hx - bx) ** 2 + (hy - by) ** 2);
           const totalAtk = getTotalAtk(game.player);
           if (d < range + 20) {
-            game.boss.hp -= totalAtk;
+            // Boss block chance (e.g. rock_demon has 60%)
+            if (game.boss.blockChance && Math.random() < game.boss.blockChance) {
+              game.boss.hitTimer = 0.2;
+              game.particles.push(createParticle(game.boss.x, game.boss.y - 8, 'БЛОК!', '#ff9800'));
+            } else {
+            // Player weapon crit chance
+            const wep = getWeapon(game.player.weapon);
+            let dmg = totalAtk;
+            let isCrit = false;
+            if (wep.critChance && Math.random() < wep.critChance) {
+              dmg = wep.critDamage;
+              isCrit = true;
+            }
+            game.boss.hp -= dmg;
             game.boss.hitTimer = 0.3;
-            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${totalAtk}`, '#ffffff'));
+            if (isCrit) {
+              game.particles.push(createParticle(game.boss.x, game.boss.y - 16, 'КРИТ!', '#ff1744', 2));
+            }
+            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${dmg}`, '#ffffff'));
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
               game.player.defeatedBosses.push(game.boss.type);
@@ -1199,6 +1262,22 @@ function gameLoop(timestamp) {
                 game.player.artifacts[game.boss.artifact] = true;
                 game.particles.push(createParticle(game.boss.x, game.boss.y - 32, `${game.boss.artifact.toUpperCase()}!`, '#f0c040', 2));
               }
+              // Boss loot: Rock Demon drops sword and shield
+              if (game.boss.type === 'rock_demon') {
+                if (!game.player.ownedWeapons.includes('rockdemon_sword')) {
+                  game.player.ownedWeapons.push('rockdemon_sword');
+                  game.particles.push(createParticle(game.boss.x, game.boss.y - 44, 'Меч РокДемона!', '#ff1744', 2.5));
+                }
+                if (!game.player.ownedArmor.includes('rockdemon_shield')) {
+                  game.player.ownedArmor.push('rockdemon_shield');
+                  game.particles.push(createParticle(game.boss.x, game.boss.y - 56, 'Щит РокДемона!', '#d50000', 2.5));
+                }
+              }
+              // Boss loot: Ice Lich drops Baldionid Greatsword
+              if (game.boss.type === 'ice_lich' && !game.player.ownedWeapons.includes('baldionid_greatsword')) {
+                game.player.ownedWeapons.push('baldionid_greatsword');
+                game.particles.push(createParticle(game.boss.x, game.boss.y - 44, 'Меч Бальдионидов!', '#ff00ff', 2.5));
+              }
               if (checkLevelUp(game.player)) {
                 game.particles.push(createParticle(game.player.x, game.player.y - 20, 'LEVEL UP!', '#f0c040', 1.5));
               }
@@ -1210,6 +1289,7 @@ function gameLoop(timestamp) {
                 SFX.playVictory();
               }
             }
+          } // end else (not blocked)
           }
         }
 
@@ -1221,6 +1301,13 @@ function gameLoop(timestamp) {
           const by = game.boss.y + game.boss.height / 2;
           const d = Math.sqrt((proj.x - bx) ** 2 + (proj.y - by) ** 2);
           if (d < 30 && game.boss.hitTimer <= 0) {
+            // Boss block chance for arrows too
+            if (game.boss.blockChance && Math.random() < game.boss.blockChance) {
+              game.boss.hitTimer = 0.2;
+              game.particles.push(createParticle(game.boss.x, game.boss.y - 8, 'БЛОК!', '#ff9800'));
+              game.projectiles.splice(i, 1);
+              continue;
+            }
             game.boss.hp -= proj.damage;
             game.boss.hitTimer = 0.2;
             game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${proj.damage}`, '#ffffff'));
@@ -1567,10 +1654,16 @@ function startGame() {
   SFX.initAudio();
   setProjectileCallback((proj) => game.projectiles.push(proj));
 
-  // Resize canvas for mobile
-  if (isMobileDevice()) {
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+  // Resize canvas to fit screen
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => {
+    // Delay to let browser finish orientation transition
+    setTimeout(resizeCanvas, 150);
+    setTimeout(resizeCanvas, 500);
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeCanvas);
   }
   initStars();
 

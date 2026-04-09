@@ -28,6 +28,7 @@ export const DIALOGS = {
         { text: 'Жел. двуручник (80$)', action: 'buy_iron_greatsword', next: 2 },
         { text: 'Стал. двуручник (160$)', action: 'buy_steel_greatsword', next: 2 },
         { text: 'Рыц. двуручник (300$)', action: 'buy_knight_greatsword', next: 2 },
+        { text: 'Меч Бальдионидов (999999$)', action: 'buy_baldionid_greatsword', next: 2 },
         { text: 'Назад', next: 0 },
       ],
     },

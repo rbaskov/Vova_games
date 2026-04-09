@@ -45,13 +45,27 @@ const BOSS_TYPES = {
     ],
   },
   dark_mage: {
-    name: 'Тёмный маг', hp: 400, maxHp: 400, atk: 25, speed: 35,
+    name: 'Тёмный маг', hp: 10000000000, maxHp: 10000000000, atk: 25, speed: 35,
     width: 48, height: 56, xp: 300, coins: 100, artifact: null,
     color1: '#4a148c', color2: '#7c4dff',
     phases: [
       { hpThreshold: 1.0, speed: 35, atk: 25, pattern: 'ranged' },
       { hpThreshold: 0.6, speed: 45, atk: 30, pattern: 'teleport' },
       { hpThreshold: 0.3, speed: 70, atk: 35, pattern: 'frenzy' },
+    ],
+  },
+  rock_demon: {
+    name: 'ЗлойРокДемон', hp: 10000000, maxHp: 10000000, atk: 500, speed: 60,
+    width: 56, height: 56, xp: 999999, coins: 999999, artifact: null,
+    color1: '#b71c1c', color2: '#ff1744',
+    blockChance: 0.6,
+    critChance: 0.1,
+    critDamage: 1e40,
+    phases: [
+      { hpThreshold: 1.0, speed: 60, atk: 500, pattern: 'charge' },
+      { hpThreshold: 0.7, speed: 80, atk: 800, pattern: 'ranged' },
+      { hpThreshold: 0.4, speed: 100, atk: 1200, pattern: 'teleport' },
+      { hpThreshold: 0.15, speed: 140, atk: 2000, pattern: 'frenzy' },
     ],
   },
 };
@@ -297,6 +311,7 @@ export function renderBoss(ctx, boss, camera, animFrame) {
     case 'ice_lich':        drawIceLich(ctx, sx, sy, f, bob, boss); break;
     case 'dark_knight':     drawDarkKnight(ctx, sx, sy, f, bob, boss); break;
     case 'dark_mage':       drawDarkMage(ctx, sx, sy, f, bob, boss); break;
+    case 'rock_demon':      drawRockDemon(ctx, sx, sy, f, bob, boss); break;
     default:
       ctx.fillStyle = boss.color1;
       ctx.fillRect(sx, sy, boss.width, boss.height);
@@ -655,6 +670,107 @@ function drawDarkMage(ctx, x, y, f, bob, boss) {
       ctx.fillStyle = '#b388ff';
       ctx.fillRect(ox - 1, oy - 1, 3, 3);
     }
+  }
+}
+
+function drawRockDemon(ctx, x, y, f, bob, boss) {
+  const pulse = Math.sin(f * 1.5) * 2;
+
+  // Massive body — dark red stone
+  ctx.fillStyle = '#4a0000';
+  ctx.fillRect(x + 6, y + 16, 44, 36);
+  ctx.fillStyle = '#7b0000';
+  ctx.fillRect(x + 10, y + 20, 36, 28);
+  // Chest cracks (lava glow)
+  ctx.fillStyle = '#ff6600';
+  ctx.fillRect(x + 18, y + 24, 2, 12);
+  ctx.fillRect(x + 28, y + 22, 2, 16);
+  ctx.fillRect(x + 36, y + 26, 2, 10);
+  ctx.fillStyle = '#ffab00';
+  ctx.fillRect(x + 22, y + 30, 12, 2);
+
+  // Head — horned skull
+  ctx.fillStyle = '#3e0000';
+  ctx.fillRect(x + 12, y + 2 - bob, 32, 18);
+  ctx.fillStyle = '#5a0000';
+  ctx.fillRect(x + 16, y + 4 - bob, 24, 14);
+  // Horns
+  ctx.fillStyle = '#1a0000';
+  ctx.fillRect(x + 8, y - 6 - bob, 6, 14);
+  ctx.fillRect(x + 42, y - 6 - bob, 6, 14);
+  ctx.fillStyle = '#4a0000';
+  ctx.fillRect(x + 6, y - 10 - bob, 4, 8);
+  ctx.fillRect(x + 46, y - 10 - bob, 4, 8);
+  // Glowing red eyes
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(x + 18, y + 8 - bob, 6, 5);
+  ctx.fillRect(x + 32, y + 8 - bob, 6, 5);
+  ctx.fillStyle = '#ff6600';
+  ctx.fillRect(x + 19, y + 9 - bob, 4, 3);
+  ctx.fillRect(x + 33, y + 9 - bob, 4, 3);
+  // Mouth with fire
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 22, y + 14 - bob, 12, 4);
+  if (f % 2 === 0) {
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(x + 24, y + 15 - bob, 3, 2);
+    ctx.fillRect(x + 29, y + 15 - bob, 3, 2);
+  }
+
+  // Left arm — holding shield
+  ctx.fillStyle = '#5a0000';
+  ctx.fillRect(x - 4, y + 18 + bob, 12, 8);
+  // Shield on left arm
+  ctx.fillStyle = '#d50000';
+  ctx.fillRect(x - 8, y + 14 + bob, 14, 20);
+  ctx.fillStyle = '#ff1744';
+  ctx.fillRect(x - 6, y + 16 + bob, 10, 16);
+  ctx.fillStyle = '#ffab00';
+  ctx.fillRect(x - 3, y + 22 + bob, 4, 4);
+
+  // Right arm — holding sword
+  ctx.fillStyle = '#5a0000';
+  ctx.fillRect(x + 48, y + 18 - bob, 12, 8);
+  // Sword blade
+  ctx.fillStyle = '#ff1744';
+  ctx.fillRect(x + 52, y - 2 - bob + pulse, 4, 24);
+  ctx.fillStyle = '#ff6666';
+  ctx.fillRect(x + 53, y + 0 - bob + pulse, 2, 10);
+  // Sword guard
+  ctx.fillStyle = '#ffab00';
+  ctx.fillRect(x + 48, y + 20 - bob, 12, 3);
+  // Sword handle
+  ctx.fillStyle = '#1a0000';
+  ctx.fillRect(x + 52, y + 23 - bob, 4, 4);
+
+  // Legs
+  ctx.fillStyle = '#3e0000';
+  ctx.fillRect(x + 12, y + 48, 12, 8);
+  ctx.fillRect(x + 32, y + 48, 12, 8);
+  ctx.fillStyle = '#1a0000';
+  ctx.fillRect(x + 10, y + 52, 14, 4);
+  ctx.fillRect(x + 30, y + 52, 14, 4);
+
+  // Fire aura (phase 2+)
+  if (boss.phaseIndex >= 1) {
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = '#ff6600';
+    for (let i = 0; i < 4; i++) {
+      const fx = x + 10 + (f * 7 + i * 14) % 40;
+      const fy = y - 4 + Math.sin(f + i) * 4;
+      ctx.fillRect(fx, fy, 4 + (i % 2) * 2, 6);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Lava glow beneath (phase 3+)
+  if (boss.phaseIndex >= 2) {
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(x + 4, y + 52, 48, 6);
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(x + 8, y + 54, 40, 4);
+    ctx.globalAlpha = 1;
   }
 }
 

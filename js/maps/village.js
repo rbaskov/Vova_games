@@ -47,7 +47,7 @@ const tiles = [
   // Row 17
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 18 — portal row
-  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,D,P,G,G,G,G,G,G,G,G,G,G,G,T],
+  [T,G,G,G,G,G,G,P,G,G,G,G,G,G,D,D,D,P,G,G,G,G,G,G,P,G,G,G,G,T],
   // Row 19 — bottom border
   [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
 ];
@@ -62,6 +62,8 @@ export const villageMap = {
     { col: 17, row: 18, target: 'forest', spawnX: 15, spawnY: 1 },
     { col: 1, row: 9, target: 'kingdom', spawnX: 14, spawnY: 22 },
     { col: 28, row: 9, target: 'dungeon', spawnX: 0, spawnY: 0 },
+    { col: 7, row: 18, target: 'hellpit', spawnX: 14, spawnY: 2 },
+    { col: 24, row: 18, target: 'arena', spawnX: 9, spawnY: 16 },
   ],
   npcs: [
     { id: 'blacksmith', col: 4, row: 4, name: 'Кузнец', bodyColor: '#884422', headDetail: '#aa3311' },

@@ -440,6 +440,55 @@ function drawWeaponIcon(ctx, x, y, w) {
     ctx.fillRect(cx - 1, cy + 9, 2, 4);
     ctx.fillStyle = '#ffd54f';
     ctx.fillRect(cx - 2, cy + 12, 4, 2);
+  } else if (id === 'rockdemon_sword') {
+    // Demonic red sword with fire glow
+    ctx.fillStyle = '#ff1744';
+    ctx.fillRect(cx - 1, cy - 12, 3, 18);
+    ctx.fillStyle = '#ff6666';
+    ctx.fillRect(cx, cy - 12, 1, 8);
+    ctx.fillStyle = '#d50000';
+    ctx.fillRect(cx - 1, cy - 2, 3, 6);
+    // Fire particles
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(cx - 3, cy - 10, 2, 2);
+    ctx.fillRect(cx + 2, cy - 6, 2, 2);
+    // Guard
+    ctx.fillStyle = '#ffab00';
+    ctx.fillRect(cx - 5, cy + 5, 10, 2);
+    // Grip
+    ctx.fillStyle = '#1a0000';
+    ctx.fillRect(cx - 1, cy + 7, 2, 4);
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(cx - 2, cy + 10, 4, 2);
+  } else if (id === 'baldionid_greatsword') {
+    // Divine Baldionid greatsword — glowing magenta blade with golden runes
+    // Blade
+    ctx.fillStyle = '#ff00ff';
+    ctx.fillRect(cx - 2, cy - 16, 5, 24);
+    ctx.fillStyle = '#ff80ff';
+    ctx.fillRect(cx, cy - 16, 1, 10);
+    ctx.fillStyle = '#cc00cc';
+    ctx.fillRect(cx - 1, cy - 8, 3, 10);
+    // Glowing runes on blade
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 1, cy - 14, 1, 1);
+    ctx.fillRect(cx + 1, cy - 10, 1, 1);
+    ctx.fillRect(cx - 1, cy - 6, 1, 1);
+    ctx.fillRect(cx + 1, cy - 2, 1, 1);
+    // Wide divine guard
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 8, cy + 7, 17, 3);
+    ctx.fillStyle = '#ffab00';
+    ctx.fillRect(cx - 9, cy + 6, 2, 5);
+    ctx.fillRect(cx + 8, cy + 6, 2, 5);
+    // Central gem
+    ctx.fillStyle = '#e040fb';
+    ctx.fillRect(cx - 1, cy + 7, 3, 3);
+    // Grip
+    ctx.fillStyle = '#4a148c';
+    ctx.fillRect(cx - 1, cy + 10, 3, 4);
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 2, cy + 13, 5, 2);
   } else if (id === 'iron_axe') {
     // Simple iron axe
     ctx.fillStyle = '#5d4037';

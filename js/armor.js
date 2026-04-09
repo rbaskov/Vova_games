@@ -184,6 +184,15 @@ export const ARMOR = {
     tripleReflect: true,
     color: '#00bfa5', accent: '#64ffda',
   },
+  rockdemon_shield: {
+    id: 'rockdemon_shield', slot: 'shield',
+    name: 'Щит РокДемона', desc: '+2000 DEF, 60% блок любой атаки',
+    def: 2000, bonusHp: 50, price: 0,
+    blockChance: 0.6,
+    reflects: true,
+    tripleReflect: true,
+    color: '#d50000', accent: '#ff1744',
+  },
 };
 
 export function getArmor(id) {

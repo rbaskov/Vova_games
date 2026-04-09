@@ -130,6 +130,33 @@ export const WEAPONS = {
     color: '#b0bec5',
     twoHanded: true,
   },
+  baldionid_greatsword: {
+    id: 'baldionid_greatsword',
+    name: 'Меч Бальдионидов',
+    desc: '+10000000 ATK, божественный',
+    type: 'greatsword',
+    bonusAtk: 10000000,
+    range: 80,
+    attackSpeed: 0.3,
+    knockback: 80,
+    price: 999999,
+    color: '#ff00ff',
+    twoHanded: true,
+  },
+  rockdemon_sword: {
+    id: 'rockdemon_sword',
+    name: 'Меч РокДемона',
+    desc: '10% шанс на смертельный удар',
+    type: 'sword',
+    bonusAtk: 50,
+    range: 56,
+    attackSpeed: 0.3,
+    knockback: 60,
+    price: 0,
+    color: '#ff1744',
+    critChance: 0.1,
+    critDamage: 1e40,
+  },
 
   // === BATTLE AXES ===
   iron_axe: {

@@ -15,6 +15,7 @@ export function createTileMap(data) {
     portals: data.portals || [],
     playerStart: data.playerStart || { x: 5, y: 5 },
     name: data.name || 'Unknown',
+    arena: data.arena || false,
   };
 }
 

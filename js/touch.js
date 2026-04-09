@@ -43,16 +43,23 @@ export function initTouchControls(canvas) {
   canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
   canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 
-  updateLayout(canvas);
-  window.addEventListener('resize', () => updateLayout(canvas));
-  // Also update on orientation change
-  screen.orientation?.addEventListener('change', () => {
-    setTimeout(() => updateLayout(canvas), 100);
-  });
+  const doLayout = () => updateLayout(canvas);
+  const doLayoutDelayed = () => {
+    setTimeout(doLayout, 150);
+    setTimeout(doLayout, 500);
+  };
+  doLayout();
+  window.addEventListener('resize', doLayout);
+  window.addEventListener('orientationchange', doLayoutDelayed);
+  screen.orientation?.addEventListener('change', doLayoutDelayed);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', doLayout);
+  }
 }
 
 function updateLayout(canvas) {
   canvasRect = canvas.getBoundingClientRect();
+  if (canvasRect.width === 0) return; // canvas not visible yet, skip
   scale = canvasRect.width / canvas.width;
 
   const w = canvas.width;

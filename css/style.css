@@ -27,7 +27,7 @@ canvas {
   }
 }
 
-/* Portrait orientation warning */
+/* Portrait orientation warning — overlays canvas without hiding it */
 #rotate-hint {
   display: none;
   position: fixed;
@@ -57,9 +57,6 @@ canvas {
 @media (pointer: coarse) and (orientation: portrait) {
   #rotate-hint {
     display: flex;
-  }
-  canvas {
-    display: none;
   }
 }
 
