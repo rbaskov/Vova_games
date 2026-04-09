@@ -1421,11 +1421,14 @@ function resizeCanvas() {
   canvas.style.height = h + 'px';
 }
 
+let canvas; // module-level reference
+
 function startGame() {
-  game.canvas = document.getElementById('game');
-  game.ctx = game.canvas.getContext('2d');
-  game.width = game.canvas.width;
-  game.height = game.canvas.height;
+  canvas = document.getElementById('game');
+  game.canvas = canvas;
+  game.ctx = canvas.getContext('2d');
+  game.width = canvas.width;
+  game.height = canvas.height;
 
   detectMobile();
   initInput();
