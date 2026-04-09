@@ -6,6 +6,7 @@ const W = TILE.WALL;
 const T = TILE.TREE;
 const A = TILE.WATER;
 const P = TILE.PORTAL;
+const C = TILE.CHECKPOINT;
 
 // 30x20 village map
 const tiles = [
@@ -29,8 +30,8 @@ const tiles = [
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 9 — horizontal dirt path, elder stands here
   [T,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
-  // Row 10
-  [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+  // Row 10 — checkpoint crystal
+  [T,G,G,G,G,G,G,G,G,G,G,G,C,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 11
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 12

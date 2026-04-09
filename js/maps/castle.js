@@ -1,50 +1,51 @@
 import { TILE } from '../sprites.js';
 
-const C = TILE.CASTLE;
+const F = TILE.FASTLE;  // Floor
 const W = TILE.WALL;
 const D = TILE.DIRT;
 const P = TILE.PORTAL;
+const K = TILE.FHEFKPOINT;
 
 // 30x20 castle map — Замок Тёмного мага with dirt corridors forming a cross
 const tiles = [
   // Row 0 — top border
   [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
   // Row 1 — entrance corridor from cave
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 2
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 3 — top-left room
-  [W,C,C,C,C,W,W,W,C,C,C,C,C,D,D,D,D,C,C,C,C,W,W,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,W,W,F,F,F,F,F,D,D,D,D,F,F,F,F,W,W,W,F,F,F,F,F,W],
   // Row 4
-  [W,C,C,C,C,W,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,W,F,F,F,F,F,W],
   // Row 5 — boss area (row 5)
-  [W,C,C,C,C,W,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,W,F,F,F,F,F,W],
   // Row 6
-  [W,C,C,C,C,W,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,W,F,F,F,F,F,W],
   // Row 7 — room dividers
-  [W,C,C,C,C,W,W,W,C,C,C,C,C,D,D,D,D,C,C,C,C,W,W,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,W,W,F,F,F,F,F,D,D,D,D,F,F,F,F,W,W,W,F,F,F,F,F,W],
   // Row 8
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 9 — horizontal corridor
   [W,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W],
   // Row 10
   [W,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W],
   // Row 11
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 12 — bottom-left room
-  [W,C,C,C,C,W,W,W,C,C,C,C,C,D,D,D,D,C,C,C,C,W,W,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,W,W,F,F,F,F,F,D,D,D,D,F,F,F,F,W,W,W,F,F,F,F,F,W],
   // Row 13
-  [W,C,C,C,C,W,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,W,F,F,F,F,F,W],
   // Row 14
-  [W,C,C,C,C,W,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,W,C,C,C,C,C,W],
+  [W,F,F,F,F,W,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,W,F,F,F,F,F,W],
   // Row 15
-  [W,C,C,C,C,W,W,W,C,C,C,C,C,D,D,D,D,C,C,C,C,W,W,W,C,C,C,C,C,W],
-  // Row 16
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,W,W,W,F,F,F,F,F,D,D,D,D,F,F,F,F,W,W,W,F,F,F,F,F,W],
+  // Row 16 — checkpoint
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,K,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 17 — player start row
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,D,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,D,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 18 — exit portal back to cave (col 14)
-  [W,C,C,C,C,C,C,C,C,C,C,C,C,D,P,D,D,C,C,C,C,C,C,C,C,C,C,C,C,W],
+  [W,F,F,F,F,F,F,F,F,F,F,F,F,D,P,D,D,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // Row 19 — bottom border
   [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
 ];

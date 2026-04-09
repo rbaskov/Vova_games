@@ -4,6 +4,7 @@ const D = TILE.DIRT;
 const W = TILE.WALL;
 const L = TILE.LAVA;
 const P = TILE.PORTAL;
+const C = TILE.CHECKPOINT;
 
 // 30x20 canyon map — Огненное ущелье with lava pools and wall pillars
 const tiles = [
@@ -11,8 +12,8 @@ const tiles = [
   [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
   // Row 1 — entrance from forest (portal at col 14)
   [W,D,D,D,D,D,D,D,D,D,D,D,D,D,P,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W],
-  // Row 2
-  [W,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W],
+  // Row 2 — checkpoint
+  [W,D,D,D,D,D,D,D,D,D,D,D,D,C,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W],
   // Row 3 — lava pool left, wall pillar right
   [W,D,D,L,L,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,W,W,D,D,D,D,W],
   // Row 4

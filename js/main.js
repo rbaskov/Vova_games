@@ -1,12 +1,12 @@
 import { initInput, isKeyDown, isKeyPressed } from './input.js';
-import { createTileMap, renderMap, isSolid, isPortal, TILE_SIZE } from './tilemap.js';
+import { createTileMap, renderMap, isSolid, isPortal, getTile, TILE_SIZE } from './tilemap.js';
 import { createCamera, updateCamera } from './camera.js';
 import { villageMap } from './maps/village.js';
 import { forestMap } from './maps/forest.js';
 import { canyonMap } from './maps/canyon.js';
 import { caveMap } from './maps/cave.js';
 import { castleMap } from './maps/castle.js';
-import { drawHero, drawNPC } from './sprites.js';
+import { drawHero, drawNPC, TILE } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { createParticle, updateParticles, renderParticles } from './particles.js';
@@ -50,6 +50,7 @@ export const game = {
   showHelp: false,
   portalCooldown: 0,
   currentMapName: null,
+  checkpoint: null,  // { mapName, x, y, hp, maxHp, atk, ... }
 };
 
 // --- Map Registry ---
@@ -195,6 +196,76 @@ function checkPortals() {
   }
 }
 
+// --- Checkpoint System ---
+function saveCheckpoint() {
+  const p = game.player;
+  game.checkpoint = {
+    mapName: game.currentMapName,
+    x: p.x,
+    y: p.y,
+    hp: p.hp,
+    maxHp: p.maxHp,
+    atk: p.atk,
+    xp: p.xp,
+    level: p.level,
+    coins: p.coins,
+    potions: p.potions,
+    artifacts: { ...p.artifacts },
+    weapon: p.weapon,
+    ownedWeapons: [...p.ownedWeapons],
+    defeatedBosses: [...p.defeatedBosses],
+  };
+}
+
+function checkCheckpoint() {
+  const p = game.player;
+  const col = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
+  const row = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
+  const tile = getTile(game.currentMap, col, row);
+  if (tile === TILE.CHECKPOINT) {
+    // Only save if this is a new checkpoint position
+    if (!game.checkpoint || game.checkpoint.mapName !== game.currentMapName ||
+        Math.abs(game.checkpoint.x - p.x) > TILE_SIZE || Math.abs(game.checkpoint.y - p.y) > TILE_SIZE) {
+      saveCheckpoint();
+      // Heal a bit at checkpoint
+      p.hp = Math.min(p.maxHp, p.hp + 20);
+      game.particles.push(createParticle(p.x, p.y - 16, 'ЧЕКПОИНТ!', '#b388ff', 1.2));
+      game.particles.push(createParticle(p.x, p.y - 4, '+20 HP', '#44cc44'));
+    }
+  }
+}
+
+function respawnAtCheckpoint() {
+  const cp = game.checkpoint;
+  if (!cp) return false;
+
+  // Load the checkpoint map
+  loadMap(cp.mapName);
+
+  // Restore player stats from checkpoint
+  const p = game.player;
+  p.x = cp.x;
+  p.y = cp.y;
+  p.hp = cp.maxHp;  // full heal on respawn
+  p.maxHp = cp.maxHp;
+  p.atk = cp.atk;
+  p.xp = cp.xp;
+  p.level = cp.level;
+  p.coins = cp.coins;
+  p.potions = cp.potions;
+  p.artifacts = { ...cp.artifacts };
+  p.weapon = cp.weapon;
+  p.ownedWeapons = [...cp.ownedWeapons];
+  p.defeatedBosses = [...cp.defeatedBosses];
+  p.invincibleTimer = 1.5; // brief invincibility after respawn
+  p.attacking = false;
+  p.attackTimer = 0;
+  p._map = game.currentMap;
+
+  game.portalCooldown = 0.5;
+  return true;
+}
+
 // --- Dialog Actions ---
 function handleDialogAction(action) {
   const p = game.player;
@@ -311,6 +382,7 @@ function updatePlayer(dt) {
   // Portal cooldown & check
   if (game.portalCooldown > 0) game.portalCooldown -= dt;
   checkPortals();
+  checkCheckpoint();
 
   // Update camera
   updateCamera(
@@ -682,8 +754,10 @@ function gameLoop(timestamp) {
       if (isKeyPressed('Enter')) {
         deleteSave();
         game.player = null;
+        game.checkpoint = null;
         game.state = STATE.PLAY;
         loadMap('village');
+        saveCheckpoint(); // initial checkpoint at village start
       }
       if (isKeyPressed('KeyC') && hasSave()) {
         const save = loadGame();
@@ -1014,22 +1088,34 @@ function gameLoop(timestamp) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#cc2222';
       ctx.fillText('GAME OVER', game.width / 2, game.height / 2 - 20);
+      // Show checkpoint hint
+      if (game.checkpoint) {
+        ctx.font = '8px "Press Start 2P"';
+        ctx.fillStyle = '#b388ff';
+        ctx.fillText('Респавн на чекпоинте', game.width / 2, game.height / 2 + 10);
+      }
       // Prompt
       {
         const blink = Math.sin(game.totalTime * 3) > 0;
         if (blink) {
           ctx.font = '12px "Press Start 2P"';
           ctx.fillStyle = '#ffffff';
-          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 30);
+          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 40);
         }
       }
       ctx.textAlign = 'left';
-      // Return to menu on Enter
+      // Respawn at checkpoint or return to menu
       if (isKeyPressed('Enter')) {
-        game.state = STATE.MENU;
-        game.player = null;
-        game.enemies = [];
-        game.particles = [];
+        if (game.checkpoint && respawnAtCheckpoint()) {
+          game.state = STATE.PLAY;
+          game.particles = [];
+          game.projectiles = [];
+        } else {
+          game.state = STATE.MENU;
+          game.player = null;
+          game.enemies = [];
+          game.particles = [];
+        }
       }
       break;
 

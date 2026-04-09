@@ -4,6 +4,7 @@ const G = TILE.GRASS;
 const D = TILE.DIRT;
 const T = TILE.TREE;
 const P = TILE.PORTAL;
+const C = TILE.CHECKPOINT;
 
 // 30x20 forest map — Scattered trees with dirt path through center
 const tiles = [
@@ -11,8 +12,8 @@ const tiles = [
   [T,T,T,T,T,T,T,T,T,T,T,T,T,T,P,D,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
   // Row 1 — entrance from village
   [T,G,G,G,T,G,G,G,G,T,G,G,G,G,D,D,G,G,G,G,T,G,G,G,G,T,G,G,G,T],
-  // Row 2
-  [T,G,G,G,G,G,T,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,T,G,G,G,G,G,T],
+  // Row 2 — checkpoint
+  [T,G,G,G,G,G,T,G,G,G,G,G,G,C,D,D,G,G,G,G,G,G,G,T,G,G,G,G,G,T],
   // Row 3
   [T,G,T,G,G,G,G,G,G,G,T,G,G,G,D,D,G,G,T,G,G,G,G,G,G,G,T,G,G,T],
   // Row 4

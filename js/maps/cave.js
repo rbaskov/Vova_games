@@ -4,6 +4,7 @@ const I = TILE.ICE;
 const W = TILE.WALL;
 const A = TILE.WATER;
 const P = TILE.PORTAL;
+const C = TILE.CHECKPOINT;
 
 // 30x20 cave map — Ледяная пещера with ice floor and water pools
 const tiles = [
@@ -11,8 +12,8 @@ const tiles = [
   [W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W,W],
   // Row 1 — entrance from canyon (portal at col 14)
   [W,I,I,I,I,I,I,I,I,I,I,I,I,I,P,I,I,I,I,I,I,I,I,I,I,I,I,I,I,W],
-  // Row 2
-  [W,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,W],
+  // Row 2 — checkpoint
+  [W,I,I,I,I,I,I,I,I,I,I,I,I,C,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,W],
   // Row 3 — water pool top-left corner
   [W,I,A,A,A,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,I,W],
   // Row 4

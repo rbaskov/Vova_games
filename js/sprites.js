@@ -18,6 +18,7 @@ export const TILE = {
   TREE: 6,
   ICE: 7,
   CASTLE: 8,
+  CHECKPOINT: 9,
 };
 
 export const SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.TREE]);
@@ -238,6 +239,26 @@ export function drawCastleTile(ctx, x, y) {
 
 // -------  TILE DRAWER MAP  -------
 
+// Checkpoint crystal on grass
+export function drawCheckpointTile(ctx, x, y) {
+  // Grass base
+  drawGrassTile(ctx, x, y);
+  // Stone pedestal
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x + 8, y + 22, 16, 6);
+  ctx.fillStyle = '#999';
+  ctx.fillRect(x + 10, y + 20, 12, 4);
+  // Crystal
+  ctx.fillStyle = '#7c4dff';
+  ctx.fillRect(x + 12, y + 6, 8, 14);
+  ctx.fillStyle = '#b388ff';
+  ctx.fillRect(x + 14, y + 4, 4, 4);
+  ctx.fillRect(x + 13, y + 8, 6, 6);
+  // Shine
+  ctx.fillStyle = '#e0d0ff';
+  ctx.fillRect(x + 14, y + 8, 2, 4);
+}
+
 export const tileDrawers = {
   [TILE.GRASS]: drawGrassTile,
   [TILE.DIRT]: drawDirtTile,
@@ -248,6 +269,7 @@ export const tileDrawers = {
   [TILE.TREE]: drawTreeTile,
   [TILE.ICE]: drawIceTile,
   [TILE.CASTLE]: drawCastleTile,
+  [TILE.CHECKPOINT]: drawCheckpointTile,
 };
 
 // -------  CHARACTER SPRITES  -------
