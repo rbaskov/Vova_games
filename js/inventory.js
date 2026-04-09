@@ -284,6 +284,7 @@ export function renderInventory(ctx, player, width, height, sandbox) {
     { label: 'H', item: getArmor(equipped.helmet), drawFn: (ctx, x, y) => equipped.helmet && drawArmorIcon(ctx, x, y, equipped.helmet) },
     { label: 'C', item: getArmor(equipped.chest), drawFn: (ctx, x, y) => equipped.chest && drawArmorIcon(ctx, x, y, equipped.chest) },
     { label: 'L', item: getArmor(equipped.legs), drawFn: (ctx, x, y) => equipped.legs && drawArmorIcon(ctx, x, y, equipped.legs) },
+    { label: 'S', item: getArmor(equipped.shield), drawFn: (ctx, x, y) => equipped.shield && drawArmorIcon(ctx, x, y, equipped.shield) },
   ];
 
   for (let i = 0; i < equipSlots.length; i++) {

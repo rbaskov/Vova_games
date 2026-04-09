@@ -19,7 +19,7 @@ import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
-import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
+import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero, tryBlockProjectile } from './armor.js';
 import { generateDungeon } from './dungeon.js';
 import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
 import * as SFX from './audio.js';
@@ -95,7 +95,7 @@ function createPlayer(startX, startY) {
     defeatedBosses: [],
     weapon: 'iron_sword',
     ownedWeapons: ['iron_sword'],
-    equippedArmor: { helmet: null, chest: null, legs: null },
+    equippedArmor: { helmet: null, chest: null, legs: null, shield: null },
     ownedArmor: [],
     quests: {},
   };
@@ -914,7 +914,7 @@ function gameLoop(timestamp) {
         p.ownedWeapons = Object.keys(WEAPONS);
         // Give all armor
         p.ownedArmor = Object.keys(ARMOR);
-        p.equippedArmor = { helmet: 'mithril_helmet', chest: 'mithril_chest', legs: 'mithril_legs' };
+        p.equippedArmor = { helmet: 'mithril_helmet', chest: 'mithril_chest', legs: 'mithril_legs', shield: 'mirror_shield' };
         p.weapon = 'mithril_sword';
         saveCheckpoint();
         SFX.resumeAudio();
@@ -1172,13 +1172,37 @@ function gameLoop(timestamp) {
           const pry = proj.y + proj.height / 2;
           const d = Math.sqrt((px - prx) ** 2 + (py - pry) ** 2);
           if (d < 24 && game.player.invincibleTimer <= 0) {
-            game.player.hp -= Math.max(1, proj.damage - getTotalDef(game.player));
-            game.player.invincibleTimer = 0.5;
-            game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${proj.damage}`, '#ff4444'));
-            game.projectiles.splice(i, 1);
-            if (game.player.hp <= 0) {
-              game.player.hp = 0;
-              if (!game.sandbox) game.state = STATE.GAMEOVER;
+            // Shield block check
+            const blockResult = tryBlockProjectile(game.player);
+            if (blockResult === 'reflected') {
+              // Reflect projectile back at boss
+              proj.dirX *= -1;
+              proj.dirY *= -1;
+              proj.fromBoss = false; // now it can hit boss
+              proj.isArrow = true;   // treat as player projectile
+              game.particles.push(createParticle(game.player.x, game.player.y - 12, 'ОТРАЖЕНО!', '#e0e0e0', 1));
+              SFX.playShield();
+            } else if (blockResult === 'blocked') {
+              // Block — no damage, destroy projectile
+              game.projectiles.splice(i, 1);
+              game.particles.push(createParticle(game.player.x, game.player.y - 12, 'БЛОК!', '#4fc3f7', 0.8));
+              SFX.playShield();
+            } else {
+              // No block — take damage
+              const dmg = Math.max(1, proj.damage - getTotalDef(game.player));
+              game.player.hp -= dmg;
+              game.player.invincibleTimer = 0.5;
+              game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
+              SFX.playPlayerHurt();
+              game.projectiles.splice(i, 1);
+              if (game.player.hp <= 0) {
+                game.player.hp = 0;
+                if (!game.sandbox) {
+                  game.state = STATE.GAMEOVER;
+                  SFX.playPlayerDeath();
+                  SFX.stopMusic();
+                }
+              }
             }
           }
         }

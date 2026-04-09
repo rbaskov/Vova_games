@@ -65,10 +65,61 @@ export const ARMOR = {
     def: 5, bonusHp: 10, price: 120,
     color: '#9575cd', accent: '#b39ddb',
   },
+
+  // === SHIELDS ===
+  wooden_shield: {
+    id: 'wooden_shield', slot: 'shield',
+    name: 'Деревянный щит', desc: '+1 DEF, 20% блок',
+    def: 1, bonusHp: 0, price: 20,
+    blockChance: 0.2,
+    color: '#8d6e63', accent: '#a1887f',
+  },
+  iron_shield: {
+    id: 'iron_shield', slot: 'shield',
+    name: 'Железный щит', desc: '+3 DEF, 40% блок',
+    def: 3, bonusHp: 0, price: 55,
+    blockChance: 0.4,
+    color: '#78909c', accent: '#b0bec5',
+  },
+  fire_shield: {
+    id: 'fire_shield', slot: 'shield',
+    name: 'Огненный щит', desc: '+2 DEF, 70% блок огня',
+    def: 2, bonusHp: 0, price: 90,
+    blockChance: 0.7,
+    color: '#e65100', accent: '#ff9800',
+  },
+  mithril_shield: {
+    id: 'mithril_shield', slot: 'shield',
+    name: 'Мифрил. щит', desc: '+5 DEF, 60% блок +15 HP',
+    def: 5, bonusHp: 15, price: 140,
+    blockChance: 0.6,
+    color: '#9575cd', accent: '#b39ddb',
+  },
+  mirror_shield: {
+    id: 'mirror_shield', slot: 'shield',
+    name: 'Зеркальный щит', desc: '+4 DEF, 80% блок, отражает',
+    def: 4, bonusHp: 0, price: 200,
+    blockChance: 0.8,
+    reflects: true,
+    color: '#e0e0e0', accent: '#ffffff',
+  },
 };
 
 export function getArmor(id) {
   return ARMOR[id] || null;
+}
+
+// Check if shield blocks a projectile. Returns: 'blocked' | 'reflected' | null
+export function tryBlockProjectile(player) {
+  const shieldId = player.equippedArmor && player.equippedArmor.shield;
+  if (!shieldId) return null;
+  const shield = ARMOR[shieldId];
+  if (!shield || !shield.blockChance) return null;
+
+  if (Math.random() < shield.blockChance) {
+    return shield.reflects ? 'reflected' : 'blocked';
+  }
+  return null;
 }
 
 export function getTotalDef(player) {
@@ -149,6 +200,21 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
     }
   }
 
+  // Shield (on left arm)
+  const shield = ARMOR[equippedArmor.shield];
+  if (shield) {
+    ctx.fillStyle = shield.color;
+    ctx.fillRect(1 * s, 7 * s, 4 * s, 6 * s);
+    ctx.fillStyle = shield.accent;
+    ctx.fillRect(2 * s, 8 * s, 2 * s, 4 * s);
+    // Cross/emblem for iron+
+    if (shield.def >= 3) {
+      ctx.fillStyle = shield.color;
+      ctx.fillRect(2.5 * s, 8 * s, 1 * s, 4 * s);
+      ctx.fillRect(1.5 * s, 9.5 * s, 3 * s, 1 * s);
+    }
+  }
+
   ctx.restore();
 }
 
@@ -182,6 +248,17 @@ export function drawArmorIcon(ctx, x, y, armorId) {
       ctx.fillStyle = a.accent;
       ctx.fillRect(cx - 5, cy - 2, 3, 4);
       ctx.fillRect(cx + 2, cy - 2, 3, 4);
+      break;
+    case 'shield':
+      // Shield shape
+      ctx.fillRect(cx - 7, cy - 8, 14, 16);
+      ctx.fillRect(cx - 5, cy + 6, 10, 4);
+      ctx.fillStyle = a.accent;
+      ctx.fillRect(cx - 5, cy - 6, 10, 10);
+      // Cross emblem
+      ctx.fillStyle = a.color;
+      ctx.fillRect(cx - 1, cy - 5, 2, 8);
+      ctx.fillRect(cx - 4, cy - 2, 8, 2);
       break;
   }
 }
