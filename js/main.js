@@ -5,6 +5,8 @@ import { villageMap } from './maps/village.js';
 import { forestMap } from './maps/forest.js';
 import { drawHero, drawNPC } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
+import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
+import { createParticle, updateParticles, renderParticles } from './particles.js';
 
 // --- Game States ---
 export const STATE = {
@@ -420,6 +422,9 @@ function renderPlay(ctx) {
     }
   }
 
+  // Particles
+  renderParticles(ctx, game.particles, game.camera);
+
   // HUD on top
   renderHUD(ctx);
 }
@@ -455,14 +460,99 @@ function gameLoop(timestamp) {
     case STATE.PLAY:
       updatePlayer(dt);
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
+
+      // --- Combat: player attacks ---
+      {
+        const killed = playerAttackEnemies(game.player, game.enemies);
+        for (const enemy of killed) {
+          game.player.xp += enemy.xp;
+          game.player.coins += enemy.coins;
+          game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
+          game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
+          // 20% potion drop
+          if (Math.random() < 0.2) {
+            game.player.potions++;
+            game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
+          }
+          // Check level up
+          if (checkLevelUp(game.player)) {
+            game.particles.push(createParticle(
+              game.player.x, game.player.y - 20,
+              'LEVEL UP!', '#f0c040', 1.5
+            ));
+          }
+        }
+      }
+
+      // --- Combat: enemy attacks player ---
+      {
+        const dmgTaken = enemyAttackPlayer(game.enemies, game.player, dt);
+        if (dmgTaken > 0) {
+          game.particles.push(createParticle(
+            game.player.x, game.player.y - 8,
+            `-${dmgTaken}`, '#ff4444'
+          ));
+          if (game.player.hp <= 0) {
+            game.player.hp = 0;
+            game.state = STATE.GAMEOVER;
+          }
+        }
+      }
+
+      // --- Potion use: KeyQ ---
+      if (isKeyPressed('KeyQ') && game.player.potions > 0) {
+        game.player.potions--;
+        const heal = Math.min(30, game.player.maxHp - game.player.hp);
+        game.player.hp += heal;
+        game.particles.push(createParticle(
+          game.player.x, game.player.y - 8,
+          `+${heal} HP`, '#44cc44'
+        ));
+      }
+
+      // --- Update particles ---
+      updateParticles(game.particles, dt);
+
       renderPlay(ctx);
       break;
 
     case STATE.DIALOG:
     case STATE.INVENTORY:
-    case STATE.GAMEOVER:
-    case STATE.WIN:
       // Placeholders for future tasks
+      break;
+
+    case STATE.GAMEOVER:
+      // Keep rendering the play scene underneath
+      renderPlay(ctx);
+      // Dark overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, game.width, game.height);
+      // GAME OVER text
+      ctx.font = '24px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#cc2222';
+      ctx.fillText('GAME OVER', game.width / 2, game.height / 2 - 20);
+      // Prompt
+      {
+        const blink = Math.sin(game.totalTime * 3) > 0;
+        if (blink) {
+          ctx.font = '12px "Press Start 2P"';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 30);
+        }
+      }
+      ctx.textAlign = 'left';
+      // Return to menu on Enter
+      if (isKeyPressed('Enter')) {
+        game.state = STATE.MENU;
+        game.player = null;
+        game.enemies = [];
+        game.particles = [];
+      }
+      break;
+
+    case STATE.WIN:
+      // Placeholder for future tasks
       break;
   }
 
