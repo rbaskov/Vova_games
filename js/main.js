@@ -2291,7 +2291,8 @@ function gameLoop(timestamp) {
           game.enemies = [];
           game.particles = [];
         }
-      } break;
+      }
+    } break;
 
     case STATE.WIN: {
       renderPlay(ctx);
