@@ -9,7 +9,7 @@ import { caveMap } from './maps/cave.js';
 import { castleMap } from './maps/castle.js';
 import { kingdomMap } from './maps/kingdom.js';
 import { drawHero, drawNPC, TILE } from './sprites.js';
-import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
+import { spawnEnemy, updateEnemies, renderEnemies, setProjectileCallback } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { createParticle, updateParticles, renderParticles } from './particles.js';
 import { getNearbyNPC } from './npc.js';
@@ -992,6 +992,23 @@ function gameLoop(timestamp) {
       // --- Combat: enemy attacks player ---
       {
         const dmgTaken = enemyAttackPlayer(game.enemies, game.player, dt);
+
+        // Shield melee block feedback
+        if (game.player._shieldBlocked) {
+          game.player._shieldBlocked = false;
+          SFX.playShield();
+          game.particles.push(createParticle(game.player.x, game.player.y - 12, 'БЛОК!', '#4fc3f7', 0.8));
+        }
+
+        // Enemy blocked player's attack feedback
+        for (const e of game.enemies) {
+          if (e._blocked) {
+            e._blocked = false;
+            game.particles.push(createParticle(e.x, e.y - 12, 'БЛОК!', '#ff9800', 0.7));
+            SFX.playHitEnemy();
+          }
+        }
+
         if (dmgTaken > 0) {
           SFX.playPlayerHurt();
           game.particles.push(createParticle(
@@ -1434,6 +1451,7 @@ function startGame() {
   initInput();
   initTouchControls(canvas);
   SFX.initAudio();
+  setProjectileCallback((proj) => game.projectiles.push(proj));
 
   // Resize canvas for mobile
   if (isMobileDevice()) {

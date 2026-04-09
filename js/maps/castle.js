@@ -63,12 +63,15 @@ export const castleMap = {
   spawns: [
     // Skeletons
     { type: 'skeleton', col: 2, row: 4 },
-    { type: 'skeleton', col: 27, row: 4 },
-    { type: 'skeleton', col: 2, row: 14 },
     { type: 'skeleton', col: 27, row: 14 },
     // Golems
     { type: 'golem', col: 8, row: 9 },
-    { type: 'golem', col: 22, row: 9 },
+    // Dark guards (human enemies)
+    { type: 'bandit_sword', col: 27, row: 4 },
+    { type: 'bandit_sword', col: 2, row: 14 },
+    { type: 'bandit_spear', col: 22, row: 9 },
+    { type: 'bandit_archer', col: 14, row: 12 },
+    { type: 'bandit_archer', col: 20, row: 16 },
   ],
   boss: { type: 'dark_mage', col: 14, row: 5 },
 };

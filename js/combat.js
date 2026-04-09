@@ -4,7 +4,7 @@
 
 import { isSolid, TILE_SIZE } from './tilemap.js';
 import { getTotalAtk, getWeaponRange, getKnockback, getWeapon } from './weapons.js';
-import { getTotalDef } from './armor.js';
+import { getTotalDef, tryBlockProjectile } from './armor.js';
 
 // Safe knockback: only apply if target won't end up inside a wall
 function safeKnockback(entity, dx, dy, w, h, map) {
@@ -89,6 +89,13 @@ export function playerAttackEnemies(player, enemies) {
     const d = dist(hx, hy, ex, ey);
 
     if (d < range) {
+      // Human enemies can block attacks
+      if (enemy.blockChance && Math.random() < enemy.blockChance) {
+        enemy.hitTimer = 0.2;
+        enemy._blocked = true; // signal for particle in main.js
+        continue; // blocked — no damage
+      }
+
       const dmg = calcDamage(getTotalAtk(player), 0);
       enemy.hp -= dmg;
       enemy.hitTimer = 0.3;
@@ -126,6 +133,25 @@ export function enemyAttackPlayer(enemies, player, dt) {
     const d = dist(px, py, ex, ey);
 
     if (d < 30) {
+      // Shield melee block (half the projectile block chance)
+      const blockResult = tryBlockProjectile(player);
+      // In melee, shield is less effective — only block, no reflect, and halved chance
+      const meleeBlocked = blockResult && Math.random() < 0.5;
+
+      if (meleeBlocked) {
+        // Blocked! No damage, small knockback
+        player.invincibleTimer = 0.3;
+        player._shieldBlocked = true; // signal to main.js for particle
+        const angle = Math.atan2(py - ey, px - ex);
+        safeKnockback(player, Math.cos(angle) * 10, Math.sin(angle) * 10, player.hitW, player.hitH, player._map);
+        break;
+      }
+
+      // Also check if this enemy blocks OUR attacks
+      if (enemy.blockChance && enemy.blockChance > 0) {
+        enemy._canBlock = true; // used in playerAttackEnemies
+      }
+
       const dmg = calcDamage(enemy.atk, getTotalDef(player));
       player.hp -= dmg;
       totalDamage += dmg;

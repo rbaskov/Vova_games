@@ -30,15 +30,18 @@ const ENEMY_POOLS = [
   ],
   // Depth 2 (medium)
   [
-    { type: 'wolf', weight: 3 },
-    { type: 'skeleton', weight: 4 },
-    { type: 'slime', weight: 1 },
+    { type: 'wolf', weight: 2 },
+    { type: 'skeleton', weight: 3 },
+    { type: 'bandit_sword', weight: 3 },
+    { type: 'bandit_spear', weight: 2 },
   ],
   // Depth 3+ (hard)
   [
-    { type: 'skeleton', weight: 3 },
-    { type: 'golem', weight: 3 },
-    { type: 'wolf', weight: 2 },
+    { type: 'skeleton', weight: 2 },
+    { type: 'golem', weight: 2 },
+    { type: 'bandit_sword', weight: 3 },
+    { type: 'bandit_spear', weight: 2 },
+    { type: 'bandit_archer', weight: 3 },
   ],
 ];
 
