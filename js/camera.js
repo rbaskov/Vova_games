@@ -12,3 +12,9 @@ export function updateCamera(camera, targetX, targetY, mapWidth, mapHeight) {
   camera.x = Math.max(0, Math.min(camera.x, maxX));
   camera.y = Math.max(0, Math.min(camera.y, maxY));
 }
+
+export function updateCameraOpenWorld(camera, targetX, targetY) {
+  camera.x = targetX - camera.width / 2;
+  camera.y = targetY - camera.height / 2;
+  // No clamping — infinite world
+}

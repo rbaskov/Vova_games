@@ -68,3 +68,43 @@ export function renderMap(ctx, map, camera, animFrame) {
     ctx.drawImage(cachedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
   }
 }
+
+export function renderOpenWorld(ctx, chunkManager, camera) {
+  const chunks = chunkManager.getLoadedChunks();
+
+  for (const chunk of chunks) {
+    // Chunk pixel bounds in world space
+    const chunkLeft = chunk.worldX;
+    const chunkTop = chunk.worldY;
+    const chunkRight = chunkLeft + chunk.canvas.width;
+    const chunkBottom = chunkTop + chunk.canvas.height;
+
+    // Camera bounds in world space
+    const camLeft = camera.x;
+    const camTop = camera.y;
+    const camRight = camera.x + camera.width;
+    const camBottom = camera.y + camera.height;
+
+    // Skip if chunk is entirely off-screen
+    if (chunkRight <= camLeft || chunkLeft >= camRight ||
+        chunkBottom <= camTop || chunkTop >= camBottom) continue;
+
+    // Source rect (portion of chunk canvas to draw)
+    const sx = Math.max(0, camLeft - chunkLeft);
+    const sy = Math.max(0, camTop - chunkTop);
+    const sx2 = Math.min(chunk.canvas.width, camRight - chunkLeft);
+    const sy2 = Math.min(chunk.canvas.height, camBottom - chunkTop);
+    const sw = sx2 - sx;
+    const sh = sy2 - sy;
+
+    // Dest rect (where on screen)
+    const dx = Math.max(0, chunkLeft - camLeft);
+    const dy = Math.max(0, chunkTop - camTop);
+
+    if (sw > 0 && sh > 0) {
+      ctx.drawImage(chunk.canvas,
+        Math.floor(sx), Math.floor(sy), Math.floor(sw), Math.floor(sh),
+        Math.floor(dx), Math.floor(dy), Math.floor(sw), Math.floor(sh));
+    }
+  }
+}
