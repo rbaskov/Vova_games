@@ -19,6 +19,8 @@ export const TILE = {
   ICE: 7,
   CASTLE: 8,
   CHECKPOINT: 9,
+  DOOR: 10,
+  CARPET: 11,
 };
 
 export const SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.TREE]);
@@ -259,6 +261,47 @@ export function drawCheckpointTile(ctx, x, y) {
   ctx.fillRect(x + 14, y + 8, 2, 4);
 }
 
+// Door tile (walkable — wooden door on stone)
+export function drawDoorTile(ctx, x, y) {
+  // Stone frame
+  ctx.fillStyle = '#666';
+  ctx.fillRect(x, y, 32, 32);
+  // Door wood
+  ctx.fillStyle = '#8d6e63';
+  ctx.fillRect(x + 4, y + 2, 24, 28);
+  ctx.fillStyle = '#6d4c41';
+  ctx.fillRect(x + 6, y + 4, 20, 24);
+  // Planks
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(x + 15, y + 4, 2, 24);
+  // Handle
+  ctx.fillStyle = '#ffd54f';
+  ctx.fillRect(x + 20, y + 14, 3, 3);
+  // Arch top
+  ctx.fillStyle = '#555';
+  ctx.fillRect(x + 4, y, 24, 4);
+  ctx.fillRect(x + 6, y - 2, 20, 4);
+}
+
+// Carpet tile (red royal carpet on castle floor)
+export function drawCarpetTile(ctx, x, y) {
+  // Castle floor base
+  drawCastleTile(ctx, x, y);
+  // Red carpet
+  ctx.fillStyle = '#b71c1c';
+  ctx.fillRect(x + 4, y, 24, 32);
+  ctx.fillStyle = '#c62828';
+  ctx.fillRect(x + 6, y, 20, 32);
+  // Gold trim
+  ctx.fillStyle = '#ffd54f';
+  ctx.fillRect(x + 4, y, 2, 32);
+  ctx.fillRect(x + 26, y, 2, 32);
+  // Pattern
+  ctx.fillStyle = '#e53935';
+  ctx.fillRect(x + 10, y + 6, 12, 4);
+  ctx.fillRect(x + 10, y + 22, 12, 4);
+}
+
 export const tileDrawers = {
   [TILE.GRASS]: drawGrassTile,
   [TILE.DIRT]: drawDirtTile,
@@ -270,6 +313,8 @@ export const tileDrawers = {
   [TILE.ICE]: drawIceTile,
   [TILE.CASTLE]: drawCastleTile,
   [TILE.CHECKPOINT]: drawCheckpointTile,
+  [TILE.DOOR]: drawDoorTile,
+  [TILE.CARPET]: drawCarpetTile,
 };
 
 // -------  CHARACTER SPRITES  -------

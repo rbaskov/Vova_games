@@ -6,6 +6,7 @@ import { forestMap } from './maps/forest.js';
 import { canyonMap } from './maps/canyon.js';
 import { caveMap } from './maps/cave.js';
 import { castleMap } from './maps/castle.js';
+import { kingdomMap } from './maps/kingdom.js';
 import { drawHero, drawNPC, TILE } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
@@ -62,6 +63,7 @@ const MAP_REGISTRY = {
   canyon: canyonMap,
   cave: caveMap,
   castle: castleMap,
+  kingdom: kingdomMap,
 };
 
 // --- Player Creation ---
@@ -296,6 +298,19 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action === 'buy_potion_pack') {
+    if (p.coins >= 40) {
+      p.coins -= 40;
+      p.potions += 5;
+      game.particles.push(createParticle(p.x, p.y - 8, '+5 зелий!', '#44cc44'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
+  } else if (action === 'king_blessing') {
+    // King heals to full and gives +10 max HP (once per visit)
+    p.hp = p.maxHp;
+    game.particles.push(createParticle(p.x, p.y - 16, 'Благословение!', '#ffd54f', 1.5));
+    game.particles.push(createParticle(p.x, p.y - 4, 'HP восстановлено', '#44cc44'));
   } else if (action.startsWith('buy_armor_')) {
     // Armor purchase
     const armorId = action.slice(10); // remove 'buy_armor_'

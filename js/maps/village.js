@@ -28,8 +28,8 @@ const tiles = [
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 8
   [T,G,G,G,G,G,G,G,G,G,G,G,G,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
-  // Row 9 — horizontal dirt path, elder stands here
-  [T,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
+  // Row 9 — horizontal dirt path, elder stands here, portal to kingdom on left
+  [T,P,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,D,T],
   // Row 10 — checkpoint crystal
   [T,G,G,G,G,G,G,G,G,G,G,G,C,G,D,D,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
   // Row 11
@@ -60,6 +60,7 @@ export const villageMap = {
   playerStart: { x: 14, y: 10 },
   portals: [
     { col: 17, row: 18, target: 'forest', spawnX: 15, spawnY: 1 },
+    { col: 1, row: 9, target: 'kingdom', spawnX: 14, spawnY: 22 },
   ],
   npcs: [
     { id: 'blacksmith', col: 4, row: 4, name: 'Кузнец', bodyColor: '#884422', headDetail: '#aa3311' },
