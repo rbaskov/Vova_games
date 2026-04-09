@@ -10,6 +10,7 @@ import { createParticle, updateParticles, renderParticles } from './particles.js
 import { getNearbyNPC } from './npc.js';
 import { openDialog, isDialogOpen, dialogInput, renderDialog, closeDialog } from './dialog.js';
 import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, renderProjectiles, renderAbilityBar } from './abilities.js';
+import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
 
 // --- Game States ---
 export const STATE = {
@@ -110,6 +111,12 @@ function loadMap(mapKey, spawnX, spawnY) {
       const enemy = spawnEnemy(s.type, s.col, s.row);
       if (enemy) game.enemies.push(enemy);
     }
+  }
+
+  // Boss from map data
+  game.boss = null;
+  if (mapData.boss) {
+    game.boss = createBoss(mapData.boss.type, mapData.boss.col, mapData.boss.row);
   }
 }
 
@@ -438,6 +445,11 @@ function renderPlay(ctx) {
   // Enemies
   renderEnemies(ctx, game.enemies, cam, game.animFrame);
 
+  // Boss
+  if (game.boss && game.boss.alive) {
+    renderBoss(ctx, game.boss, cam, game.animFrame);
+  }
+
   // Projectiles
   renderProjectiles(ctx, game.projectiles, cam);
 
@@ -461,6 +473,11 @@ function renderPlay(ctx) {
 
   // Ability bar
   renderAbilityBar(ctx, game.player, game.width, game.height);
+
+  // Boss HP bar (on top of HUD)
+  if (game.boss && game.boss.alive) {
+    renderBossHPBar(ctx, game.boss, game.width);
+  }
 }
 
 // --- Game Loop ---
@@ -570,6 +587,98 @@ function gameLoop(timestamp) {
       updateCooldowns(game.player, dt);
       updateSlowTimers(game.enemies, dt);
 
+      // --- Boss ---
+      if (game.boss && game.boss.alive) {
+        updateBoss(game.boss, game.player, game.projectiles, dt);
+
+        // Boss melee damage to player
+        if (game.player.invincibleTimer <= 0) {
+          const bx = game.boss.x + game.boss.width / 2;
+          const by = game.boss.y + game.boss.height / 2;
+          const px = game.player.x + game.player.hitW / 2;
+          const py = game.player.y + game.player.hitH / 2;
+          const d = Math.sqrt((px - bx) ** 2 + (py - by) ** 2);
+          if (d < 40) {
+            const phase = game.boss.phases[game.boss.phaseIndex];
+            const dmg = phase.atk;
+            game.player.hp -= dmg;
+            game.player.invincibleTimer = 0.5;
+            // Knockback
+            const angle = Math.atan2(py - by, px - bx);
+            game.player.x += Math.cos(angle) * 30;
+            game.player.y += Math.sin(angle) * 30;
+            game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
+            if (game.player.hp <= 0) {
+              game.player.hp = 0;
+              game.state = STATE.GAMEOVER;
+            }
+          }
+        }
+
+        // Player sword hits boss
+        if (game.player.attacking) {
+          const cx = game.player.x + game.player.hitW / 2;
+          const cy = game.player.y + game.player.hitH / 2;
+          let hx = cx, hy = cy;
+          const range = 48;
+          switch (game.player.facing) {
+            case 'up':    hy -= range / 2; break;
+            case 'down':  hy += range / 2; break;
+            case 'left':  hx -= range / 2; break;
+            case 'right': hx += range / 2; break;
+          }
+          const bx = game.boss.x + game.boss.width / 2;
+          const by = game.boss.y + game.boss.height / 2;
+          const d = Math.sqrt((hx - bx) ** 2 + (hy - by) ** 2);
+          if (d < range + 20) {
+            game.boss.hp -= game.player.atk;
+            game.boss.hitTimer = 0.3;
+            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${game.player.atk}`, '#ffffff'));
+            if (game.boss.hp <= 0) {
+              game.boss.alive = false;
+              // Rewards
+              game.player.xp += game.boss.xp;
+              game.player.coins += game.boss.coins;
+              game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `+${game.boss.xp} XP`, '#cc66ff'));
+              game.particles.push(createParticle(game.boss.x, game.boss.y - 20, `+${game.boss.coins} $`, '#f0c040'));
+              // Grant artifact
+              if (game.boss.artifact) {
+                game.player.artifacts[game.boss.artifact] = true;
+                game.particles.push(createParticle(game.boss.x, game.boss.y - 32, `${game.boss.artifact.toUpperCase()}!`, '#f0c040', 2));
+              }
+              if (checkLevelUp(game.player)) {
+                game.particles.push(createParticle(game.player.x, game.player.y - 20, 'LEVEL UP!', '#f0c040', 1.5));
+              }
+              // Win condition
+              if (game.boss.type === 'dark_mage') {
+                game.state = STATE.WIN;
+              }
+            }
+          }
+        }
+
+        // Boss projectiles hit player
+        for (let i = game.projectiles.length - 1; i >= 0; i--) {
+          const proj = game.projectiles[i];
+          if (!proj.fromBoss) continue;
+          const px = game.player.x + game.player.hitW / 2;
+          const py = game.player.y + game.player.hitH / 2;
+          const prx = proj.x + proj.width / 2;
+          const pry = proj.y + proj.height / 2;
+          const d = Math.sqrt((px - prx) ** 2 + (py - pry) ** 2);
+          if (d < 24 && game.player.invincibleTimer <= 0) {
+            game.player.hp -= proj.damage;
+            game.player.invincibleTimer = 0.5;
+            game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${proj.damage}`, '#ff4444'));
+            game.projectiles.splice(i, 1);
+            if (game.player.hp <= 0) {
+              game.player.hp = 0;
+              game.state = STATE.GAMEOVER;
+            }
+          }
+        }
+      }
+
       // --- NPC interaction ---
       if (isKeyPressed('KeyE')) {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
@@ -650,7 +759,37 @@ function gameLoop(timestamp) {
       break;
 
     case STATE.WIN:
-      // Placeholder for future tasks
+      renderPlay(ctx);
+      // Dark overlay
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+      ctx.fillRect(0, 0, game.width, game.height);
+      // Victory text
+      ctx.font = '24px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f0c040';
+      ctx.fillText('ПОБЕДА!', game.width / 2, game.height / 2 - 50);
+      ctx.font = '10px "Press Start 2P"';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('Тёмный маг повержен!', game.width / 2, game.height / 2);
+      ctx.fillText('Эльдория спасена!', game.width / 2, game.height / 2 + 24);
+      // Blinking prompt
+      {
+        const blink = Math.sin(game.totalTime * 3) > 0;
+        if (blink) {
+          ctx.font = '12px "Press Start 2P"';
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText('НАЖМИ ENTER', game.width / 2, game.height / 2 + 70);
+        }
+      }
+      ctx.textAlign = 'left';
+      if (isKeyPressed('Enter')) {
+        game.state = STATE.MENU;
+        game.player = null;
+        game.enemies = [];
+        game.particles = [];
+        game.projectiles = [];
+        game.boss = null;
+      }
       break;
   }
 
