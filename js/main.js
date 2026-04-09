@@ -954,7 +954,7 @@ function gameLoop(timestamp) {
         p.ownedWeapons = Object.keys(WEAPONS);
         // Give all armor
         p.ownedArmor = Object.keys(ARMOR);
-        p.equippedArmor = { helmet: 'knight_helmet', chest: 'knight_chest', legs: 'knight_legs', shield: 'mirror_shield' };
+        p.equippedArmor = { helmet: 'ferida_helmet', chest: 'ezanilla_chest', legs: 'iomerida_legs', shield: 'moremirida_shield' };
         p.weapon = 'mithril_sword';
         saveCheckpoint();
         SFX.resumeAudio();
@@ -1241,12 +1241,39 @@ function gameLoop(timestamp) {
           if (d < 24 && game.player.invincibleTimer <= 0) {
             // Shield block check
             const blockResult = tryBlockProjectile(game.player);
-            if (blockResult === 'reflected') {
+            if (blockResult === 'triple_reflected') {
+              // Moremirida: reflect original + fire 2 extra projectiles
+              proj.dirX *= -1;
+              proj.dirY *= -1;
+              proj.fromBoss = false;
+              proj.isArrow = true;
+              proj.damage = Math.floor(proj.damage * 1.5);
+              // 2 extra projectiles at angles
+              for (let angle = -0.5; angle <= 0.5; angle += 1.0) {
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                const ndx = proj.dirX * cos - proj.dirY * sin;
+                const ndy = proj.dirX * sin + proj.dirY * cos;
+                game.projectiles.push({
+                  x: game.player.x + game.player.hitW / 2,
+                  y: game.player.y + game.player.hitH / 2,
+                  dirX: ndx, dirY: ndy,
+                  damage: proj.damage,
+                  color: '#64ffda',
+                  speed: proj.speed * 1.2,
+                  life: 2, width: 8, height: 8,
+                  isArrow: true,
+                });
+              }
+              game.particles.push(createParticle(game.player.x, game.player.y - 12, 'x3 ОТРАЖЕНО!', '#64ffda', 1.5));
+              SFX.playShield();
+              SFX.playFireball();
+            } else if (blockResult === 'reflected') {
               // Reflect projectile back at boss
               proj.dirX *= -1;
               proj.dirY *= -1;
-              proj.fromBoss = false; // now it can hit boss
-              proj.isArrow = true;   // treat as player projectile
+              proj.fromBoss = false;
+              proj.isArrow = true;
               game.particles.push(createParticle(game.player.x, game.player.y - 12, 'ОТРАЖЕНО!', '#e0e0e0', 1));
               SFX.playShield();
             } else if (blockResult === 'blocked') {

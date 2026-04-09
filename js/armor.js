@@ -175,6 +175,15 @@ export const ARMOR = {
     reflects: true,
     color: '#e0e0e0', accent: '#ffffff',
   },
+  moremirida_shield: {
+    id: 'moremirida_shield', slot: 'shield',
+    name: 'Щит Моремирида', desc: '+10 DEF, 100% блок, x3 отражение',
+    def: 10, bonusHp: 30, price: 600,
+    blockChance: 1.0,
+    reflects: true,
+    tripleReflect: true,
+    color: '#00bfa5', accent: '#64ffda',
+  },
 };
 
 export function getArmor(id) {
@@ -189,7 +198,9 @@ export function tryBlockProjectile(player) {
   if (!shield || !shield.blockChance) return null;
 
   if (Math.random() < shield.blockChance) {
-    return shield.reflects ? 'reflected' : 'blocked';
+    if (shield.tripleReflect) return 'triple_reflected';
+    if (shield.reflects) return 'reflected';
+    return 'blocked';
   }
   return null;
 }
