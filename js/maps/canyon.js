@@ -71,6 +71,9 @@ export const canyonMap = {
     { type: 'skeleton', col: 12, row: 16 },
     // Wolf
     { type: 'wolf', col: 16, row: 10 },
+    // Bandits
+    { type: 'bandit_sword', col: 20, row: 5 },
+    { type: 'bandit_archer', col: 8, row: 13 },
   ],
   boss: { type: 'fire_dragon', col: 14, row: 14 },
 };

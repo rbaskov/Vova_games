@@ -71,6 +71,8 @@ export const forestMap = {
     { type: 'wolf', col: 10, row: 7 },
     { type: 'wolf', col: 20, row: 11 },
     { type: 'wolf', col: 6, row: 16 },
+    // Bandits
+    { type: 'bandit_sword', col: 24, row: 8 },
   ],
   boss: { type: 'forest_guardian', col: 14, row: 14 },
 };

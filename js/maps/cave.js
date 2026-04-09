@@ -70,6 +70,10 @@ export const caveMap = {
     { type: 'golem', col: 6, row: 9 },
     { type: 'golem', col: 20, row: 9 },
     { type: 'golem', col: 14, row: 16 },
+    // Bandits
+    { type: 'bandit_spear', col: 18, row: 5 },
+    { type: 'bandit_sword', col: 4, row: 14 },
+    { type: 'bandit_archer', col: 24, row: 14 },
   ],
   boss: { type: 'ice_lich', col: 14, row: 14 },
 };
