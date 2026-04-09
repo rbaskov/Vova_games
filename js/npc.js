@@ -73,7 +73,6 @@ export const DIALOGS = {
       ],
     },
   ],
-};
 
   // === ROYAL CASTLE NPCs ===
   king: [
