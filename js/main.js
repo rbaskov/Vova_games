@@ -16,8 +16,8 @@ import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, rende
 import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
-import { getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
-import { getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
+import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
+import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
 
 // --- Game States ---
 export const STATE = {
@@ -51,7 +51,8 @@ export const game = {
   showHelp: false,
   portalCooldown: 0,
   currentMapName: null,
-  checkpoint: null,  // { mapName, x, y, hp, maxHp, atk, ... }
+  checkpoint: null,
+  sandbox: false,
 };
 
 // --- Map Registry ---
@@ -503,10 +504,13 @@ function renderMenu(ctx, dt) {
     ctx.font = '14px "Press Start 2P"';
     ctx.fillStyle = '#ffffff';
     if (hasSave()) {
-      ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 340);
+      ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 330);
     } else {
-      ctx.fillText('НАЖМИ ENTER', width / 2, 340);
+      ctx.fillText('НАЖМИ ENTER', width / 2, 330);
     }
+    ctx.font = '10px "Press Start 2P"';
+    ctx.fillStyle = '#b388ff';
+    ctx.fillText('S = Песочница', width / 2, 360);
   }
 
   // Footer
@@ -577,10 +581,15 @@ function renderHUD(ctx) {
     ctx.fillText(`DEF ${def}`, 380, hpBarY + 10);
   }
 
-  // Map name
+  // Map name + sandbox label
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#aaa';
-  ctx.fillText(game.currentMap ? game.currentMap.name : '', game.width - 8, hpBarY + 10);
+  if (game.sandbox) {
+    ctx.fillStyle = '#b388ff';
+    ctx.fillText('ПЕСОЧНИЦА', game.width - 8, hpBarY + 10);
+  } else {
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(game.currentMap ? game.currentMap.name : '', game.width - 8, hpBarY + 10);
+  }
 
   // Reset textAlign
   ctx.textAlign = 'left';
@@ -785,9 +794,34 @@ function gameLoop(timestamp) {
         deleteSave();
         game.player = null;
         game.checkpoint = null;
+        game.sandbox = false;
         game.state = STATE.PLAY;
         loadMap('village');
-        saveCheckpoint(); // initial checkpoint at village start
+        saveCheckpoint();
+      }
+      if (isKeyPressed('KeyS')) {
+        deleteSave();
+        game.player = null;
+        game.checkpoint = null;
+        game.sandbox = true;
+        game.state = STATE.PLAY;
+        loadMap('village');
+        // Sandbox: max stats, all weapons, all armor, all artifacts
+        const p = game.player;
+        p.coins = 99999;
+        p.hp = 9999;
+        p.maxHp = 9999;
+        p.atk = 50;
+        p.level = 10;
+        p.potions = 99;
+        p.artifacts = { earth: true, fire: true, water: true };
+        // Give all weapons
+        p.ownedWeapons = Object.keys(WEAPONS);
+        // Give all armor
+        p.ownedArmor = Object.keys(ARMOR);
+        p.equippedArmor = { helmet: 'mithril_helmet', chest: 'mithril_chest', legs: 'mithril_legs' };
+        p.weapon = 'mithril_sword';
+        saveCheckpoint();
       }
       if (isKeyPressed('KeyC') && hasSave()) {
         const save = loadGame();
@@ -815,6 +849,12 @@ function gameLoop(timestamp) {
       break;
 
     case STATE.PLAY:
+      // Sandbox: keep HP and coins maxed
+      if (game.sandbox && game.player) {
+        game.player.hp = game.player.maxHp;
+        game.player.coins = 99999;
+      }
+
       updatePlayer(dt);
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
 
@@ -851,7 +891,7 @@ function gameLoop(timestamp) {
           ));
           if (game.player.hp <= 0) {
             game.player.hp = 0;
-            game.state = STATE.GAMEOVER;
+            if (!game.sandbox) game.state = STATE.GAMEOVER;
           }
         }
       }
@@ -922,7 +962,7 @@ function gameLoop(timestamp) {
             game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
             if (game.player.hp <= 0) {
               game.player.hp = 0;
-              game.state = STATE.GAMEOVER;
+              if (!game.sandbox) game.state = STATE.GAMEOVER;
             }
           }
         }
@@ -1017,7 +1057,7 @@ function gameLoop(timestamp) {
             game.projectiles.splice(i, 1);
             if (game.player.hp <= 0) {
               game.player.hp = 0;
-              game.state = STATE.GAMEOVER;
+              if (!game.sandbox) game.state = STATE.GAMEOVER;
             }
           }
         }
