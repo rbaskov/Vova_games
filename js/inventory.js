@@ -32,6 +32,23 @@ export function inventoryInput(key, player, particles, createParticle) {
         item.action(player, particles, createParticle);
       }
     }
+  } else if (key === 'sell') {
+    const items = getItems(player);
+    if (selectedSlot < items.length) {
+      const item = items[selectedSlot];
+      if (item.sellPrice && item.sellPrice > 0 && item.onSell) {
+        item.onSell(player);
+        player.coins += item.sellPrice;
+        if (particles && createParticle) {
+          particles.push(createParticle(player.x, player.y - 8, `+${item.sellPrice}$`, '#ffd54f'));
+        }
+        // Adjust selection if last item sold
+        const newItems = getItems(player);
+        if (selectedSlot >= newItems.length) {
+          selectedSlot = Math.max(0, newItems.length - 1);
+        }
+      }
+    }
   } else if (key === 'close') {
     return 'close';
   }
@@ -46,6 +63,7 @@ function getItems(player) {
     if (wid === player.weapon) continue; // equipped shown separately
     const w = WEAPONS[wid];
     if (!w) continue;
+    const canSell = wid !== 'iron_sword'; // can't sell starter weapon
     items.push({
       id: wid,
       name: w.name,
@@ -59,6 +77,10 @@ function getItems(player) {
         p.weapon = wid;
       },
       actionLabel: '[ENTER] Экипировать',
+      sellPrice: canSell ? Math.floor(w.price * 0.5) : 0,
+      onSell: canSell ? (p) => {
+        p.ownedWeapons = p.ownedWeapons.filter(id => id !== wid);
+      } : null,
     });
   }
 
@@ -76,6 +98,10 @@ function getItems(player) {
       drawIcon: (ctx, x, y) => drawArmorIcon(ctx, x, y, aid),
       action: (p) => { p.equippedArmor[a.slot] = aid; },
       actionLabel: '[ENTER] Экипировать',
+      sellPrice: Math.floor(a.price * 0.5),
+      onSell: (p) => {
+        p.ownedArmor = p.ownedArmor.filter(id => id !== aid);
+      },
     });
   }
 
@@ -97,6 +123,8 @@ function getItems(player) {
           }
         }
       },
+      sellPrice: 5,
+      onSell: (p) => { p.potions--; },
     });
   }
 
@@ -352,11 +380,17 @@ export function renderInventory(ctx, player, width, height, sandbox) {
       ctx.fillStyle = '#4fc3f7';
       ctx.fillText(item.actionLabel || '[ENTER] Использовать', gridX, infoY + 34);
     }
+
+    // Sell info
+    if (item.sellPrice && item.sellPrice > 0) {
+      ctx.fillStyle = '#ffd54f';
+      ctx.fillText(`[X] Продать за ${item.sellPrice}$`, gridX, infoY + 48);
+    }
   }
 
   // Footer
   ctx.fillStyle = '#555';
   ctx.font = '7px "Press Start 2P"';
   ctx.textAlign = 'center';
-  ctx.fillText('Стрелки — выбор    ENTER — использовать    I — закрыть', width / 2, panelY + panelH - 10);
+  ctx.fillText('Стрелки=выбор  ENTER=исп.  X=продать  I=закрыть', width / 2, panelY + panelH - 10);
 }

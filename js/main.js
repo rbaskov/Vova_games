@@ -1242,6 +1242,9 @@ function gameLoop(timestamp) {
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         inventoryInput('use', game.player, game.particles, createParticle);
       }
+      if (isKeyPressed('KeyX')) {
+        inventoryInput('sell', game.player, game.particles, createParticle);
+      }
       if (isKeyPressed('KeyI') || isKeyPressed('Tab') || isKeyPressed('Escape')) {
         game.state = STATE.PLAY;
       }
