@@ -3,6 +3,7 @@
 // ============================================================
 
 import { isSolid, TILE_SIZE } from './tilemap.js';
+import { getTotalAtk, getWeaponRange, getKnockback, getWeapon } from './weapons.js';
 
 // Safe knockback: only apply if target won't end up inside a wall
 function safeKnockback(entity, dx, dy, w, h, map) {
@@ -60,12 +61,16 @@ export function playerAttackEnemies(player, enemies) {
   const killed = [];
   if (!player.attacking) return killed;
 
-  // Determine hitbox center based on facing direction (range 48px = 1.5 tiles)
+  // Bow weapons don't do melee — damage is via projectiles
+  const weapon = getWeapon(player.weapon);
+  if (weapon.type === 'bow') return killed;
+
+  // Determine hitbox center based on facing direction
   const cx = player.x + player.hitW / 2;
   const cy = player.y + player.hitH / 2;
   let hx = cx;
   let hy = cy;
-  const range = 48;
+  const range = getWeaponRange(player);
 
   switch (player.facing) {
     case 'up':    hy -= range / 2; break;
@@ -82,13 +87,14 @@ export function playerAttackEnemies(player, enemies) {
     const d = dist(hx, hy, ex, ey);
 
     if (d < range) {
-      const dmg = calcDamage(player.atk, 0);
+      const dmg = calcDamage(getTotalAtk(player), 0);
       enemy.hp -= dmg;
       enemy.hitTimer = 0.3;
 
-      // Knockback 20px away from player (with collision check)
+      // Knockback away from player (with collision check)
+      const kb = getKnockback(player);
       const angle = Math.atan2(ey - cy, ex - cx);
-      safeKnockback(enemy, Math.cos(angle) * 20, Math.sin(angle) * 20, enemy.width, enemy.height || 26, player._map);
+      safeKnockback(enemy, Math.cos(angle) * kb, Math.sin(angle) * kb, enemy.width, enemy.height || 26, player._map);
 
       if (enemy.hp <= 0) {
         enemy.alive = false;

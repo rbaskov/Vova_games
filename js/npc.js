@@ -1,15 +1,23 @@
 export const DIALOGS = {
   blacksmith: [
     {
-      text: 'Герой! Монстры заняли лес к северу. Мой подмастерье пропал. Найди его — и я выкую тебе новый меч!',
+      text: 'Добро пожаловать в кузницу! Я кую лучшее оружие в Эльдории. Что тебе нужно?',
       choices: [
-        { text: 'Я найду его!', next: 1 },
-        { text: 'Может позже...', next: null },
+        { text: 'Стальной меч (50$)', action: 'buy_steel_sword', next: 0 },
+        { text: 'Копьё (40$)', action: 'buy_spear', next: 0 },
+        { text: 'Лук (80$)', action: 'buy_bow', next: 0 },
+        { text: 'Ещё оружие...', next: 1 },
+        { text: 'Уйти', next: null },
       ],
     },
     {
-      text: 'Будь осторожен в лесу. Слаймы и волки не дремлют! Используй меч — нажми ПРОБЕЛ.',
-      choices: [{ text: 'Понял, спасибо!', next: null }],
+      text: 'Для опытных воинов у меня есть кое-что особенное!',
+      choices: [
+        { text: 'Мифриловый меч (120$)', action: 'buy_mithril_sword', next: 1 },
+        { text: 'Огненное копьё (100$)', action: 'buy_fire_spear', next: 1 },
+        { text: 'Арбалет (150$)', action: 'buy_crossbow', next: 1 },
+        { text: 'Назад', next: 0 },
+      ],
     },
   ],
   elder: [

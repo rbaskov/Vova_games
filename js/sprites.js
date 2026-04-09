@@ -326,37 +326,7 @@ export function drawHero(ctx, x, y, facing = 'down', frame = 0, attacking = fals
   ctx.fillRect(6 * s, (16 + legSwing) * s, 2 * s, 2 * s);
   ctx.fillRect(9 * s, (16 + 1 - legSwing) * s, 2 * s, 2 * s);
 
-  // ---------- Sword (attack) ----------
-  if (attacking) {
-    ctx.fillStyle = '#ccc';
-    if (facing === 'right' || facing === 'left') {
-      // Sword extending right (mirrored for left)
-      ctx.fillRect(12 * s, 7 * s, 5 * s, 1 * s);
-      ctx.fillRect(13 * s, 6 * s, 1 * s, 3 * s); // guard
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillRect(12 * s, 7 * s, 1 * s, 1 * s); // hilt
-    } else if (facing === 'down') {
-      ctx.fillRect(11 * s, 10 * s, 1 * s, 6 * s);
-      ctx.fillRect(10 * s, 10 * s, 3 * s, 1 * s); // guard
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillRect(11 * s, 9 * s, 1 * s, 1 * s);
-    } else {
-      // up
-      ctx.fillRect(11 * s, -2 * s, 1 * s, 6 * s);
-      ctx.fillRect(10 * s, 4 * s, 3 * s, 1 * s); // guard
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillRect(11 * s, 5 * s, 1 * s, 1 * s);
-    }
-    // Blade tip highlight
-    ctx.fillStyle = '#fff';
-    if (facing === 'right' || facing === 'left') {
-      ctx.fillRect(16 * s, 7 * s, 1 * s, 1 * s);
-    } else if (facing === 'down') {
-      ctx.fillRect(11 * s, 15 * s, 1 * s, 1 * s);
-    } else {
-      ctx.fillRect(11 * s, -2 * s, 1 * s, 1 * s);
-    }
-  }
+  // Weapon is drawn separately by main.js via weapons.js
 
   ctx.restore();
 }

@@ -3,6 +3,7 @@
 // ============================================================
 
 import { drawPotionSprite, drawCoinSprite } from './sprites.js';
+import { WEAPONS, getWeapon, getTotalAtk } from './weapons.js';
 
 let selectedSlot = 0;
 
@@ -38,6 +39,27 @@ export function inventoryInput(key, player, particles, createParticle) {
 
 function getItems(player) {
   const items = [];
+
+  // Owned weapons (except currently equipped)
+  for (const wid of (player.ownedWeapons || [])) {
+    if (wid === player.weapon) continue; // equipped shown separately
+    const w = WEAPONS[wid];
+    if (!w) continue;
+    items.push({
+      id: wid,
+      name: w.name,
+      desc: `+${w.bonusAtk} ATK  ${w.type === 'bow' ? 'дальний' : w.type === 'spear' ? 'длинный' : ''}`,
+      count: 1,
+      color: w.color,
+      drawIcon: (ctx, x, y) => {
+        drawWeaponIcon(ctx, x, y, w);
+      },
+      action: (p) => {
+        p.weapon = wid;
+      },
+      actionLabel: '[ENTER] Экипировать',
+    });
+  }
 
   // Potions
   if (player.potions > 0) {
@@ -118,6 +140,36 @@ function getItems(player) {
   return items;
 }
 
+function drawWeaponIcon(ctx, x, y, w) {
+  const cx = x + 16, cy = y + 16;
+  switch (w.type) {
+    case 'sword':
+      ctx.fillStyle = w.color;
+      ctx.fillRect(cx - 1, cy - 10, 3, 16);
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(cx - 4, cy + 4, 9, 3);
+      break;
+    case 'spear':
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(cx - 1, cy - 8, 2, 18);
+      ctx.fillStyle = w.color === '#8d6e63' ? '#bdbdbd' : w.color;
+      ctx.fillRect(cx - 3, cy - 12, 6, 6);
+      break;
+    case 'bow':
+      ctx.fillStyle = w.color;
+      ctx.fillRect(cx - 6, cy - 8, 2, 16);
+      ctx.beginPath();
+      ctx.moveTo(cx - 4, cy - 8);
+      ctx.quadraticCurveTo(cx + 4, cy, cx - 4, cy + 8);
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(cx - 5, cy - 1, 8, 1);
+      break;
+  }
+}
+
 export function renderInventory(ctx, player, width, height) {
   // Dark overlay
   ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -152,7 +204,7 @@ export function renderInventory(ctx, player, width, height) {
 
   const statLines = [
     { label: 'HP', value: `${player.hp}/${player.maxHp}`, color: '#e53935' },
-    { label: 'ATK', value: `${player.atk}`, color: '#ffd54f' },
+    { label: 'ATK', value: `${getTotalAtk(player)} (${player.atk}+${getWeapon(player.weapon).bonusAtk})`, color: '#ffd54f' },
     { label: 'LVL', value: `${player.level}`, color: '#4fc3f7' },
     { label: 'XP', value: `${player.xp}/${player.level * 50}`, color: '#b388ff' },
     { label: '$', value: `${player.coins}`, color: '#ffd54f' },
@@ -176,16 +228,20 @@ export function renderInventory(ctx, player, width, height) {
   ctx.font = '7px "Press Start 2P"';
   ctx.fillText('ЭКИПИРОВКА', statsX, equipY);
 
-  // Sword
-  ctx.fillStyle = '#bdbdbd';
-  ctx.fillRect(statsX, equipY + 10, 24, 24);
-  ctx.fillStyle = '#9e9e9e';
-  ctx.fillRect(statsX + 8, equipY + 12, 3, 16);
-  ctx.fillStyle = '#8d6e63';
-  ctx.fillRect(statsX + 5, equipY + 28, 9, 3);
-  ctx.fillStyle = '#e0e0e0';
+  // Current weapon
+  const curWeapon = getWeapon(player.weapon);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(statsX, equipY + 10, 28, 28);
+  ctx.strokeStyle = curWeapon.color;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(statsX, equipY + 10, 28, 28);
+  drawWeaponIcon(ctx, statsX + 2, equipY + 12, curWeapon);
+  ctx.fillStyle = curWeapon.color;
   ctx.font = '7px "Press Start 2P"';
-  ctx.fillText('Железный меч', statsX + 30, equipY + 26);
+  ctx.fillText(curWeapon.name, statsX + 34, equipY + 22);
+  ctx.fillStyle = '#aaa';
+  ctx.font = '6px "Press Start 2P"';
+  ctx.fillText(`+${curWeapon.bonusAtk} ATK  ${curWeapon.type}`, statsX + 34, equipY + 34);
 
   // === Right side: Item Grid ===
   const gridX = panelX + panelW / 2 + 10;
@@ -251,7 +307,7 @@ export function renderInventory(ctx, player, width, height) {
 
     if (item.action) {
       ctx.fillStyle = '#4fc3f7';
-      ctx.fillText('[ENTER] Использовать', gridX, infoY + 34);
+      ctx.fillText(item.actionLabel || '[ENTER] Использовать', gridX, infoY + 34);
     }
   }
 

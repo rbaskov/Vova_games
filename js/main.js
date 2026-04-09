@@ -16,6 +16,7 @@ import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, rende
 import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
+import { getWeapon, getTotalAtk, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
 
 // --- Game States ---
 export const STATE = {
@@ -82,6 +83,8 @@ function createPlayer(startX, startY) {
     cooldowns: { earth: 0, fire: 0, water: 0 },
     invincibleTimer: 0,
     defeatedBosses: [],
+    weapon: 'iron_sword',
+    ownedWeapons: ['iron_sword'],
   };
 }
 
@@ -214,6 +217,22 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action.startsWith('buy_')) {
+    // Weapon purchase
+    const weaponId = action.slice(4); // remove 'buy_'
+    const w = getWeapon(weaponId);
+    if (p.ownedWeapons.includes(weaponId)) {
+      // Already owned — equip it
+      p.weapon = weaponId;
+      game.particles.push(createParticle(p.x, p.y - 8, w.name, '#4fc3f7'));
+    } else if (p.coins >= w.price) {
+      p.coins -= w.price;
+      p.ownedWeapons.push(weaponId);
+      p.weapon = weaponId;
+      game.particles.push(createParticle(p.x, p.y - 8, w.name + '!', '#ffd54f'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   }
 }
 
@@ -281,7 +300,12 @@ function updatePlayer(dt) {
   // Attack
   if (isKeyPressed('Space') && !p.attacking) {
     p.attacking = true;
-    p.attackTimer = 0.3;
+    p.attackTimer = getAttackSpeed(p);
+    // Bow fires a projectile
+    const arrow = createArrow(p);
+    if (arrow) {
+      game.projectiles.push(arrow);
+    }
   }
 
   // Portal cooldown & check
@@ -449,6 +473,11 @@ function renderHUD(ctx) {
   ctx.fillStyle = '#44cc44';
   ctx.fillText(`POT ${p.potions}`, 310, hpBarY + 10);
 
+  // Weapon name
+  const curW = getWeapon(p.weapon);
+  ctx.fillStyle = curW.color;
+  ctx.fillText(curW.name, 390, hpBarY + 10);
+
   // Map name
   ctx.textAlign = 'right';
   ctx.fillStyle = '#aaa';
@@ -601,6 +630,12 @@ function renderPlay(ctx) {
       ctx.globalAlpha = 0.4;
     }
     drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    // Draw weapon on hero
+    if (p.attacking) {
+      drawWeaponAttack(ctx, px, py, p.facing, p.weapon, 2);
+    } else {
+      drawWeaponRest(ctx, px, py, p.weapon, 2);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -667,6 +702,8 @@ function gameLoop(timestamp) {
           p.potions = save.potions;
           p.artifacts = { ...save.artifacts };
           p.defeatedBosses = [...(save.defeatedBosses || [])];
+          p.weapon = save.weapon || 'iron_sword';
+          p.ownedWeapons = [...(save.ownedWeapons || ['iron_sword'])];
         }
       }
       break;
@@ -784,12 +821,13 @@ function gameLoop(timestamp) {
           }
         }
 
-        // Player sword hits boss (only once per swing, gated by boss.hitTimer)
-        if (game.player.attacking && game.boss.hitTimer <= 0) {
+        // Player weapon hits boss (only once per swing, gated by boss.hitTimer)
+        const bossWeapon = getWeapon(game.player.weapon);
+        if (game.player.attacking && game.boss.hitTimer <= 0 && bossWeapon.type !== 'bow') {
           const cx = game.player.x + game.player.hitW / 2;
           const cy = game.player.y + game.player.hitH / 2;
           let hx = cx, hy = cy;
-          const range = 48;
+          const range = getWeaponRange(game.player);
           switch (game.player.facing) {
             case 'up':    hy -= range / 2; break;
             case 'down':  hy += range / 2; break;
@@ -799,10 +837,11 @@ function gameLoop(timestamp) {
           const bx = game.boss.x + game.boss.width / 2;
           const by = game.boss.y + game.boss.height / 2;
           const d = Math.sqrt((hx - bx) ** 2 + (hy - by) ** 2);
+          const totalAtk = getTotalAtk(game.player);
           if (d < range + 20) {
-            game.boss.hp -= game.player.atk;
+            game.boss.hp -= totalAtk;
             game.boss.hitTimer = 0.3;
-            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${game.player.atk}`, '#ffffff'));
+            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${totalAtk}`, '#ffffff'));
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
               game.player.defeatedBosses.push(game.boss.type);
@@ -820,6 +859,34 @@ function gameLoop(timestamp) {
                 game.particles.push(createParticle(game.player.x, game.player.y - 20, 'LEVEL UP!', '#f0c040', 1.5));
               }
               // Win condition
+              if (game.boss.type === 'dark_mage') {
+                game.state = STATE.WIN;
+                deleteSave();
+              }
+            }
+          }
+        }
+
+        // Arrow projectiles hit boss
+        for (let i = game.projectiles.length - 1; i >= 0; i--) {
+          const proj = game.projectiles[i];
+          if (!proj.isArrow) continue;
+          const bx = game.boss.x + game.boss.width / 2;
+          const by = game.boss.y + game.boss.height / 2;
+          const d = Math.sqrt((proj.x - bx) ** 2 + (proj.y - by) ** 2);
+          if (d < 30 && game.boss.hitTimer <= 0) {
+            game.boss.hp -= proj.damage;
+            game.boss.hitTimer = 0.2;
+            game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `-${proj.damage}`, '#ffffff'));
+            game.projectiles.splice(i, 1);
+            if (game.boss.hp <= 0) {
+              game.boss.alive = false;
+              game.player.defeatedBosses.push(game.boss.type);
+              game.player.xp += game.boss.xp;
+              game.player.coins += game.boss.coins;
+              if (game.boss.artifact) {
+                game.player.artifacts[game.boss.artifact] = true;
+              }
               if (game.boss.type === 'dark_mage') {
                 game.state = STATE.WIN;
                 deleteSave();

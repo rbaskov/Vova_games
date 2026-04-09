@@ -6,6 +6,8 @@ export function saveGame(player, currentMapName) {
     xp: player.xp, level: player.level, coins: player.coins,
     potions: player.potions, artifacts: { ...player.artifacts },
     defeatedBosses: [...(player.defeatedBosses || [])],
+    weapon: player.weapon || 'iron_sword',
+    ownedWeapons: [...(player.ownedWeapons || ['iron_sword'])],
     currentMap: currentMapName,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
