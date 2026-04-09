@@ -214,49 +214,210 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
     ctx.translate(-32, 0);
   }
 
-  // Helmet
+  // Helmet — unique per tier
   const helmet = ARMOR[equippedArmor.helmet];
   if (helmet) {
+    const hid = helmet.id;
     ctx.fillStyle = helmet.color;
-    ctx.fillRect(5 * s, 0, 6 * s, 3 * s);
-    ctx.fillStyle = helmet.accent;
-    ctx.fillRect(6 * s, 0, 4 * s, 1 * s);
-    // Visor slit for iron/mithril
-    if (helmet.def >= 3 && facing !== 'up') {
-      ctx.fillStyle = '#222';
-      ctx.fillRect(6 * s, 2 * s, 4 * s, 1 * s);
+
+    if (hid === 'leather_helmet') {
+      // Leather cap — simple rounded top
+      ctx.fillRect(5*s, 0, 6*s, 2*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(6*s, 0, 4*s, 1*s);
+    } else if (hid === 'chain_helmet') {
+      // Chain coif — covers head with mail texture dots
+      ctx.fillRect(5*s, 0, 6*s, 3*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(6*s, 1*s, 1*s, 1*s);
+      ctx.fillRect(8*s, 0, 1*s, 1*s);
+      ctx.fillRect(10*s, 1*s, 1*s, 1*s);
+    } else if (hid === 'iron_helmet') {
+      // Iron helm — full coverage with visor
+      ctx.fillRect(5*s, 0, 6*s, 3*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(6*s, 0, 4*s, 1*s);
+      if (facing !== 'up') { ctx.fillStyle = '#222'; ctx.fillRect(6*s, 2*s, 4*s, 1*s); }
+    } else if (hid === 'gladiator_helmet') {
+      // Gladiator — open face with crest/mohawk
+      ctx.fillRect(5*s, 0, 6*s, 2*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(7*s, -1*s, 2*s, 2*s); // crest
+      ctx.fillRect(6*s, 0, 4*s, 1*s);
+      // Cheek guards
+      ctx.fillStyle = helmet.color;
+      ctx.fillRect(5*s, 2*s, 1*s, 2*s);
+      ctx.fillRect(10*s, 2*s, 1*s, 2*s);
+    } else if (hid === 'mithril_helmet') {
+      // Mithril — elegant with gem
+      ctx.fillRect(5*s, 0, 6*s, 3*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(6*s, 0, 4*s, 1*s);
+      ctx.fillStyle = '#e040fb'; // purple gem
+      ctx.fillRect(7.5*s, 0, 1*s, 1*s);
+      if (facing !== 'up') { ctx.fillStyle = '#222'; ctx.fillRect(6*s, 2*s, 4*s, 1*s); }
+    } else if (hid === 'knight_helmet') {
+      // Knight — great helm, full visor, cross slit
+      ctx.fillRect(4*s, 0, 8*s, 4*s);
+      ctx.fillStyle = helmet.accent;
+      ctx.fillRect(5*s, 0, 6*s, 1*s);
+      if (facing !== 'up') {
+        ctx.fillStyle = '#222';
+        ctx.fillRect(6*s, 2*s, 4*s, 1*s); // horizontal slit
+        ctx.fillRect(7.5*s, 1*s, 1*s, 3*s); // vertical slit (cross)
+      }
+      // Plume
+      ctx.fillStyle = '#c62828';
+      ctx.fillRect(7*s, -2*s, 2*s, 3*s);
+    } else {
+      // Fallback
+      ctx.fillRect(5*s, 0, 6*s, 3*s);
     }
   }
 
-  // Chestplate
+  // Chestplate — unique per tier
   const chest = ARMOR[equippedArmor.chest];
   if (chest) {
+    const cid = chest.id;
     ctx.fillStyle = chest.color;
-    ctx.fillRect(5 * s, 6 * s, 6 * s, 5 * s);
-    // Shoulder pads
-    ctx.fillRect(4 * s, 6 * s, 1 * s, 2 * s);
-    ctx.fillRect(11 * s, 6 * s, 1 * s, 2 * s);
-    // Highlight
-    ctx.fillStyle = chest.accent;
-    ctx.fillRect(6 * s, 7 * s, 4 * s, 2 * s);
-    // Center stripe for iron+
-    if (chest.def >= 5) {
+
+    if (cid === 'leather_chest') {
+      // Leather vest — simple, no shoulders
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
       ctx.fillStyle = chest.accent;
-      ctx.fillRect(7 * s, 6 * s, 2 * s, 5 * s);
+      ctx.fillRect(6*s, 7*s, 4*s, 2*s);
+    } else if (cid === 'chain_chest') {
+      // Chainmail — dotted texture
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
+      ctx.fillStyle = chest.accent;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          ctx.fillRect((6+c*2)*s, (7+r*1.5)*s, 1*s, 0.5*s);
+        }
+      }
+    } else if (cid === 'iron_chest') {
+      // Iron plate — shoulder pads, center rivets
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
+      ctx.fillRect(4*s, 6*s, 1*s, 2*s);
+      ctx.fillRect(11*s, 6*s, 1*s, 2*s);
+      ctx.fillStyle = chest.accent;
+      ctx.fillRect(7*s, 6*s, 2*s, 5*s); // center plate
+      // Rivets
+      ctx.fillStyle = '#555';
+      ctx.fillRect(6*s, 7*s, 1*s, 1*s);
+      ctx.fillRect(9*s, 7*s, 1*s, 1*s);
+    } else if (cid === 'gladiator_chest') {
+      // Gladiator — one shoulder pad, exposed arm, belt straps
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
+      ctx.fillRect(4*s, 6*s, 2*s, 3*s); // big left shoulder
+      ctx.fillStyle = chest.accent;
+      ctx.fillRect(6*s, 8*s, 4*s, 1*s); // belt
+      ctx.fillRect(5*s, 10*s, 6*s, 1*s); // lower belt
+      ctx.fillStyle = '#333';
+      ctx.fillRect(7.5*s, 8*s, 1*s, 1*s); // buckle
+    } else if (cid === 'mithril_chest') {
+      // Mithril — elegant scales, glowing trim
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
+      ctx.fillRect(4*s, 6*s, 1*s, 2*s);
+      ctx.fillRect(11*s, 6*s, 1*s, 2*s);
+      ctx.fillStyle = chest.accent;
+      // Scale pattern
+      for (let r = 0; r < 4; r++) {
+        ctx.fillRect((5.5 + (r%2)*1)*s, (6.5+r)*s, 4*s, 0.5*s);
+      }
+      ctx.fillStyle = '#e040fb';
+      ctx.fillRect(7.5*s, 7*s, 1*s, 1*s); // gem
+    } else if (cid === 'knight_chest') {
+      // Knight — full plate, layered, emblem
+      ctx.fillRect(4*s, 6*s, 8*s, 5*s);
+      // Big shoulder plates
+      ctx.fillRect(3*s, 5*s, 2*s, 3*s);
+      ctx.fillRect(11*s, 5*s, 2*s, 3*s);
+      ctx.fillStyle = chest.accent;
+      ctx.fillRect(5*s, 6*s, 6*s, 2*s); // upper plate
+      ctx.fillRect(6*s, 9*s, 4*s, 2*s); // lower plate
+      // Emblem
+      ctx.fillStyle = '#c62828';
+      ctx.fillRect(7*s, 7*s, 2*s, 2*s);
+    } else if (cid === 'ezanilla_chest') {
+      // Эзанилла — glowing chainmail, magical aura
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
+      ctx.fillRect(4*s, 6*s, 1*s, 2*s);
+      ctx.fillRect(11*s, 6*s, 1*s, 2*s);
+      ctx.fillStyle = chest.accent;
+      // Shimmering mail links
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 4; c++) {
+          ctx.fillRect((5.5+c*1.3)*s, (6.2+r)*s, 0.8*s, 0.5*s);
+        }
+      }
+      // Magic glow dots
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(6*s, 7*s, 0.5*s, 0.5*s);
+      ctx.fillRect(9*s, 8*s, 0.5*s, 0.5*s);
+      ctx.fillRect(7*s, 10*s, 0.5*s, 0.5*s);
+    } else {
+      ctx.fillRect(5*s, 6*s, 6*s, 5*s);
     }
   }
 
-  // Leggings
+  // Leggings — unique per tier
   const legs = ARMOR[equippedArmor.legs];
   if (legs) {
+    const lid = legs.id;
     ctx.fillStyle = legs.color;
-    ctx.fillRect(5 * s, 12 * s, 2 * s, 4 * s);
-    ctx.fillRect(9 * s, 12 * s, 2 * s, 4 * s);
-    // Knee guards for iron+
-    if (legs.def >= 3) {
+
+    if (lid === 'leather_legs') {
+      // Leather pants — simple
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
+    } else if (lid === 'chain_legs') {
+      // Chain leggings — mail dots
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
       ctx.fillStyle = legs.accent;
-      ctx.fillRect(5 * s, 13 * s, 2 * s, 1 * s);
-      ctx.fillRect(9 * s, 13 * s, 2 * s, 1 * s);
+      ctx.fillRect(5*s, 13*s, 1*s, 0.5*s);
+      ctx.fillRect(6*s, 14*s, 1*s, 0.5*s);
+      ctx.fillRect(9*s, 13*s, 1*s, 0.5*s);
+      ctx.fillRect(10*s, 14*s, 1*s, 0.5*s);
+    } else if (lid === 'iron_legs') {
+      // Iron greaves — knee guards
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
+      ctx.fillStyle = legs.accent;
+      ctx.fillRect(5*s, 12*s, 2*s, 1*s); // knee plate
+      ctx.fillRect(9*s, 12*s, 2*s, 1*s);
+    } else if (lid === 'gladiator_legs') {
+      // Gladiator — strapped greaves, open sides
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
+      ctx.fillStyle = legs.accent;
+      ctx.fillRect(5*s, 12*s, 2*s, 0.5*s); // top strap
+      ctx.fillRect(5*s, 14*s, 2*s, 0.5*s); // mid strap
+      ctx.fillRect(9*s, 12*s, 2*s, 0.5*s);
+      ctx.fillRect(9*s, 14*s, 2*s, 0.5*s);
+    } else if (lid === 'mithril_legs') {
+      // Mithril — elegant greaves with gem
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
+      ctx.fillStyle = legs.accent;
+      ctx.fillRect(5*s, 12*s, 2*s, 1*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 1*s);
+      ctx.fillStyle = '#e040fb';
+      ctx.fillRect(5.5*s, 12.5*s, 0.5*s, 0.5*s); // tiny gem
+      ctx.fillRect(9.5*s, 12.5*s, 0.5*s, 0.5*s);
+    } else if (lid === 'knight_legs') {
+      // Knight — full plate legs, layered
+      ctx.fillRect(4*s, 12*s, 3*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 3*s, 4*s);
+      ctx.fillStyle = legs.accent;
+      ctx.fillRect(4*s, 12*s, 3*s, 1*s); // knee plate
+      ctx.fillRect(9*s, 12*s, 3*s, 1*s);
+      ctx.fillRect(5*s, 14*s, 1*s, 1*s); // shin plate
+      ctx.fillRect(10*s, 14*s, 1*s, 1*s);
+    } else {
+      ctx.fillRect(5*s, 12*s, 2*s, 4*s);
+      ctx.fillRect(9*s, 12*s, 2*s, 4*s);
     }
   }
 
