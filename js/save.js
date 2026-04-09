@@ -1,6 +1,6 @@
 const SAVE_KEY = 'eldoria_save';
 
-export function saveGame(player, currentMapName) {
+export function saveGame(player, currentMapName, openWorldState) {
   const data = {
     hp: player.hp, maxHp: player.maxHp, atk: player.atk,
     xp: player.xp, level: player.level, coins: player.coins,
@@ -16,6 +16,17 @@ export function saveGame(player, currentMapName) {
     hasHorse: player._hasHorse || false,
     currentMap: currentMapName,
   };
+
+  if (openWorldState) {
+    data.openWorld = {
+      seed: openWorldState.seed,
+      playerX: openWorldState.playerX,
+      playerY: openWorldState.playerY,
+      changes: openWorldState.changes,
+      kills: openWorldState.kills,
+    };
+  }
+
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
 
