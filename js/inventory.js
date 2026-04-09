@@ -259,50 +259,163 @@ function drawBanditWeaponIcon(ctx, x, y, w) {
 }
 
 function drawWeaponIcon(ctx, x, y, w) {
-  // Bandit weapons have unique rough/damaged icons
-  if (w.id && w.id.startsWith('bandit_')) {
-    drawBanditWeaponIcon(ctx, x, y, w);
-    return;
-  }
-
+  if (w.id && w.id.startsWith('bandit_')) { drawBanditWeaponIcon(ctx, x, y, w); return; }
   const cx = x + 16, cy = y + 16;
-  switch (w.type) {
-    case 'sword':
-      ctx.fillStyle = w.color;
-      ctx.fillRect(cx - 1, cy - 10, 3, 16);
-      ctx.fillStyle = '#8d6e63';
-      ctx.fillRect(cx - 4, cy + 4, 9, 3);
-      break;
-    case 'spear':
-      ctx.fillStyle = '#8d6e63';
-      ctx.fillRect(cx - 1, cy - 8, 2, 18);
-      ctx.fillStyle = w.color === '#8d6e63' ? '#bdbdbd' : w.color;
-      ctx.fillRect(cx - 3, cy - 12, 6, 6);
-      break;
-    case 'bow':
-      ctx.fillStyle = w.color;
-      ctx.fillRect(cx - 6, cy - 8, 2, 16);
-      ctx.beginPath();
-      ctx.moveTo(cx - 4, cy - 8);
-      ctx.quadraticCurveTo(cx + 4, cy, cx - 4, cy + 8);
-      ctx.strokeStyle = w.color;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(cx - 5, cy - 1, 8, 1);
-      break;
-    case 'axe':
-      // Axe handle
-      ctx.fillStyle = '#5d4037';
-      ctx.fillRect(cx - 1, cy - 4, 2, 16);
-      // Axe head
-      ctx.fillStyle = w.color;
-      ctx.fillRect(cx - 6, cy - 8, 10, 6);
-      // Edge highlight
-      const axeBright = { '#78909c':'#b0bec5', '#90caf9':'#bbdefb', '#c9a04e':'#dbb85c', '#b0bec5':'#eceff1' };
-      ctx.fillStyle = axeBright[w.color] || '#fff';
-      ctx.fillRect(cx - 6, cy - 8, 2, 6);
-      break;
+  const id = w.id || '';
+
+  // === SWORDS ===
+  if (id === 'iron_sword') {
+    // Simple iron blade
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(cx - 1, cy - 10, 3, 14);
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillRect(cx - 1, cy - 10, 3, 3);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 3, cy + 3, 7, 2);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy + 5, 1, 4);
+  } else if (id === 'steel_sword') {
+    // Polished blue-tint blade, wider guard
+    ctx.fillStyle = '#90caf9';
+    ctx.fillRect(cx - 1, cy - 11, 3, 15);
+    ctx.fillStyle = '#bbdefb';
+    ctx.fillRect(cx, cy - 11, 1, 6);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 4, cy + 3, 9, 2);
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 1, cy + 3, 3, 2);
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(cx - 1, cy + 5, 3, 4);
+  } else if (id === 'mithril_sword') {
+    // Glowing purple blade with gem
+    ctx.fillStyle = '#ce93d8';
+    ctx.fillRect(cx - 1, cy - 12, 3, 16);
+    ctx.fillStyle = '#e1bee7';
+    ctx.fillRect(cx, cy - 12, 1, 5);
+    ctx.fillStyle = '#4a148c';
+    ctx.fillRect(cx - 4, cy + 3, 9, 3);
+    ctx.fillStyle = '#e040fb';
+    ctx.fillRect(cx - 1, cy + 4, 3, 1);
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(cx - 1, cy + 6, 3, 3);
+  } else if (id === 'fire_spear') {
+    // Fire spear — burning tip
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx, cy - 4, 2, 18);
+    ctx.fillStyle = '#ff7043';
+    ctx.fillRect(cx - 2, cy - 10, 6, 8);
+    ctx.fillStyle = '#ffab40';
+    ctx.fillRect(cx - 1, cy - 12, 4, 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx, cy - 11, 2, 2);
+  } else if (id === 'spear') {
+    // Basic wooden spear
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx, cy - 4, 2, 18);
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(cx - 2, cy - 10, 6, 7);
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillRect(cx - 1, cy - 12, 4, 4);
+  } else if (id === 'bow') {
+    // Simple wooden bow
+    ctx.fillStyle = '#a1887f';
+    ctx.fillRect(cx - 6, cy - 8, 2, 16);
+    ctx.strokeStyle = '#a1887f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 4, cy - 8);
+    ctx.quadraticCurveTo(cx + 3, cy, cx - 4, cy + 8);
+    ctx.stroke();
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(cx - 5, cy - 8, 1, 16);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 4, cy - 1, 8, 2);
+  } else if (id === 'crossbow') {
+    // Mechanical crossbow
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(cx - 7, cy - 2, 14, 3);
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 2, cy - 4, 4, 12);
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(cx - 7, cy - 1, 14, 1);
+    ctx.fillStyle = '#455a64';
+    ctx.fillRect(cx - 1, cy + 4, 2, 4);
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(cx - 1, cy - 6, 2, 4);
+  } else if (id === 'iron_axe') {
+    // Simple iron axe
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 2, 2, 14);
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(cx - 5, cy - 7, 8, 6);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 5, cy - 7, 2, 6);
+  } else if (id === 'steel_axe') {
+    // Blue steel double-edged
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 2, 2, 14);
+    ctx.fillStyle = '#90caf9';
+    ctx.fillRect(cx - 6, cy - 8, 10, 7);
+    ctx.fillStyle = '#bbdefb';
+    ctx.fillRect(cx - 6, cy - 8, 2, 7);
+    ctx.fillRect(cx + 2, cy - 8, 2, 7);
+    // Rivets
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx - 1, cy - 5, 1, 1);
+    ctx.fillRect(cx + 2, cy - 5, 1, 1);
+  } else if (id === 'gladiator_axe') {
+    // Golden double axe with wrap
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 2, 2, 14);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 1, cy + 4, 4, 2);
+    ctx.fillStyle = '#c9a04e';
+    ctx.fillRect(cx - 7, cy - 9, 12, 8);
+    ctx.fillStyle = '#dbb85c';
+    ctx.fillRect(cx - 7, cy - 9, 2, 8);
+    ctx.fillRect(cx + 3, cy - 9, 2, 8);
+    // Center emblem
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 1, cy - 6, 4, 3);
+  } else if (id === 'knight_axe') {
+    // Ornate steel greataxe with cross
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 2, 2, 14);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 8, cy - 10, 14, 9);
+    ctx.fillStyle = '#eceff1';
+    ctx.fillRect(cx - 8, cy - 10, 2, 9);
+    ctx.fillRect(cx + 4, cy - 10, 2, 9);
+    // Red cross emblem
+    ctx.fillStyle = '#c62828';
+    ctx.fillRect(cx - 1, cy - 8, 4, 1);
+    ctx.fillRect(cx, cy - 9, 2, 3);
+    // Gold pommel
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 1, cy + 10, 4, 2);
+  } else {
+    // Fallback generic by type
+    ctx.fillStyle = w.color;
+    switch (w.type) {
+      case 'sword':
+        ctx.fillRect(cx - 1, cy - 10, 3, 16);
+        ctx.fillStyle = '#8d6e63';
+        ctx.fillRect(cx - 3, cy + 4, 7, 2);
+        break;
+      case 'spear':
+        ctx.fillRect(cx, cy - 8, 2, 18);
+        ctx.fillRect(cx - 2, cy - 12, 6, 5);
+        break;
+      case 'bow':
+        ctx.fillRect(cx - 5, cy - 8, 2, 16);
+        break;
+      case 'axe':
+        ctx.fillStyle = '#5d4037';
+        ctx.fillRect(cx, cy - 2, 2, 14);
+        ctx.fillStyle = w.color;
+        ctx.fillRect(cx - 5, cy - 7, 8, 6);
+        break;
+    }
   }
 }
 
