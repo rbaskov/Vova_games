@@ -83,8 +83,8 @@ export const ARMOR = {
   },
   ezanilla_chest: {
     id: 'ezanilla_chest', slot: 'chest',
-    name: 'Кольчуга Эзаниллы', desc: '+12 DEF +40 HP',
-    def: 12, bonusHp: 40, price: 400,
+    name: 'Кольчуга Эзаниллы', desc: '+1000 DEF +40 HP',
+    def: 1000, bonusHp: 40, price: 400,
     color: '#26c6da', accent: '#80deea',
   },
 
