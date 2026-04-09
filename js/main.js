@@ -15,6 +15,7 @@ import { openDialog, isDialogOpen, dialogInput, renderDialog, closeDialog } from
 import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, renderProjectiles, renderAbilityBar } from './abilities.js';
 import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
+import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 
 // --- Game States ---
 export const STATE = {
@@ -534,6 +535,7 @@ function renderHelpOverlay(ctx) {
     '1 — Каменный щит',
     '2 — Огненный шар',
     '3 — Ледяная волна',
+    'I — Инвентарь',
     'H — Эта справка',
   ];
   let lineY = y + 70;
@@ -850,6 +852,10 @@ function gameLoop(timestamp) {
 
       // --- Help toggle ---
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
+      if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
+        resetInventorySelection();
+        game.state = STATE.INVENTORY;
+      }
 
       // --- NPC interaction ---
       if (isKeyPressed('KeyE')) {
@@ -914,7 +920,20 @@ function gameLoop(timestamp) {
       break;
 
     case STATE.INVENTORY:
-      // Placeholder for future tasks
+      // Input
+      if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) inventoryInput('up', game.player);
+      if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) inventoryInput('down', game.player);
+      if (isKeyPressed('ArrowLeft') || isKeyPressed('KeyA')) inventoryInput('left', game.player);
+      if (isKeyPressed('ArrowRight') || isKeyPressed('KeyD')) inventoryInput('right', game.player);
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
+        inventoryInput('use', game.player, game.particles, createParticle);
+      }
+      if (isKeyPressed('KeyI') || isKeyPressed('Tab') || isKeyPressed('Escape')) {
+        game.state = STATE.PLAY;
+      }
+      // Render
+      renderPlay(ctx);
+      renderInventory(ctx, game.player, game.width, game.height);
       break;
 
     case STATE.GAMEOVER:
