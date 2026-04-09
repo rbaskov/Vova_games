@@ -5,8 +5,8 @@ let currentNodeIndex = 0;
 let selectedChoice = 0;
 let actionCallback = null;
 
-export function openDialog(npcId, npcName, onAction) {
-  const tree = DIALOGS[npcId];
+export function openDialog(npcId, npcName, onAction, customTree) {
+  const tree = customTree || DIALOGS[npcId];
   if (!tree) return false;
   currentDialog = tree;
   currentDialog._npcName = npcName;

@@ -19,6 +19,7 @@ import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKnockback, createArrow, drawWeaponAttack, drawWeaponRest } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero } from './armor.js';
+import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
 
 // --- Game States ---
 export const STATE = {
@@ -54,6 +55,7 @@ export const game = {
   currentMapName: null,
   checkpoint: null,
   sandbox: false,
+  showQuestLog: false,
 };
 
 // --- Map Registry ---
@@ -92,6 +94,7 @@ function createPlayer(startX, startY) {
     ownedWeapons: ['iron_sword'],
     equippedArmor: { helmet: null, chest: null, legs: null },
     ownedArmor: [],
+    quests: {},
   };
 }
 
@@ -103,6 +106,14 @@ function loadMap(mapKey, spawnX, spawnY) {
   const tileMap = createTileMap(mapData);
   game.currentMap = tileMap;
   game.currentMapName = mapKey;
+
+  // Quest: visit map progress
+  if (game.player) {
+    const visitDone = updateVisitProgress(game.player, mapKey);
+    for (const q of visitDone) {
+      game.particles.push(createParticle(game.player.x, game.player.y - 32, `Квест: ${q.name}!`, '#4caf50', 2));
+    }
+  }
 
   // Create or reposition player
   const sx = spawnX !== undefined ? spawnX : tileMap.playerStart.x;
@@ -221,6 +232,7 @@ function saveCheckpoint() {
     ownedWeapons: [...p.ownedWeapons],
     equippedArmor: { ...p.equippedArmor },
     ownedArmor: [...(p.ownedArmor || [])],
+    quests: p.quests ? JSON.parse(JSON.stringify(p.quests)) : {},
     defeatedBosses: [...p.defeatedBosses],
   };
 }
@@ -266,6 +278,7 @@ function respawnAtCheckpoint() {
   p.ownedWeapons = [...cp.ownedWeapons];
   p.equippedArmor = { ...cp.equippedArmor };
   p.ownedArmor = [...(cp.ownedArmor || [])];
+  p.quests = cp.quests ? JSON.parse(JSON.stringify(cp.quests)) : {};
   p.defeatedBosses = [...cp.defeatedBosses];
   p.invincibleTimer = 1.5; // brief invincibility after respawn
   p.attacking = false;
@@ -342,6 +355,22 @@ function handleDialogAction(action) {
       game.particles.push(createParticle(p.x, p.y - 8, w.name + '!', '#ffd54f'));
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
+  } else if (action.startsWith('quest_accept_')) {
+    const qid = action.slice(13);
+    acceptQuest(p, qid);
+    const q = QUESTS[qid];
+    game.particles.push(createParticle(p.x, p.y - 8, 'Квест принят!', '#4fc3f7', 1.5));
+    game.particles.push(createParticle(p.x, p.y - 20, q.name, '#ffd54f', 1.5));
+  } else if (action.startsWith('quest_claim_')) {
+    const qid = action.slice(12);
+    if (claimReward(p, qid)) {
+      const q = QUESTS[qid];
+      game.particles.push(createParticle(p.x, p.y - 16, 'Награда!', '#ffd54f', 1.5));
+      game.particles.push(createParticle(p.x, p.y - 4, q.rewardText, '#44cc44', 1.5));
+      if (checkLevelUp(p)) {
+        game.particles.push(createParticle(p.x, p.y - 28, 'LEVEL UP!', '#f0c040', 1.5));
+      }
     }
   }
 }
@@ -688,6 +717,7 @@ function renderHelpOverlay(ctx) {
     '2 — Огненный шар',
     '3 — Ледяная волна',
     'I — Инвентарь',
+    'J — Журнал квестов',
     'H — Эта справка',
   ];
   let lineY = y + 70;
@@ -859,6 +889,7 @@ function gameLoop(timestamp) {
           p.ownedWeapons = [...(save.ownedWeapons || ['iron_sword'])];
           p.equippedArmor = { ...(save.equippedArmor || { helmet: null, chest: null, legs: null }) };
           p.ownedArmor = [...(save.ownedArmor || [])];
+          p.quests = save.quests ? JSON.parse(JSON.stringify(save.quests)) : {};
         }
       }
       break;
@@ -885,6 +916,11 @@ function gameLoop(timestamp) {
           if (Math.random() < 0.2) {
             game.player.potions++;
             game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
+          }
+          // Quest progress
+          const questsDone = updateKillProgress(game.player, enemy.type);
+          for (const q of questsDone) {
+            game.particles.push(createParticle(game.player.x, game.player.y - 32, `Квест: ${q.name}!`, '#4caf50', 2));
           }
           // Check level up
           if (checkLevelUp(game.player)) {
@@ -1006,6 +1042,11 @@ function gameLoop(timestamp) {
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
               game.player.defeatedBosses.push(game.boss.type);
+              // Boss quest progress
+              const bqDone = updateBossProgress(game.player, game.boss.type);
+              for (const q of bqDone) {
+                game.particles.push(createParticle(game.player.x, game.player.y - 40, `Квест: ${q.name}!`, '#4caf50', 2));
+              }
               // Rewards
               game.player.xp += game.boss.xp;
               game.player.coins += game.boss.coins;
@@ -1080,6 +1121,7 @@ function gameLoop(timestamp) {
 
       // --- Help toggle ---
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
+      if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
       if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
         resetInventorySelection();
         game.state = STATE.INVENTORY;
@@ -1089,7 +1131,32 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyE')) {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
         if (nearNPC) {
-          if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction)) {
+          // Check for quests from this NPC
+          const { available, completedReady } = getNpcQuests(game.player, nearNPC.id);
+
+          // If NPC has quest stuff, show quest dialog instead
+          if (completedReady.length > 0) {
+            // Completed quest — offer to claim reward
+            const q = completedReady[0];
+            if (openDialog('_quest_complete', nearNPC.name, handleDialogAction, [
+              { text: `Квест "${q.name}" выполнен! Вот твоя награда: ${q.rewardText}.`,
+                choices: [{ text: 'Получить награду', action: `quest_claim_${q.questId}`, next: null }] }
+            ])) {
+              game.state = STATE.DIALOG;
+            }
+          } else if (available.length > 0) {
+            // Available quests — offer before normal dialog
+            const q = available[0];
+            if (openDialog('_quest_offer', nearNPC.name, handleDialogAction, [
+              { text: `${q.desc}. Награда: ${q.rewardText}. Берёшься?`,
+                choices: [
+                  { text: 'Принять квест!', action: `quest_accept_${q.questId}`, next: null },
+                  { text: 'Не сейчас', next: null },
+                ] }
+            ])) {
+              game.state = STATE.DIALOG;
+            }
+          } else if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction)) {
             game.state = STATE.DIALOG;
           }
         }
@@ -1124,9 +1191,17 @@ function gameLoop(timestamp) {
         }
       }
 
+      // --- Quest tracker ---
+      renderQuestTracker(ctx, game.player, game.width);
+
       // --- Help overlay ---
       if (game.showHelp) {
         renderHelpOverlay(ctx);
+      }
+
+      // --- Quest log overlay ---
+      if (game.showQuestLog) {
+        renderQuestLog(ctx, game.player, game.width, game.height);
       }
       break;
 
