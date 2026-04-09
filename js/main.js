@@ -14,6 +14,7 @@ import { getNearbyNPC } from './npc.js';
 import { openDialog, isDialogOpen, dialogInput, renderDialog, closeDialog } from './dialog.js';
 import { useAbility, updateProjectiles, updateCooldowns, updateSlowTimers, renderProjectiles, renderAbilityBar } from './abilities.js';
 import { createBoss, updateBoss, renderBoss, renderBossHPBar } from './bosses.js';
+import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 
 // --- Game States ---
 export const STATE = {
@@ -45,6 +46,7 @@ export const game = {
   totalTime: 0,
   boss: null,
   showHelp: false,
+  currentMapName: null,
 };
 
 // --- Map Registry ---
@@ -87,6 +89,7 @@ function loadMap(mapKey, spawnX, spawnY) {
 
   const tileMap = createTileMap(mapData);
   game.currentMap = tileMap;
+  game.currentMapName = mapKey;
 
   // Create or reposition player
   const sx = spawnX !== undefined ? spawnX : tileMap.playerStart.x;
@@ -150,6 +153,7 @@ function checkPortals() {
   const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
   const portal = isPortal(game.currentMap, centerCol, centerRow);
   if (portal) {
+    saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
   }
 }
@@ -347,7 +351,11 @@ function renderMenu(ctx, dt) {
   if (blink) {
     ctx.font = '14px "Press Start 2P"';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('НАЖМИ ENTER', width / 2, 340);
+    if (hasSave()) {
+      ctx.fillText('ENTER=Новая  C=Продолжить', width / 2, 340);
+    } else {
+      ctx.fillText('НАЖМИ ENTER', width / 2, 340);
+    }
   }
 
   // Footer
@@ -509,8 +517,28 @@ function gameLoop(timestamp) {
     case STATE.MENU:
       renderMenu(ctx, dt);
       if (isKeyPressed('Enter')) {
+        deleteSave();
+        game.player = null;
         game.state = STATE.PLAY;
         loadMap('village');
+      }
+      if (isKeyPressed('KeyC') && hasSave()) {
+        const save = loadGame();
+        if (save) {
+          game.player = null;
+          game.state = STATE.PLAY;
+          loadMap(save.currentMap);
+          // Restore player stats from save
+          const p = game.player;
+          p.hp = save.hp;
+          p.maxHp = save.maxHp;
+          p.atk = save.atk;
+          p.xp = save.xp;
+          p.level = save.level;
+          p.coins = save.coins;
+          p.potions = save.potions;
+          p.artifacts = { ...save.artifacts };
+        }
       }
       break;
 
@@ -658,6 +686,7 @@ function gameLoop(timestamp) {
               // Win condition
               if (game.boss.type === 'dark_mage') {
                 game.state = STATE.WIN;
+                deleteSave();
               }
             }
           }
