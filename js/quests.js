@@ -203,18 +203,31 @@ export function claimReward(player, questId) {
 
 export function getActiveQuests(player) {
   if (!player.quests) return [];
-  return Object.entries(player.quests)
-    .filter(([_, s]) => s.status === 'active')
-    .map(([id, s]) => ({ ...QUESTS[id], ...s }))
-    .filter(q => q.name);
+  const result = [];
+  for (const [id, s] of Object.entries(player.quests)) {
+    if (s.status !== 'active') continue;
+    if (id.startsWith('_gen_')) {
+      // Generated quest — data stored in state
+      if (s._questData) result.push({ ...s._questData, progress: s.progress, generated: true });
+    } else if (QUESTS[id]) {
+      result.push({ ...QUESTS[id], ...s });
+    }
+  }
+  return result;
 }
 
 export function getCompletedQuests(player) {
   if (!player.quests) return [];
-  return Object.entries(player.quests)
-    .filter(([_, s]) => s.status === 'completed')
-    .map(([id, s]) => ({ ...QUESTS[id], questId: id }))
-    .filter(q => q.name);
+  const result = [];
+  for (const [id, s] of Object.entries(player.quests)) {
+    if (s.status !== 'completed') continue;
+    if (id.startsWith('_gen_') && s._questData) {
+      result.push({ ...s._questData, questId: id, generated: true });
+    } else if (QUESTS[id]) {
+      result.push({ ...QUESTS[id], questId: id });
+    }
+  }
+  return result;
 }
 
 // Get quests available from a specific NPC
@@ -254,7 +267,7 @@ export function renderQuestTracker(ctx, player, width) {
   for (let i = 0; i < Math.min(active.length, 4); i++) {
     const q = active[i];
     const y = trackerY + 22 + i * 18;
-    ctx.fillStyle = '#ccc';
+    ctx.fillStyle = q.generated ? '#90caf9' : '#ffd54f';
     ctx.fillText(q.name, trackerX + 4, y);
     ctx.fillStyle = '#888';
     ctx.fillText(`${q.progress}/${q.targetCount}`, trackerX + 4, y + 10);

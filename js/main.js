@@ -25,6 +25,7 @@ import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero, tryBloc
 import { generateDungeon } from './dungeon.js';
 import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
 import { generateEvents, openChest, updateAmbush, updateBuff, getBuffAtkMultiplier, getBuffSpeedMultiplier, isBuffInvincible, getBuffVampirism, applyBuff, getTraderDialog, drawChest, drawBuffStone, drawSecretPortal, drawEliteIndicator } from './events.js';
+import { generateQuest, hasActiveGenQuest, getCompletedGenQuest, acceptGenQuest, claimGenReward, updateGenKillProgress, updateGenBossProgress, updateGenVisitProgress, updateGenArenaProgress, getActiveGenQuests } from './questgen.js';
 import * as SFX from './audio.js';
 
 // --- Game States ---
@@ -575,7 +576,8 @@ function loadMap(mapKey, spawnX, spawnY) {
   // Quest: visit map progress
   if (game.player) {
     const visitDone = updateVisitProgress(game.player, mapKey);
-    for (const q of visitDone) {
+    const genVisitDone = updateGenVisitProgress(game.player, mapKey);
+    for (const q of [...visitDone, ...genVisitDone]) {
       game.particles.push(createParticle(game.player.x, game.player.y - 32, `Квест: ${q.name}!`, '#4caf50', 2));
     }
   }
@@ -918,6 +920,23 @@ function handleDialogAction(action) {
     SFX.playMenuSelect();
   } else if (action.startsWith('quest_claim_')) {
     SFX.playQuestComplete();
+  } else if (action.startsWith('gen_offer_')) {
+    const npcId = action.slice(10);
+    const quest = generateQuest(npcId, p.level, p.defeatedBosses);
+    if (quest) {
+      acceptGenQuest(p, quest);
+      game.particles.push(createParticle(p.x, p.y - 8, 'Задание принято!', '#90caf9', 1.5));
+      game.particles.push(createParticle(p.x, p.y - 20, quest.name, '#ffd54f', 1.5));
+    }
+  } else if (action.startsWith('gen_claim_')) {
+    const qid = action.slice(10);
+    if (claimGenReward(p, qid)) {
+      game.particles.push(createParticle(p.x, p.y - 16, 'Награда!', '#ffd54f', 1.5));
+      if (checkLevelUp(p)) {
+        game.particles.push(createParticle(p.x, p.y - 28, 'LEVEL UP!', '#f0c040', 1.5));
+      }
+      SFX.playQuestComplete();
+    }
   } else if (action === 'king_blessing') {
     SFX.playCheckpoint();
   }
@@ -2068,6 +2087,11 @@ function gameLoop(timestamp) {
           game.arenaTimer -= dt;
           if (game.arenaTimer <= 0) {
             game.arenaWave++;
+            // Update arena quest progress
+            const arenaQDone = updateGenArenaProgress(game.player, game.arenaWave);
+            for (const q of arenaQDone) {
+              game.particles.push(createParticle(game.player.x, game.player.y - 40, `Квест: ${q.name}!`, '#4caf50', 2));
+            }
             const newEnemy = spawnEnemy('gladiator', 10, 9);
             if (newEnemy) {
               game.enemies = [newEnemy];
@@ -2122,7 +2146,8 @@ function gameLoop(timestamp) {
           }
           // Quest progress
           const questsDone = updateKillProgress(game.player, enemy.type);
-          for (const q of questsDone) {
+          const genQuestsDone = updateGenKillProgress(game.player, enemy.type);
+          for (const q of [...questsDone, ...genQuestsDone]) {
             game.particles.push(createParticle(game.player.x, game.player.y - 32, `Квест: ${q.name}!`, '#4caf50', 2));
             SFX.playQuestComplete();
           }
@@ -2313,7 +2338,8 @@ function gameLoop(timestamp) {
               game.player.defeatedBosses.push(game.boss.type);
               // Boss quest progress
               const bqDone = updateBossProgress(game.player, game.boss.type);
-              for (const q of bqDone) {
+              const genBqDone = updateGenBossProgress(game.player, game.boss.type);
+              for (const q of [...bqDone, ...genBqDone]) {
                 game.particles.push(createParticle(game.player.x, game.player.y - 40, `Квест: ${q.name}!`, '#4caf50', 2));
               }
               // Rewards
@@ -2532,6 +2558,14 @@ function gameLoop(timestamp) {
           }
           for (const q of available) {
             extraChoices.push({ text: `! Квест: ${q.name}`, action: `quest_accept_${q.questId}`, next: 0 });
+          }
+
+          // Generated quests (for elder, king, dungeon_guard)
+          const genCompleted = getCompletedGenQuest(game.player, nearNPC.id);
+          if (genCompleted) {
+            extraChoices.push({ text: `✓ Сдать: ${genCompleted.name}`, action: `gen_claim_${genCompleted.questId}`, next: 0 });
+          } else if (!hasActiveGenQuest(game.player, nearNPC.id) && ['elder', 'king', 'dungeon_guard'].includes(nearNPC.id)) {
+            extraChoices.push({ text: '★ Новое задание', action: `gen_offer_${nearNPC.id}`, next: 0 });
           }
 
           if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction, null, extraChoices)) {
