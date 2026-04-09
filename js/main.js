@@ -111,12 +111,17 @@ function loadMap(mapKey, spawnX, spawnY) {
     dungeonDepth = 1;
     mapData = generateDungeon(dungeonDepth);
     MAP_REGISTRY._currentDungeon = mapData;
+    // Force using playerStart from generated map
+    spawnX = undefined;
+    spawnY = undefined;
   } else if (mapKey === '_dungeon_next') {
     // Go deeper into dungeon
     dungeonDepth++;
     mapData = generateDungeon(dungeonDepth);
     MAP_REGISTRY._currentDungeon = mapData;
     mapKey = 'dungeon_' + dungeonDepth;
+    spawnX = undefined;
+    spawnY = undefined;
   } else {
     mapData = MAP_REGISTRY[mapKey];
   }

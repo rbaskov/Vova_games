@@ -159,7 +159,7 @@ export function generateDungeon(depth) {
     width: MAP_W,
     height: MAP_H,
     tiles,
-    playerStart: { x: startX, y: startY - 1 },
+    playerStart: { x: startRoom.x + 1, y: startRoom.y + 1 },
     portals: [
       // Entrance — back to village
       { col: startX, row: startY, target: 'village', spawnX: 14, spawnY: 12 },
