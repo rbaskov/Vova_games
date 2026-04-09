@@ -11,6 +11,7 @@ export function saveGame(player, currentMapName) {
     equippedArmor: { ...(player.equippedArmor || { helmet: null, chest: null, legs: null }) },
     ownedArmor: [...(player.ownedArmor || [])],
     quests: player.quests ? JSON.parse(JSON.stringify(player.quests)) : {},
+    companions: player._companions || [],
     currentMap: currentMapName,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));

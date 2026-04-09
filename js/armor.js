@@ -494,15 +494,105 @@ export function drawArmorOnHero(ctx, x, y, facing, equippedArmor, s) {
   // Shield (on left arm) — hidden with two-handed weapons
   const shield = ARMOR[equippedArmor.shield];
   if (shield && !equippedArmor._twoHanded) {
-    ctx.fillStyle = shield.color;
-    ctx.fillRect(1 * s, 7 * s, 4 * s, 6 * s);
-    ctx.fillStyle = shield.accent;
-    ctx.fillRect(2 * s, 8 * s, 2 * s, 4 * s);
-    // Cross/emblem for iron+
-    if (shield.def >= 3) {
+    const sid = shield.id;
+    if (sid === 'wooden_shield') {
+      // Round wooden shield with plank lines
+      ctx.fillStyle = '#6d4c41';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#5d4037';
+      ctx.fillRect(1.5*s, 9*s, 3*s, 0.5*s);
+      ctx.fillRect(1.5*s, 11*s, 3*s, 0.5*s);
+      // Iron boss
+      ctx.fillStyle = '#999';
+      ctx.fillRect(2.5*s, 9.5*s, 1*s, 1*s);
+    } else if (sid === 'iron_shield') {
+      // Steel kite shield with vertical ridge
+      ctx.fillStyle = '#607d8b';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#90a4ae';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      // Vertical ridge
+      ctx.fillStyle = '#b0bec5';
+      ctx.fillRect(2.7*s, 7*s, 0.6*s, 6*s);
+      // Rivets
+      ctx.fillStyle = '#cfd8dc';
+      ctx.fillRect(1.5*s, 7.5*s, 0.5*s, 0.5*s);
+      ctx.fillRect(3.5*s, 7.5*s, 0.5*s, 0.5*s);
+    } else if (sid === 'fire_shield') {
+      // Burning orange shield with flames
+      ctx.fillStyle = '#bf360c';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#e65100';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#ff9800';
+      ctx.fillRect(2*s, 8*s, 2*s, 3*s);
+      // Flame tip
+      ctx.fillStyle = '#ffeb3b';
+      ctx.fillRect(2.5*s, 7.5*s, 1*s, 1.5*s);
+    } else if (sid === 'mithril_shield') {
+      // Purple mithril with gem
+      ctx.fillStyle = '#7e57c2';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#9575cd';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#b39ddb';
+      ctx.fillRect(2*s, 8.5*s, 2*s, 3*s);
+      // Purple gem
+      ctx.fillStyle = '#e040fb';
+      ctx.fillRect(2.5*s, 9.5*s, 1*s, 1*s);
+    } else if (sid === 'mirror_shield') {
+      // Chrome mirror with light glints
+      ctx.fillStyle = '#bdbdbd';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#e0e0e0';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(2*s, 8*s, 2*s, 3*s);
+      // Light glint
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(1.5*s, 7.5*s, 1*s, 0.5*s);
+      // Blue center
+      ctx.fillStyle = '#90caf9';
+      ctx.fillRect(2.5*s, 9.5*s, 1*s, 1*s);
+    } else if (sid === 'moremirida_shield') {
+      // Divine teal shield with golden border
+      ctx.fillStyle = '#00796b';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#00bfa5';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#64ffda';
+      ctx.fillRect(2*s, 8.5*s, 2*s, 3*s);
+      // Golden border
+      ctx.fillStyle = '#ffd54f';
+      ctx.fillRect(1*s, 7*s, 4*s, 0.5*s);
+      ctx.fillRect(1*s, 7*s, 0.5*s, 6*s);
+      ctx.fillRect(4.5*s, 7*s, 0.5*s, 6*s);
+      // White rune
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(2.5*s, 9*s, 1*s, 2*s);
+    } else if (sid === 'rockdemon_shield') {
+      // Demonic red shield with lava cracks
+      ctx.fillStyle = '#8b0000';
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = '#d50000';
+      ctx.fillRect(1.5*s, 7.5*s, 3*s, 5*s);
+      ctx.fillStyle = '#ff1744';
+      ctx.fillRect(2*s, 8.5*s, 2*s, 3*s);
+      // Lava cracks
+      ctx.fillStyle = '#ff6600';
+      ctx.fillRect(1.5*s, 9*s, 0.5*s, 2*s);
+      ctx.fillRect(3.5*s, 8*s, 0.5*s, 1.5*s);
+      // Demon eye
+      ctx.fillStyle = '#ffab00';
+      ctx.fillRect(2.5*s, 9.5*s, 1*s, 1*s);
+    } else {
+      // Fallback
       ctx.fillStyle = shield.color;
-      ctx.fillRect(2.5 * s, 8 * s, 1 * s, 4 * s);
-      ctx.fillRect(1.5 * s, 9.5 * s, 3 * s, 1 * s);
+      ctx.fillRect(1*s, 7*s, 4*s, 6*s);
+      ctx.fillStyle = shield.accent;
+      ctx.fillRect(2*s, 8*s, 2*s, 4*s);
     }
   }
 
@@ -541,15 +631,161 @@ export function drawArmorIcon(ctx, x, y, armorId) {
       ctx.fillRect(cx + 2, cy - 2, 3, 4);
       break;
     case 'shield':
-      // Shield shape
-      ctx.fillRect(cx - 7, cy - 8, 14, 16);
-      ctx.fillRect(cx - 5, cy + 6, 10, 4);
-      ctx.fillStyle = a.accent;
-      ctx.fillRect(cx - 5, cy - 6, 10, 10);
-      // Cross emblem
-      ctx.fillStyle = a.color;
-      ctx.fillRect(cx - 1, cy - 5, 2, 8);
-      ctx.fillRect(cx - 4, cy - 2, 8, 2);
+      drawShieldIcon(ctx, cx, cy, armorId, a);
       break;
+  }
+}
+
+function drawShieldIcon(ctx, cx, cy, id, a) {
+  if (id === 'wooden_shield') {
+    // Round wooden shield with planks and iron rim
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    // Wood grain (horizontal planks)
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 5, cy - 3, 10, 1);
+    ctx.fillRect(cx - 5, cy + 1, 10, 1);
+    ctx.fillRect(cx - 5, cy + 5, 10, 1);
+    // Center iron boss (circle)
+    ctx.fillStyle = '#999';
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    ctx.fillStyle = '#bbb';
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+    // Bottom point
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(cx - 3, cy + 6, 6, 3);
+    ctx.fillRect(cx - 1, cy + 8, 2, 2);
+  } else if (id === 'iron_shield') {
+    // Kite shield shape, steel with rivets
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(cx - 7, cy - 8, 14, 14);
+    ctx.fillRect(cx - 5, cy + 4, 10, 4);
+    ctx.fillRect(cx - 2, cy + 7, 4, 3);
+    // Inner plate
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(cx - 5, cy - 6, 10, 10);
+    // Vertical ridge
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(cx - 1, cy - 7, 2, 14);
+    // Rivets
+    ctx.fillStyle = '#cfd8dc';
+    ctx.fillRect(cx - 5, cy - 6, 2, 2);
+    ctx.fillRect(cx + 3, cy - 6, 2, 2);
+    ctx.fillRect(cx - 5, cy + 2, 2, 2);
+    ctx.fillRect(cx + 3, cy + 2, 2, 2);
+  } else if (id === 'fire_shield') {
+    // Burning shield with flame pattern
+    ctx.fillStyle = '#bf360c';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillRect(cx - 3, cy + 6, 6, 3);
+    // Inner fire gradient
+    ctx.fillStyle = '#e65100';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = '#ff9800';
+    ctx.fillRect(cx - 3, cy - 4, 6, 8);
+    // Flame emblem
+    ctx.fillStyle = '#ffeb3b';
+    ctx.fillRect(cx - 1, cy - 5, 2, 3);
+    ctx.fillRect(cx - 2, cy - 3, 4, 2);
+    ctx.fillRect(cx - 3, cy - 1, 6, 3);
+    ctx.fillRect(cx - 2, cy + 2, 4, 2);
+    ctx.fillRect(cx - 1, cy + 3, 2, 2);
+    // Embers
+    ctx.fillStyle = '#ff6f00';
+    ctx.fillRect(cx - 5, cy - 7, 2, 2);
+    ctx.fillRect(cx + 4, cy - 5, 2, 2);
+  } else if (id === 'mithril_shield') {
+    // Elegant purple mithril with gem
+    ctx.fillStyle = '#7e57c2';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillRect(cx - 4, cy + 6, 8, 3);
+    // Inner mithril
+    ctx.fillStyle = '#9575cd';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = '#b39ddb';
+    ctx.fillRect(cx - 3, cy - 4, 6, 8);
+    // Star pattern
+    ctx.fillStyle = '#ede7f6';
+    ctx.fillRect(cx - 1, cy - 4, 2, 8);
+    ctx.fillRect(cx - 4, cy - 1, 8, 2);
+    // Central gem
+    ctx.fillStyle = '#e040fb';
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    ctx.fillStyle = '#f8bbd0';
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  } else if (id === 'mirror_shield') {
+    // Reflective mirror shield, chrome with light glints
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillRect(cx - 4, cy + 6, 8, 3);
+    // Mirror surface
+    ctx.fillStyle = '#e0e0e0';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(cx - 3, cy - 4, 6, 8);
+    // Light reflection lines
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 4, cy - 5, 3, 1);
+    ctx.fillRect(cx - 5, cy - 4, 1, 3);
+    ctx.fillRect(cx + 2, cy + 1, 3, 1);
+    ctx.fillRect(cx + 3, cy - 1, 1, 3);
+    // Center circle
+    ctx.fillStyle = '#90caf9';
+    ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    ctx.fillStyle = '#bbdefb';
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  } else if (id === 'moremirida_shield') {
+    // Divine teal shield with triple reflection runes
+    ctx.fillStyle = '#00796b';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillRect(cx - 4, cy + 6, 8, 4);
+    ctx.fillRect(cx - 2, cy + 9, 4, 2);
+    // Inner divine surface
+    ctx.fillStyle = '#00bfa5';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = '#64ffda';
+    ctx.fillRect(cx - 3, cy - 4, 6, 8);
+    // Triple arrow runes (reflecting)
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx - 1, cy - 4, 2, 2);
+    ctx.fillRect(cx - 3, cy - 2, 2, 2);
+    ctx.fillRect(cx + 1, cy - 2, 2, 2);
+    ctx.fillRect(cx - 1, cy, 2, 2);
+    // Golden border glow
+    ctx.fillStyle = '#ffd54f';
+    ctx.fillRect(cx - 7, cy - 8, 14, 1);
+    ctx.fillRect(cx - 7, cy - 8, 1, 16);
+    ctx.fillRect(cx + 6, cy - 8, 1, 16);
+  } else if (id === 'rockdemon_shield') {
+    // Demonic red shield with lava cracks
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillRect(cx - 4, cy + 6, 8, 3);
+    // Inner surface
+    ctx.fillStyle = '#d50000';
+    ctx.fillRect(cx - 5, cy - 6, 10, 12);
+    ctx.fillStyle = '#ff1744';
+    ctx.fillRect(cx - 3, cy - 4, 6, 8);
+    // Lava cracks
+    ctx.fillStyle = '#ff6600';
+    ctx.fillRect(cx - 4, cy - 3, 1, 6);
+    ctx.fillRect(cx + 3, cy - 1, 1, 4);
+    ctx.fillRect(cx - 1, cy - 5, 1, 3);
+    ctx.fillStyle = '#ffab00';
+    ctx.fillRect(cx, cy + 1, 3, 1);
+    ctx.fillRect(cx - 3, cy - 1, 2, 1);
+    // Demon eye center
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(cx - 2, cy - 1, 4, 2);
+    ctx.fillStyle = '#ffab00';
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+  } else {
+    // Fallback generic
+    ctx.fillStyle = a.color;
+    ctx.fillRect(cx - 7, cy - 8, 14, 16);
+    ctx.fillStyle = a.accent;
+    ctx.fillRect(cx - 5, cy - 6, 10, 10);
   }
 }

@@ -83,6 +83,10 @@ export const kingdomMap = {
     { id: 'knight2', col: 20, row: 5, name: 'Рыцарь Элара', bodyColor: '#37474f', headDetail: '#78909c' },
     { id: 'knight3', col: 7, row: 16, name: 'Рыцарь Борин', bodyColor: '#37474f', headDetail: '#78909c' },
     { id: 'knight4', col: 23, row: 16, name: 'Рыцарь Лира', bodyColor: '#37474f', headDetail: '#78909c' },
+    // Mercenaries for hire
+    { id: 'merc_sword', col: 8, row: 12, name: 'Мечник Дарен', bodyColor: '#607d8b', headDetail: '#90a4ae' },
+    { id: 'merc_spear', col: 14, row: 19, name: 'Копейщик Рольф', bodyColor: '#607d8b', headDetail: '#90a4ae' },
+    { id: 'merc_bow', col: 20, row: 12, name: 'Лучник Ивар', bodyColor: '#607d8b', headDetail: '#90a4ae' },
   ],
   spawns: [],
 };

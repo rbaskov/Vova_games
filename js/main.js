@@ -63,6 +63,7 @@ export const game = {
   showQuestLog: false,
   arenaWave: 0,
   arenaTimer: 0,
+  companions: [], // hired followers
 };
 
 // --- Map Registry ---
@@ -108,6 +109,246 @@ function createPlayer(startX, startY) {
     ownedArmor: [],
     quests: {},
   };
+}
+
+// --- Companion System ---
+const COMPANION_TYPES = {
+  merc_sword: { name: 'Дарен', weapon: 'sword', atk: 15, range: 40, attackSpeed: 0.5, speed: 90, color: '#607d8b' },
+  merc_spear: { name: 'Рольф', weapon: 'spear', atk: 18, range: 56, attackSpeed: 0.6, speed: 80, color: '#607d8b' },
+  merc_bow:   { name: 'Ивар',  weapon: 'bow',   atk: 12, range: 180, attackSpeed: 1.2, speed: 70, color: '#607d8b' },
+};
+
+function createCompanion(type, x, y) {
+  const t = COMPANION_TYPES[type];
+  return {
+    type,
+    name: t.name,
+    weapon: t.weapon,
+    atk: t.atk,
+    range: t.range,
+    attackSpeed: t.attackSpeed,
+    speed: t.speed,
+    color: t.color,
+    x, y,
+    facing: 'down',
+    moving: false,
+    attackTimer: 0,
+    attacking: false,
+    hitW: 24,
+    hitH: 28,
+    shootTimer: 0,
+  };
+}
+
+function updateCompanions(dt) {
+  const p = game.player;
+  if (!p) return;
+
+  for (const c of game.companions) {
+    // Find nearest enemy
+    let nearestEnemy = null;
+    let nearestDist = Infinity;
+    for (const e of game.enemies) {
+      if (!e.alive) continue;
+      const d = Math.sqrt((c.x - e.x) ** 2 + (c.y - e.y) ** 2);
+      if (d < nearestDist) { nearestDist = d; nearestEnemy = e; }
+    }
+    // Also check boss
+    if (game.boss && game.boss.alive) {
+      const d = Math.sqrt((c.x - game.boss.x) ** 2 + (c.y - game.boss.y) ** 2);
+      if (d < nearestDist) { nearestDist = d; nearestEnemy = game.boss; }
+    }
+
+    // Follow player if no enemy nearby, or if too far from player
+    const distToPlayer = Math.sqrt((c.x - p.x) ** 2 + (c.y - p.y) ** 2);
+    let targetX, targetY;
+    c.moving = false;
+    c.attacking = false;
+
+    if (nearestEnemy && nearestDist < 200) {
+      // Attack mode
+      if (nearestDist > c.range * 0.7) {
+        // Move toward enemy
+        targetX = nearestEnemy.x;
+        targetY = nearestEnemy.y;
+        moveCompanionToward(c, targetX, targetY, c.speed, dt);
+        c.moving = true;
+      }
+
+      // Attack if in range
+      if (nearestDist < c.range) {
+        c.attackTimer -= dt;
+        if (c.attackTimer <= 0) {
+          c.attacking = true;
+          c.attackTimer = c.attackSpeed;
+
+          if (c.weapon === 'bow') {
+            // Shoot arrow
+            const dx = nearestEnemy.x - c.x;
+            const dy = nearestEnemy.y - c.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const arrow = {
+              x: c.x + 12, y: c.y + 12,
+              vx: (dx / dist) * 200, vy: (dy / dist) * 200,
+              damage: c.atk, isArrow: true, lifetime: 2,
+            };
+            game.projectiles.push(arrow);
+          } else {
+            // Melee hit
+            if (nearestEnemy.isBoss) {
+              if (nearestEnemy.hitTimer <= 0) {
+                nearestEnemy.hp -= c.atk;
+                nearestEnemy.hitTimer = 0.3;
+                game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 8, `-${c.atk}`, '#90caf9'));
+              }
+            } else {
+              if (nearestEnemy.hitTimer <= 0) {
+                nearestEnemy.hp -= c.atk;
+                nearestEnemy.hitTimer = 0.3;
+                game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 8, `-${c.atk}`, '#90caf9'));
+                if (nearestEnemy.hp <= 0) {
+                  nearestEnemy.alive = false;
+                  p.xp += nearestEnemy.xp;
+                  p.coins += nearestEnemy.coins;
+                  game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 8, `+${nearestEnemy.xp} XP`, '#cc66ff'));
+                  game.particles.push(createParticle(nearestEnemy.x, nearestEnemy.y - 20, `+${nearestEnemy.coins} $`, '#f0c040'));
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Face enemy
+      const dx = nearestEnemy.x - c.x;
+      const dy = nearestEnemy.y - c.y;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        c.facing = dx > 0 ? 'right' : 'left';
+      } else {
+        c.facing = dy > 0 ? 'down' : 'up';
+      }
+    } else {
+      // Follow player — stay 40-60 px behind
+      if (distToPlayer > 60) {
+        moveCompanionToward(c, p.x, p.y, c.speed, dt);
+        c.moving = true;
+        // Face movement direction
+        const dx = p.x - c.x;
+        const dy = p.y - c.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          c.facing = dx > 0 ? 'right' : 'left';
+        } else {
+          c.facing = dy > 0 ? 'down' : 'up';
+        }
+      }
+    }
+  }
+}
+
+function moveCompanionToward(c, tx, ty, speed, dt) {
+  const dx = tx - c.x;
+  const dy = ty - c.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d < 4) return;
+  const vx = (dx / d) * speed * dt;
+  const vy = (dy / d) * speed * dt;
+  // Simple collision check
+  const nx = c.x + vx;
+  const ny = c.y + vy;
+  if (!collidesWithMap(nx, ny, c.hitW, c.hitH)) {
+    c.x = nx;
+    c.y = ny;
+  } else if (!collidesWithMap(nx, c.y, c.hitW, c.hitH)) {
+    c.x = nx;
+  } else if (!collidesWithMap(c.x, ny, c.hitW, c.hitH)) {
+    c.y = ny;
+  }
+}
+
+function renderCompanions(ctx, cam) {
+  for (const c of game.companions) {
+    const sx = c.x - cam.x;
+    const sy = c.y - cam.y;
+    if (sx < -40 || sx > game.width + 40 || sy < -40 || sy > game.height + 40) continue;
+
+    const s = 2;
+    ctx.save();
+    ctx.translate(sx, sy);
+    const mirror = c.facing === 'left';
+    if (mirror) { ctx.scale(-1, 1); ctx.translate(-32, 0); }
+
+    const f = c.moving ? game.animFrame : 0;
+    const armBob = f % 2 === 0 ? 0 : s;
+
+    // Iron helmet
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(5*s, 0, 6*s, 4*s);
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(6*s, 0, 4*s, 2*s);
+    // Visor
+    ctx.fillStyle = '#222';
+    ctx.fillRect(6*s, 2.5*s, 4*s, 1*s);
+
+    // Chainmail body
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(5*s, 4*s, 6*s, 7*s);
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(6*s, 5*s, 4*s, 5*s);
+    // Chain texture
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(6*s, 6*s, 1*s, 1*s);
+    ctx.fillRect(8*s, 7*s, 1*s, 1*s);
+    ctx.fillRect(7*s, 9*s, 1*s, 1*s);
+
+    // Arms
+    ctx.fillStyle = '#78909c';
+    ctx.fillRect(3*s, 5*s + armBob, 2*s, 5*s);
+    ctx.fillRect(11*s, 5*s - armBob, 2*s, 5*s);
+
+    // Iron legs
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(6*s, 11*s, 2*s, 4*s);
+    ctx.fillRect(9*s, 11*s, 2*s, 4*s);
+    // Boots
+    ctx.fillStyle = '#455a64';
+    ctx.fillRect(5*s, 14*s, 3*s, 2*s);
+    ctx.fillRect(8*s, 14*s, 3*s, 2*s);
+
+    // Iron shield (left hand)
+    ctx.fillStyle = '#607d8b';
+    ctx.fillRect(1*s, 5*s + armBob, 3*s, 5*s);
+    ctx.fillStyle = '#90a4ae';
+    ctx.fillRect(1.5*s, 6*s + armBob, 2*s, 3*s);
+    ctx.fillStyle = '#b0bec5';
+    ctx.fillRect(2.2*s, 6*s + armBob, 0.6*s, 5*s);
+
+    // Weapon (right hand)
+    if (c.weapon === 'sword') {
+      ctx.fillStyle = '#bdbdbd';
+      ctx.fillRect(12*s, 2*s - armBob, 1.5*s, 9*s);
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(11.5*s, 10*s - armBob, 2.5*s, 2*s);
+    } else if (c.weapon === 'spear') {
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(12*s, -1*s - armBob, 1*s, 14*s);
+      ctx.fillStyle = '#bdbdbd';
+      ctx.fillRect(11.5*s, -3*s - armBob, 2*s, 3*s);
+    } else if (c.weapon === 'bow') {
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(12*s, 3*s, 1.5*s, 8*s);
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(13*s, 3*s, 0.5*s, 8*s);
+    }
+
+    ctx.restore();
+
+    // Name label
+    ctx.font = '6px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#90caf9';
+    ctx.fillText(c.name, sx + 16, sy - 4);
+    ctx.textAlign = 'left';
+  }
 }
 
 // --- Dungeon state ---
@@ -200,6 +441,12 @@ function loadMap(mapKey, spawnX, spawnY) {
     game.arenaTimer = 1.5;
     game.arenaWaiting = true;
   }
+
+  // Teleport companions to player
+  for (let i = 0; i < game.companions.length; i++) {
+    game.companions[i].x = game.player.x + (i + 1) * 20;
+    game.companions[i].y = game.player.y + 30;
+  }
 }
 
 // --- Collision ---
@@ -250,6 +497,7 @@ function checkPortals() {
   const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
   const portal = isPortal(game.currentMap, centerCol, centerRow);
   if (portal) {
+    game.player._companions = game.companions.map(c => c.type);
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
     game.portalCooldown = 0.5;
@@ -399,6 +647,22 @@ function handleDialogAction(action) {
       p.ownedWeapons.push(weaponId);
       p.weapon = weaponId;
       game.particles.push(createParticle(p.x, p.y - 8, w.name + '!', '#ffd54f'));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
+  } else if (action.startsWith('hire_merc_')) {
+    const mercType = action.slice(5); // 'merc_sword', 'merc_spear', 'merc_bow'
+    const maxCompanions = p.level + 1;
+    if (game.companions.find(c => c.type === mercType)) {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Уже нанят!', '#ff9800'));
+    } else if (game.companions.length >= maxCompanions) {
+      game.particles.push(createParticle(p.x, p.y - 8, `Макс ${maxCompanions} (ур.${p.level})`, '#ff9800'));
+    } else if (p.coins >= 100) {
+      p.coins -= 100;
+      const comp = createCompanion(mercType, p.x, p.y + 40);
+      game.companions.push(comp);
+      game.particles.push(createParticle(p.x, p.y - 8, comp.name + ' нанят!', '#4fc3f7', 1.5));
+      SFX.playPickupItem();
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
@@ -867,6 +1131,9 @@ function renderPlay(ctx) {
     renderBoss(ctx, game.boss, cam, game.animFrame);
   }
 
+  // Companions
+  renderCompanions(ctx, cam);
+
   // Projectiles
   renderProjectiles(ctx, game.projectiles, cam);
 
@@ -1014,6 +1281,15 @@ function gameLoop(timestamp) {
           p.equippedArmor = { ...(save.equippedArmor || { helmet: null, chest: null, legs: null }) };
           p.ownedArmor = [...(save.ownedArmor || [])];
           p.quests = save.quests ? JSON.parse(JSON.stringify(save.quests)) : {};
+          // Restore companions
+          game.companions = [];
+          if (save.companions) {
+            for (const ctype of save.companions) {
+              if (COMPANION_TYPES[ctype]) {
+                game.companions.push(createCompanion(ctype, p.x + 20, p.y + 20));
+              }
+            }
+          }
         }
       }
       break;
@@ -1027,6 +1303,7 @@ function gameLoop(timestamp) {
 
       updatePlayer(dt);
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
+      updateCompanions(dt);
 
       // --- Arena wave system ---
       if (game.currentMapName === 'arena') {

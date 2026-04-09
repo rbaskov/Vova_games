@@ -20,7 +20,8 @@ let buttonAreas = []; // { id, x, y, r, key, label, color }
 let menuButtonAreas = []; // menu-specific buttons
 let joystickArea = { x: 0, y: 0 }; // center of joystick zone
 let canvasRect = null;
-let scale = 1;
+let scaleX = 1;
+let scaleY = 1;
 
 export function detectMobile() {
   isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -60,7 +61,8 @@ export function initTouchControls(canvas) {
 function updateLayout(canvas) {
   canvasRect = canvas.getBoundingClientRect();
   if (canvasRect.width === 0) return; // canvas not visible yet, skip
-  scale = canvasRect.width / canvas.width;
+  scaleX = canvasRect.width / canvas.width;
+  scaleY = canvasRect.height / canvas.height;
 
   const w = canvas.width;
   const h = canvas.height;
@@ -97,8 +99,8 @@ function updateLayout(canvas) {
 function toCanvasCoords(touch) {
   if (!canvasRect) return { x: 0, y: 0 };
   return {
-    x: (touch.clientX - canvasRect.left) / scale,
-    y: (touch.clientY - canvasRect.top) / scale,
+    x: (touch.clientX - canvasRect.left) / scaleX,
+    y: (touch.clientY - canvasRect.top) / scaleY,
   };
 }
 
