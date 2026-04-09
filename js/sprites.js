@@ -21,9 +21,16 @@ export const TILE = {
   CHECKPOINT: 9,
   DOOR: 10,
   CARPET: 11,
+  SAND: 12,
+  SNOW: 13,
+  MUD: 14,
+  ROCK: 15,
+  DEAD_TREE: 16,
+  SNOW_TREE: 17,
+  SWAMP_WATER: 18,
 };
 
-export const SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.TREE]);
+export const SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.TREE, TILE.ROCK, TILE.DEAD_TREE, TILE.SNOW_TREE, TILE.SWAMP_WATER]);
 
 // -------  TILE DRAW FUNCTIONS  -------
 
@@ -302,6 +309,178 @@ export function drawCarpetTile(ctx, x, y) {
   ctx.fillRect(x + 10, y + 22, 12, 4);
 }
 
+// SAND — Desert/wasteland base
+export function drawSandTile(ctx, x, y) {
+  // Base tan
+  ctx.fillStyle = '#d4b06a';
+  ctx.fillRect(x, y, T, T);
+  // Lighter patches
+  ctx.fillStyle = '#e0c880';
+  ctx.fillRect(x + 4, y + 2, 6, 3);
+  ctx.fillRect(x + 18, y + 12, 6, 3);
+  ctx.fillRect(x + 8, y + 22, 4, 2);
+  ctx.fillRect(x + 24, y + 6, 4, 2);
+  ctx.fillRect(x + 14, y + 28, 6, 2);
+  // Dark pebbles
+  ctx.fillStyle = '#a08040';
+  ctx.fillRect(x + 20, y + 2, 3, 2);
+  ctx.fillRect(x + 2, y + 16, 4, 2);
+  ctx.fillRect(x + 12, y + 8, 2, 2);
+  ctx.fillRect(x + 26, y + 20, 3, 2);
+  ctx.fillRect(x + 6, y + 28, 2, 2);
+}
+
+// SNOW — Snow biome base
+export function drawSnowTile(ctx, x, y) {
+  // Base white
+  ctx.fillStyle = '#e8e8f0';
+  ctx.fillRect(x, y, T, T);
+  // Blue shadow patches
+  ctx.fillStyle = '#c0c8e0';
+  ctx.fillRect(x + 4, y + 4, 8, 4);
+  ctx.fillRect(x + 18, y + 14, 8, 4);
+  ctx.fillRect(x + 6, y + 22, 6, 3);
+  ctx.fillRect(x + 24, y + 8, 5, 3);
+  ctx.fillRect(x + 14, y + 26, 6, 3);
+  // Sparkle dots
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x + 2, y + 2, 2, 2);
+  ctx.fillRect(x + 16, y + 8, 2, 2);
+  ctx.fillRect(x + 10, y + 18, 2, 2);
+  ctx.fillRect(x + 26, y + 24, 2, 2);
+  ctx.fillRect(x + 22, y + 2, 2, 2);
+}
+
+// MUD — Swamp base
+export function drawMudTile(ctx, x, y) {
+  // Base dark brown
+  ctx.fillStyle = '#5a3a1a';
+  ctx.fillRect(x, y, T, T);
+  // Puddle highlights
+  ctx.fillStyle = '#7a5a3a';
+  ctx.fillRect(x + 4, y + 4, 8, 4);
+  ctx.fillRect(x + 18, y + 16, 8, 4);
+  ctx.fillRect(x + 6, y + 24, 6, 3);
+  ctx.fillRect(x + 22, y + 6, 6, 3);
+  // Squelchy darker spots
+  ctx.fillStyle = '#3a2010';
+  ctx.fillRect(x + 2, y + 14, 4, 3);
+  ctx.fillRect(x + 14, y + 2, 4, 3);
+  ctx.fillRect(x + 26, y + 18, 3, 3);
+  ctx.fillRect(x + 10, y + 26, 4, 3);
+  ctx.fillRect(x + 20, y + 10, 2, 2);
+}
+
+// ROCK — Mountain obstacle (SOLID)
+export function drawRockTile(ctx, x, y) {
+  // Base dark gray
+  ctx.fillStyle = '#555';
+  ctx.fillRect(x, y, T, T);
+  // Lighter rock face
+  ctx.fillStyle = '#666';
+  ctx.fillRect(x + 2, y + 2, 20, 18);
+  ctx.fillRect(x + 14, y + 14, 14, 12);
+  // Crack lines
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x + 10, y + 2, 2, 14);
+  ctx.fillRect(x + 10, y + 14, 8, 2);
+  ctx.fillRect(x + 20, y + 4, 2, 10);
+  ctx.fillRect(x + 4, y + 18, 10, 2);
+  ctx.fillRect(x + 24, y + 16, 2, 8);
+  // Highlight edges (top-left light)
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x, y, T, 2);
+  ctx.fillRect(x, y, 2, T);
+  ctx.fillRect(x + 4, y + 4, 8, 2);
+  ctx.fillRect(x + 16, y + 16, 6, 2);
+  // Shadow edges (bottom-right)
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x + 30, y + 2, 2, 30);
+  ctx.fillRect(x + 2, y + 30, 28, 2);
+}
+
+// DEAD_TREE — Wasteland/swamp obstacle (SOLID)
+export function drawDeadTreeTile(ctx, x, y) {
+  // Mud base underneath
+  drawMudTile(ctx, x, y);
+  // Trunk — gray-brown
+  ctx.fillStyle = '#6b5a4a';
+  ctx.fillRect(x + 13, y + 14, 6, 18);
+  // Trunk highlight
+  ctx.fillStyle = '#8a7060';
+  ctx.fillRect(x + 15, y + 16, 2, 14);
+  // Trunk shadow
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(x + 18, y + 14, 1, 18);
+  // Main branches
+  ctx.fillStyle = '#6b5a4a';
+  ctx.fillRect(x + 4, y + 8, 10, 3);   // left branch
+  ctx.fillRect(x + 18, y + 6, 10, 3);  // right branch
+  ctx.fillRect(x + 2, y + 4, 4, 3);    // far left twig
+  ctx.fillRect(x + 26, y + 2, 4, 3);   // far right twig
+  ctx.fillRect(x + 10, y + 2, 3, 8);   // upper left branch
+  ctx.fillRect(x + 20, y + 0, 3, 8);   // upper right branch
+  // Branch tips (thin)
+  ctx.fillStyle = '#5a4a3a';
+  ctx.fillRect(x + 2, y + 8, 2, 2);
+  ctx.fillRect(x + 28, y + 6, 2, 2);
+  ctx.fillRect(x + 9, y + 2, 2, 2);
+  ctx.fillRect(x + 22, y + 0, 2, 2);
+}
+
+// SNOW_TREE — Snow biome obstacle (SOLID)
+export function drawSnowTreeTile(ctx, x, y) {
+  // Snow base underneath
+  drawSnowTile(ctx, x, y);
+  // Trunk — dark
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(x + 13, y + 18, 6, 14);
+  // Trunk highlight
+  ctx.fillStyle = '#6a5a3a';
+  ctx.fillRect(x + 15, y + 20, 2, 10);
+  // Snow canopy — dark green layer (barely visible under snow)
+  ctx.fillStyle = '#2a4a2a';
+  ctx.fillRect(x + 8, y + 12, 16, 8);
+  ctx.fillRect(x + 6, y + 16, 20, 6);
+  ctx.fillRect(x + 10, y + 8, 12, 6);
+  // Snow blobs on top of canopy
+  ctx.fillStyle = '#e8e8f0';
+  ctx.fillRect(x + 8, y + 4, 16, 6);
+  ctx.fillRect(x + 6, y + 8, 20, 6);
+  ctx.fillRect(x + 4, y + 12, 24, 6);
+  ctx.fillRect(x + 8, y + 16, 16, 4);
+  // Snow highlights
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x + 10, y + 4, 6, 3);
+  ctx.fillRect(x + 8, y + 8, 6, 3);
+  ctx.fillRect(x + 18, y + 10, 4, 2);
+}
+
+// SWAMP_WATER — Swamp water (SOLID, animated)
+export function drawSwampWaterTile(ctx, x, y, frame = 0) {
+  // Base dark murky green
+  ctx.fillStyle = '#1a4a2a';
+  ctx.fillRect(x, y, T, T);
+  // Animated murky current
+  const off = (frame % 4) * 4;
+  ctx.fillStyle = '#2a6a3a';
+  ctx.fillRect(x + ((off) % 24), y + 2, 10, 4);
+  ctx.fillRect(x + ((off + 12) % 24), y + 14, 10, 4);
+  ctx.fillRect(x + ((off + 6) % 24), y + 24, 8, 4);
+  // Lighter green highlights
+  ctx.fillStyle = '#3a8a4a';
+  ctx.fillRect(x + ((off + 4) % 22), y + 4, 4, 2);
+  ctx.fillRect(x + ((off + 16) % 22), y + 18, 4, 2);
+  // Bubbles (animated)
+  ctx.fillStyle = '#4aaa5a';
+  ctx.fillRect(x + ((off + 2) % 26), y + 10, 2, 2);
+  ctx.fillRect(x + ((off + 18) % 26), y + 26, 2, 2);
+  // Dark depth patches
+  ctx.fillStyle = '#0a2a14';
+  ctx.fillRect(x + ((off + 8) % 24), y + 8, 4, 3);
+  ctx.fillRect(x + ((off + 20) % 24), y + 20, 4, 3);
+}
+
 export const tileDrawers = {
   [TILE.GRASS]: drawGrassTile,
   [TILE.DIRT]: drawDirtTile,
@@ -315,6 +494,13 @@ export const tileDrawers = {
   [TILE.CHECKPOINT]: drawCheckpointTile,
   [TILE.DOOR]: drawDoorTile,
   [TILE.CARPET]: drawCarpetTile,
+  [TILE.SAND]: drawSandTile,
+  [TILE.SNOW]: drawSnowTile,
+  [TILE.MUD]: drawMudTile,
+  [TILE.ROCK]: drawRockTile,
+  [TILE.DEAD_TREE]: drawDeadTreeTile,
+  [TILE.SNOW_TREE]: drawSnowTreeTile,
+  [TILE.SWAMP_WATER]: (ctx, x, y) => drawSwampWaterTile(ctx, x, y, 0),
 };
 
 // -------  CHARACTER SPRITES  -------
