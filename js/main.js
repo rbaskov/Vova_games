@@ -24,6 +24,7 @@ import { WEAPONS, getWeapon, getTotalAtk, getWeaponRange, getAttackSpeed, getKno
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorOnHero, tryBlockProjectile } from './armor.js';
 import { generateDungeon } from './dungeon.js';
 import { QUESTS, getQuestState, acceptQuest, updateKillProgress, updateBossProgress, updateVisitProgress, claimReward, getNpcQuests, renderQuestTracker, renderQuestLog } from './quests.js';
+import { generateEvents, openChest, updateAmbush, updateBuff, getBuffAtkMultiplier, getBuffSpeedMultiplier, isBuffInvincible, getBuffVampirism, applyBuff, getTraderDialog, drawChest, drawBuffStone, drawSecretPortal, drawEliteIndicator } from './events.js';
 import * as SFX from './audio.js';
 
 // --- Game States ---
@@ -629,6 +630,14 @@ function loadMap(mapKey, spawnX, spawnY) {
     game.arenaWaiting = true;
   }
 
+  // Random events
+  game.chests = [];
+  game.buffStones = [];
+  game.secretPortals = [];
+  game._ambush = null;
+  game.activeBuff = null;
+  generateEvents(game, mapKey, tileMap);
+
   // Teleport companions to player
   for (let i = 0; i < game.companions.length; i++) {
     game.companions[i].x = game.player.x + (i + 1) * 20;
@@ -824,6 +833,22 @@ function handleDialogAction(action) {
     } else {
       game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
     }
+  } else if (action === 'buy_trader_bigpot3') {
+    if (p.coins >= 60) { p.coins -= 60; p.potions += 3; game.particles.push(createParticle(p.x, p.y - 8, '+3 зелья', '#44cc44')); }
+    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+  } else if (action === 'buy_trader_teleport') {
+    if (p.coins >= 100) { p.coins -= 100; loadMap('village'); game.particles.push(createParticle(p.x, p.y - 8, 'Телепорт!', '#b388ff', 1.5)); }
+    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+  } else if (action === 'buy_trader_atkup') {
+    if (p.coins >= 150) { p.coins -= 150; p.atk += 2; game.particles.push(createParticle(p.x, p.y - 8, '+2 ATK!', '#ff9800', 1.5)); }
+    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+  } else if (action === 'buy_trader_hpup') {
+    if (p.coins >= 150) { p.coins -= 150; p.maxHp += 20; p.hp += 20; game.particles.push(createParticle(p.x, p.y - 8, '+20 HP!', '#cc2222', 1.5)); }
+    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+  } else if (action === 'buy_trader_revive') {
+    if (p._hasRevive) { game.particles.push(createParticle(p.x, p.y - 8, 'Уже есть!', '#ff9800')); }
+    else if (p.coins >= 200) { p.coins -= 200; p._hasRevive = true; game.particles.push(createParticle(p.x, p.y - 8, 'Камень воскрешения!', '#f0c040', 1.5)); }
+    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
   } else if (action === 'buy_horse') {
     if (game.hasHorse) {
       game.particles.push(createParticle(p.x, p.y - 8, 'Конь уже есть!', '#ff9800'));
@@ -918,8 +943,8 @@ function updatePlayer(dt) {
     p.invincibleTimer -= dt;
   }
 
-  // Horse bonus for combat
-  p._atkMultiplier = game.hasHorse ? 1.5 : 1;
+  // Horse + buff bonuses for combat
+  p._atkMultiplier = (game.hasHorse ? 1.5 : 1) * getBuffAtkMultiplier(game);
 
   // Cooldowns handled by updateCooldowns() in game loop
 
@@ -968,7 +993,7 @@ function updatePlayer(dt) {
   }
 
   // Apply movement with collision
-  const actualSpeed = game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED;
+  const actualSpeed = (game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED) * getBuffSpeedMultiplier(game);
   const moveX = dx * actualSpeed * dt;
   const moveY = dy * actualSpeed * dt;
 
@@ -1695,8 +1720,52 @@ function renderPlay(ctx) {
     }
   }
 
+  // Chests
+  if (game.chests) {
+    for (const chest of game.chests) {
+      const cx = chest.x - cam.x;
+      const cy = chest.y - cam.y;
+      if (cx > -32 && cx < 672 && cy > -32 && cy < 512) {
+        drawChest(ctx, cx, cy, chest.opened);
+      }
+    }
+  }
+
+  // Buff stones
+  if (game.buffStones) {
+    for (const stone of game.buffStones) {
+      if (stone.picked) continue;
+      const bx = stone.x - cam.x;
+      const by = stone.y - cam.y;
+      if (bx > -32 && bx < 672 && by > -32 && by < 512) {
+        drawBuffStone(ctx, bx, by, stone.buff, game.totalTime);
+      }
+    }
+  }
+
+  // Secret portals
+  if (game.secretPortals) {
+    for (const portal of game.secretPortals) {
+      if (portal.used) continue;
+      const px = portal.x - cam.x;
+      const py = portal.y - cam.y;
+      if (px > -32 && px < 672 && py > -32 && py < 512) {
+        drawSecretPortal(ctx, px, py, game.totalTime);
+      }
+    }
+  }
+
   // Enemies
   renderEnemies(ctx, game.enemies, cam, game.animFrame);
+
+  // Elite indicators (drawn on top of enemies)
+  for (const enemy of game.enemies) {
+    if (!enemy.alive || !enemy._elite) continue;
+    const ex = enemy.x - cam.x;
+    const ey = enemy.y - cam.y;
+    if (ex < -50 || ex > 690 || ey < -50 || ey > 530) continue;
+    drawEliteIndicator(ctx, ex, ey, enemy.width, enemy.height, enemy._elite, game.totalTime);
+  }
 
   // Boss
   if (game.boss && game.boss.alive) {
@@ -1763,6 +1832,24 @@ function renderPlay(ctx) {
 
   // Ability bar
   renderAbilityBar(ctx, game.player, 640, 480);
+
+  // Active buff HUD
+  if (game.activeBuff) {
+    const b = game.activeBuff;
+    const bx = 460, by = 6;
+    ctx.fillStyle = b.color;
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(bx, by, 80, 22);
+    ctx.globalAlpha = 1;
+    ctx.font = '6px "Press Start 2P"';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'left';
+    ctx.fillText(b.name, bx + 4, by + 9);
+    ctx.fillText(Math.ceil(b.timer) + 'с', bx + 4, by + 18);
+    // Timer bar
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(bx + 40, by + 12, (b.timer / 30) * 36, 4);
+  }
 
   // Boss HP bar (on top of HUD)
   if (game.boss && game.boss.alive) {
@@ -1929,6 +2016,51 @@ function gameLoop(timestamp) {
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
       updateCompanions(dt);
 
+      // --- Random Events ---
+      updateAmbush(game, dt, createParticle, spawnEnemy);
+      updateBuff(game, dt);
+
+      // Buff invincibility
+      if (isBuffInvincible(game)) {
+        game.player.invincibleTimer = 0.1;
+      }
+
+      // Pick up buff stones
+      if (game.buffStones) {
+        for (const stone of game.buffStones) {
+          if (stone.picked) continue;
+          const dx = game.player.x - stone.x;
+          const dy = game.player.y - stone.y;
+          if (dx * dx + dy * dy < 30 * 30) {
+            stone.picked = true;
+            applyBuff(game, stone.buff);
+            game.particles.push(createParticle(game.player.x, game.player.y - 16, stone.buff.name + '!', stone.buff.color, 2));
+            SFX.playPickupItem();
+          }
+        }
+      }
+
+      // Secret portal — enter
+      if (game.secretPortals) {
+        for (const portal of game.secretPortals) {
+          if (portal.used) continue;
+          const dx = game.player.x - portal.x;
+          const dy = game.player.y - portal.y;
+          if (dx * dx + dy * dy < 28 * 28) {
+            portal.used = true;
+            // Generate secret room (reuse dungeon generator at depth 0 = easy)
+            game._returnMap = game.currentMapName;
+            game._returnX = game.player.x;
+            game._returnY = game.player.y;
+            loadMap('dungeon');
+            game.particles.push(createParticle(game.player.x, game.player.y - 16, 'Секретная комната!', '#b388ff', 2));
+          }
+        }
+      }
+
+      // Vampirism buff — heal on kill
+      // (handled in combat section below)
+
       // --- Arena wave system ---
       if (game.currentMapName === 'arena') {
         const aliveCount = game.enemies.filter(e => e.alive).length;
@@ -1955,6 +2087,21 @@ function gameLoop(timestamp) {
           game.player.coins += enemy.coins;
           SFX.playKillEnemy();
           SFX.playPickupCoin();
+          // Elite kill effect
+          if (enemy._elite) {
+            game.particles.push(createParticle(enemy.x, enemy.y - 40, 'ЭЛИТА!', '#ffd54f', 2));
+            // Chief drops hidden chest
+            if (enemy._elite.id === 'chief') {
+              if (!game.chests) game.chests = [];
+              game.chests.push({ x: enemy.x, y: enemy.y, rarity: Math.random() < 0.5 ? 'good' : 'rare', opened: false });
+            }
+          }
+          // Vampirism buff
+          const vamp = getBuffVampirism(game);
+          if (vamp > 0) {
+            game.player.hp = Math.min(game.player.maxHp, game.player.hp + vamp);
+            game.particles.push(createParticle(game.player.x, game.player.y - 20, `+${vamp} HP`, '#66bb6a'));
+          }
           game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
           game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
           // 20% potion drop
@@ -2335,10 +2482,47 @@ function gameLoop(timestamp) {
         game.state = STATE.INVENTORY;
       }
 
-      // --- NPC interaction ---
+      // --- Chest interaction ---
       if (isKeyPressed('KeyE')) {
+        let interacted = false;
+        // Check chests first
+        if (game.chests) {
+          for (const chest of game.chests) {
+            if (chest.opened) continue;
+            const dx = game.player.x - chest.x;
+            const dy = game.player.y - chest.y;
+            if (dx * dx + dy * dy < 40 * 40) {
+              const loot = openChest(chest, game.player, game.currentMapName);
+              if (loot) {
+                game.player.coins += loot.coins;
+                game.player.potions += loot.potions;
+                if (loot.coins > 0) game.particles.push(createParticle(chest.x, chest.y - 8, `+${loot.coins}$`, '#f0c040'));
+                if (loot.potions > 0) game.particles.push(createParticle(chest.x, chest.y - 20, `+${loot.potions} POT`, '#44cc44'));
+                if (loot.weapon && !game.player.ownedWeapons.includes(loot.weapon)) {
+                  game.player.ownedWeapons.push(loot.weapon);
+                  const w = getWeapon(loot.weapon);
+                  game.particles.push(createParticle(chest.x, chest.y - 32, w ? w.name + '!' : 'Оружие!', '#ffd54f', 2));
+                }
+                SFX.playPickupItem();
+                interacted = true;
+              }
+              break;
+            }
+          }
+        }
+
+        // NPC interaction (including trader)
+        if (!interacted) {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
         if (nearNPC) {
+          // Trader has custom dialog
+          if (nearNPC._isTrader) {
+            const traderDialog = getTraderDialog(nearNPC._mapName);
+            if (openDialog('_trader', nearNPC.name, handleDialogAction, traderDialog)) {
+              game.state = STATE.DIALOG;
+              SFX.playDialogOpen();
+            }
+          } else {
           // Build quest choices to inject into dialog
           const { available, completedReady } = getNpcQuests(game.player, nearNPC.id);
           const extraChoices = [];
@@ -2354,8 +2538,10 @@ function gameLoop(timestamp) {
             game.state = STATE.DIALOG;
             SFX.playDialogOpen();
           }
+          } // end else (not trader)
         }
-      }
+        } // end if (!interacted)
+      } // end KeyE
 
       // --- Update particles ---
       updateParticles(game.particles, dt);
