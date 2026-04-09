@@ -164,11 +164,56 @@ export function renderProjectiles(ctx, projectiles, camera) {
   for (const p of projectiles) {
     const sx = p.x - camera.x;
     const sy = p.y - camera.y;
-    ctx.fillStyle = p.color;
-    ctx.fillRect(sx, sy, p.width, p.height);
-    // White center
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(sx + 2, sy + 2, 4, 4);
+
+    if (p.isArrow) {
+      // Arrow: pointed shape in flight direction
+      ctx.fillStyle = '#8d6e63';
+      if (p.dirX > 0) {
+        ctx.fillRect(sx - 4, sy - 1, 8, 2);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(sx + 4, sy - 2, 3, 4);
+      } else if (p.dirX < 0) {
+        ctx.fillRect(sx - 4, sy - 1, 8, 2);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(sx - 7, sy - 2, 3, 4);
+      } else if (p.dirY < 0) {
+        ctx.fillRect(sx - 1, sy - 4, 2, 8);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(sx - 2, sy - 7, 4, 3);
+      } else {
+        ctx.fillRect(sx - 1, sy - 4, 2, 8);
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(sx - 2, sy + 4, 4, 3);
+      }
+      // Trail
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(sx - p.dirX * 6 - 1, sy - p.dirY * 6 - 1, 2, 2);
+      ctx.globalAlpha = 1;
+    } else if (p.fromBoss) {
+      // Boss projectile: menacing glow
+      ctx.fillStyle = p.color;
+      ctx.fillRect(sx - 5, sy - 5, 10, 10);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      // Glow
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(sx - 8, sy - 8, 16, 16);
+      ctx.globalAlpha = 1;
+    } else {
+      // Player ability projectile (fireball etc)
+      ctx.fillStyle = p.color;
+      ctx.fillRect(sx - 4, sy - 4, 8, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      // Trail particles
+      ctx.globalAlpha = 0.4;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(sx - p.dirX * 8 - 3, sy - p.dirY * 8 - 3, 6, 6);
+      ctx.fillRect(sx - p.dirX * 14 - 2, sy - p.dirY * 14 - 2, 4, 4);
+      ctx.globalAlpha = 1;
+    }
   }
 }
 

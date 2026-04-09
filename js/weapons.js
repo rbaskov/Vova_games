@@ -112,122 +112,306 @@ export function getKnockback(player) {
   return getWeapon(player.weapon).knockback;
 }
 
-// Draw weapon sprite in attack direction
-export function drawWeaponAttack(ctx, x, y, facing, weapon, s) {
+// Draw weapon attack animation with progress (0→1)
+export function drawWeaponAttack(ctx, x, y, facing, weapon, s, progress = 0.5) {
   const w = getWeapon(weapon);
 
   switch (w.type) {
     case 'sword':
-      drawSwordAttack(ctx, x, y, facing, w, s);
+      drawSwordSwing(ctx, x, y, facing, w, s, progress);
       break;
     case 'spear':
-      drawSpearAttack(ctx, x, y, facing, w, s);
+      drawSpearThrust(ctx, x, y, facing, w, s, progress);
       break;
     case 'bow':
-      drawBowHeld(ctx, x, y, facing, w, s);
+      drawBowShot(ctx, x, y, facing, w, s, progress);
       break;
   }
 }
 
-function drawSwordAttack(ctx, x, y, facing, w, s) {
-  ctx.fillStyle = w.color;
+// Sword: sweeping arc swing
+function drawSwordSwing(ctx, x, y, facing, w, s, progress) {
+  const cx = x + 8 * s; // hero center x
+  const cy = y + 10 * s; // hero center y
+  const len = 12 * s;    // blade length
   const bright = lightenColor(w.color);
+
+  // Swing angle: start behind, sweep forward (120 degree arc)
+  const swingRange = Math.PI * 0.7;
+  const swingOffset = -swingRange / 2;
+  const angle = swingOffset + progress * swingRange;
+
+  let baseAngle;
   switch (facing) {
-    case 'right':
-      ctx.fillRect(x + 16 * s, y + 6 * s, 2 * s, 10 * s);
-      ctx.fillStyle = bright;
-      ctx.fillRect(x + 16 * s, y + 4 * s, 2 * s, 3 * s);
-      break;
-    case 'left':
-      ctx.fillRect(x - 2 * s, y + 6 * s, 2 * s, 10 * s);
-      ctx.fillStyle = bright;
-      ctx.fillRect(x - 2 * s, y + 4 * s, 2 * s, 3 * s);
-      break;
-    case 'up':
-      ctx.fillRect(x + 6 * s, y - 6 * s, 4 * s, 10 * s);
-      ctx.fillStyle = bright;
-      ctx.fillRect(x + 6 * s, y - 8 * s, 4 * s, 3 * s);
-      break;
-    case 'down':
-      ctx.fillRect(x + 6 * s, y + 16 * s, 4 * s, 10 * s);
-      ctx.fillStyle = bright;
-      ctx.fillRect(x + 6 * s, y + 25 * s, 4 * s, 3 * s);
-      break;
+    case 'right': baseAngle = -Math.PI / 2; break;
+    case 'left':  baseAngle = Math.PI / 2; break;
+    case 'up':    baseAngle = Math.PI; break;
+    case 'down':  baseAngle = 0; break;
+  }
+
+  const totalAngle = baseAngle + angle;
+  const tipX = cx + Math.sin(totalAngle) * len;
+  const tipY = cy + Math.cos(totalAngle) * len;
+  const midX = cx + Math.sin(totalAngle) * (len * 0.5);
+  const midY = cy + Math.cos(totalAngle) * (len * 0.5);
+
+  // Blade
+  ctx.strokeStyle = w.color;
+  ctx.lineWidth = 3 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+
+  // Bright tip
+  ctx.strokeStyle = bright;
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(midX, midY);
+  ctx.lineTo(tipX, tipY);
+  ctx.stroke();
+
+  // Slash trail arc (visible mid-swing)
+  if (progress > 0.2 && progress < 0.8) {
+    const trailAlpha = 1 - Math.abs(progress - 0.5) * 3;
+    ctx.globalAlpha = trailAlpha * 0.6;
+    ctx.strokeStyle = bright;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const trailStart = baseAngle + swingOffset + (progress - 0.3) * swingRange;
+    const trailEnd = baseAngle + swingOffset + progress * swingRange;
+    ctx.arc(cx, cy, len - 2, trailStart, trailEnd);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Impact sparks at peak (progress ~0.4-0.6)
+  if (progress > 0.35 && progress < 0.65) {
+    ctx.fillStyle = '#fff';
+    const sparkAngle = baseAngle + swingOffset + 0.5 * swingRange;
+    for (let i = 0; i < 3; i++) {
+      const sparkDist = len + (i * 4 + (progress - 0.35) * 20);
+      const sa = sparkAngle + (i - 1) * 0.3;
+      const sx = cx + Math.sin(sa) * sparkDist;
+      const sy = cy + Math.cos(sa) * sparkDist;
+      const sparkSize = (1 - Math.abs(progress - 0.5) * 4) * 3;
+      ctx.fillRect(sx - sparkSize / 2, sy - sparkSize / 2, sparkSize, sparkSize);
+    }
   }
 }
 
-function drawSpearAttack(ctx, x, y, facing, w, s) {
-  ctx.fillStyle = '#8d6e63'; // shaft
+// Spear: forward thrust with recoil
+function drawSpearThrust(ctx, x, y, facing, w, s, progress) {
+  const cx = x + 8 * s;
+  const cy = y + 10 * s;
   const tipColor = w.color === '#8d6e63' ? '#bdbdbd' : w.color;
+
+  // Thrust: quick extend (0→0.4), hold (0.4→0.6), retract (0.6→1)
+  let thrustDist;
+  if (progress < 0.4) {
+    thrustDist = (progress / 0.4);  // 0→1
+  } else if (progress < 0.6) {
+    thrustDist = 1;                  // hold
+  } else {
+    thrustDist = 1 - ((progress - 0.6) / 0.4); // 1→0
+  }
+
+  const maxLen = 18 * s;
+  const shaftLen = maxLen * (0.4 + thrustDist * 0.6);
+
+  let dx = 0, dy = 0;
   switch (facing) {
-    case 'right':
-      ctx.fillRect(x + 14 * s, y + 9 * s, 14 * s, 2 * s);
-      ctx.fillStyle = tipColor;
-      ctx.fillRect(x + 27 * s, y + 7 * s, 2 * s, 6 * s);
-      break;
-    case 'left':
-      ctx.fillRect(x - 12 * s, y + 9 * s, 14 * s, 2 * s);
-      ctx.fillStyle = tipColor;
-      ctx.fillRect(x - 13 * s, y + 7 * s, 2 * s, 6 * s);
-      break;
-    case 'up':
-      ctx.fillRect(x + 7 * s, y - 12 * s, 2 * s, 14 * s);
-      ctx.fillStyle = tipColor;
-      ctx.fillRect(x + 5 * s, y - 14 * s, 6 * s, 3 * s);
-      break;
-    case 'down':
-      ctx.fillRect(x + 7 * s, y + 16 * s, 2 * s, 14 * s);
-      ctx.fillStyle = tipColor;
-      ctx.fillRect(x + 5 * s, y + 29 * s, 6 * s, 3 * s);
-      break;
+    case 'right': dx = 1; break;
+    case 'left':  dx = -1; break;
+    case 'up':    dy = -1; break;
+    case 'down':  dy = 1; break;
+  }
+
+  const endX = cx + dx * shaftLen;
+  const endY = cy + dy * shaftLen;
+
+  // Shaft
+  ctx.strokeStyle = '#8d6e63';
+  ctx.lineWidth = 2 * s;
+  ctx.lineCap = 'butt';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+
+  // Spearhead (triangle-ish)
+  const headSize = 4 * s;
+  ctx.fillStyle = tipColor;
+  if (dx !== 0) {
+    // Horizontal
+    ctx.beginPath();
+    ctx.moveTo(endX + dx * headSize, endY);
+    ctx.lineTo(endX, endY - headSize / 2);
+    ctx.lineTo(endX, endY + headSize / 2);
+    ctx.fill();
+  } else {
+    // Vertical
+    ctx.beginPath();
+    ctx.moveTo(endX, endY + dy * headSize);
+    ctx.lineTo(endX - headSize / 2, endY);
+    ctx.lineTo(endX + headSize / 2, endY);
+    ctx.fill();
+  }
+
+  // Thrust impact lines at full extension
+  if (thrustDist > 0.8) {
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = thrustDist * 0.6;
+    for (let i = -1; i <= 1; i++) {
+      const offset = i * 6;
+      ctx.beginPath();
+      if (dx !== 0) {
+        ctx.moveTo(endX + dx * 4, endY + offset);
+        ctx.lineTo(endX + dx * (8 + Math.abs(i) * 2), endY + offset);
+      } else {
+        ctx.moveTo(endX + offset, endY + dy * 4);
+        ctx.lineTo(endX + offset, endY + dy * (8 + Math.abs(i) * 2));
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 }
 
-function drawBowHeld(ctx, x, y, facing, w, s) {
-  ctx.fillStyle = w.color;
+// Bow: draw string, release arrow
+function drawBowShot(ctx, x, y, facing, w, s, progress) {
+  const cx = x + 8 * s;
+  const cy = y + 10 * s;
+
+  let dx = 0, dy = 0;
   switch (facing) {
-    case 'right':
-      ctx.fillRect(x + 14 * s, y + 4 * s, 2 * s, 12 * s);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + 13 * s, y + 9 * s, 3 * s, 1 * s);
-      break;
-    case 'left':
-      ctx.fillRect(x, y + 4 * s, 2 * s, 12 * s);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x, y + 9 * s, 3 * s, 1 * s);
-      break;
-    case 'up':
-      ctx.fillRect(x + 2 * s, y, 12 * s, 2 * s);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + 7 * s, y, 1 * s, 3 * s);
-      break;
-    case 'down':
-      ctx.fillRect(x + 2 * s, y + 18 * s, 12 * s, 2 * s);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(x + 7 * s, y + 17 * s, 1 * s, 3 * s);
-      break;
+    case 'right': dx = 1; break;
+    case 'left':  dx = -1; break;
+    case 'up':    dy = -1; break;
+    case 'down':  dy = 1; break;
+  }
+
+  // Bow arc perpendicular to facing
+  const bowDist = 6 * s;
+  const bowLen = 8 * s;
+  const bowX = cx + dx * bowDist;
+  const bowY = cy + dy * bowDist;
+
+  // Draw bow limb
+  ctx.strokeStyle = w.color;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (dx !== 0) {
+    // Horizontal facing — vertical bow
+    ctx.moveTo(bowX, bowY - bowLen);
+    ctx.quadraticCurveTo(bowX + dx * 6, bowY, bowX, bowY + bowLen);
+  } else {
+    // Vertical facing — horizontal bow
+    ctx.moveTo(bowX - bowLen, bowY);
+    ctx.quadraticCurveTo(bowX, bowY + dy * 6, bowX + bowLen, bowY);
+  }
+  ctx.stroke();
+
+  // String — pulled back before release (progress < 0.3), then snap forward
+  const stringPull = progress < 0.3 ? (1 - progress / 0.3) * 5 : 0;
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (dx !== 0) {
+    ctx.moveTo(bowX, bowY - bowLen);
+    ctx.lineTo(bowX - dx * stringPull, bowY);
+    ctx.lineTo(bowX, bowY + bowLen);
+  } else {
+    ctx.moveTo(bowX - bowLen, bowY);
+    ctx.lineTo(bowX - dy * stringPull, bowY); // pulled back
+    ctx.lineTo(bowX + bowLen, bowY);
+  }
+  ctx.stroke();
+
+  // Release flash
+  if (progress > 0.25 && progress < 0.45) {
+    const flash = 1 - (progress - 0.25) / 0.2;
+    ctx.globalAlpha = flash * 0.8;
+    ctx.fillStyle = '#fff';
+    const fx = bowX + dx * 4;
+    const fy = bowY + dy * 4;
+    ctx.fillRect(fx - 3, fy - 3, 6, 6);
+    ctx.globalAlpha = 1;
+  }
+
+  // Arrow flying away (after release)
+  if (progress > 0.3 && progress < 0.9) {
+    const arrowDist = (progress - 0.3) / 0.6 * 30;
+    const ax = bowX + dx * (4 + arrowDist);
+    const ay = bowY + dy * (4 + arrowDist);
+    ctx.fillStyle = '#fff';
+    if (dx !== 0) {
+      ctx.fillRect(ax, ay - 1, 6, 2);
+      // Arrowhead
+      ctx.fillRect(ax + dx * 5, ay - 2, 2, 4);
+    } else {
+      ctx.fillRect(ax - 1, ay, 2, 6);
+      ctx.fillRect(ax - 2, ay + dy * 5, 4, 2);
+    }
   }
 }
 
 // Draw weapon at rest (not attacking) on right side of hero
 export function drawWeaponRest(ctx, x, y, weapon, s) {
   const w = getWeapon(weapon);
+  const cx = x + 8 * s;
+  const cy = y + 10 * s;
+
   switch (w.type) {
     case 'sword':
+      // Sword resting diagonally on back
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + 13 * s, y + 12 * s);
+      ctx.lineTo(x + 16 * s, y + 2 * s);
+      ctx.stroke();
+      // Guard
       ctx.fillStyle = '#8d6e63';
-      ctx.fillRect(x + 14 * s, y + 7 * s, 2 * s, 2 * s);
-      ctx.fillStyle = w.color;
-      ctx.fillRect(x + 14.5 * s, y + 1 * s, 1 * s, 6 * s);
+      ctx.fillRect(x + 12.5 * s, y + 11 * s, 3 * s, 2 * s);
       break;
     case 'spear':
-      ctx.fillStyle = '#8d6e63';
-      ctx.fillRect(x + 14.5 * s, y + 2 * s, 1 * s, 12 * s);
-      ctx.fillStyle = '#bdbdbd';
-      ctx.fillRect(x + 14 * s, y, 2 * s, 3 * s);
+      // Spear held vertically
+      ctx.strokeStyle = '#8d6e63';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 15 * s, y + 14 * s);
+      ctx.lineTo(x + 15 * s, y - 1 * s);
+      ctx.stroke();
+      // Spearhead
+      const tipColor = w.color === '#8d6e63' ? '#bdbdbd' : w.color;
+      ctx.fillStyle = tipColor;
+      ctx.beginPath();
+      ctx.moveTo(x + 15 * s, y - 3 * s);
+      ctx.lineTo(x + 13 * s, y);
+      ctx.lineTo(x + 17 * s, y);
+      ctx.fill();
       break;
     case 'bow':
-      ctx.fillStyle = w.color;
-      ctx.fillRect(x + 14 * s, y + 3 * s, 2 * s, 10 * s);
+      // Bow slung on back
+      ctx.strokeStyle = w.color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + 14 * s, y + 4 * s);
+      ctx.quadraticCurveTo(x + 18 * s, y + 10 * s, x + 14 * s, y + 16 * s);
+      ctx.stroke();
+      // String
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 14 * s, y + 4 * s);
+      ctx.lineTo(x + 14 * s, y + 16 * s);
+      ctx.stroke();
       break;
   }
 }

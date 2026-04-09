@@ -704,7 +704,8 @@ function renderPlay(ctx) {
     drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
     // Draw weapon on hero
     if (p.attacking) {
-      drawWeaponAttack(ctx, px, py, p.facing, p.weapon, 2);
+      const atkProgress = 1 - (p.attackTimer / getAttackSpeed(p)); // 0→1
+      drawWeaponAttack(ctx, px, py, p.facing, p.weapon, 2, atkProgress);
     } else {
       drawWeaponRest(ctx, px, py, p.weapon, 2);
     }
