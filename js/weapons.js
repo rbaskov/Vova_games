@@ -93,7 +93,7 @@ export const WEAPONS = {
   // === BANDIT LOOT WEAPONS ===
   bandit_sword: {
     id: 'bandit_sword',
-    name: 'Меч бандита',
+    name: 'Ржавый меч бандита',
     desc: '+2 ATK, зазубренный',
     type: 'sword',
     bonusAtk: 2,
@@ -105,8 +105,8 @@ export const WEAPONS = {
   },
   bandit_spear: {
     id: 'bandit_spear',
-    name: 'Копьё бандита',
-    desc: '+3 ATK, грубое',
+    name: 'Грубое копьё бандита',
+    desc: '+3 ATK, каменный наконечник',
     type: 'spear',
     bonusAtk: 3,
     range: 70,
@@ -117,8 +117,8 @@ export const WEAPONS = {
   },
   bandit_bow: {
     id: 'bandit_bow',
-    name: 'Лук бандита',
-    desc: '+2 ATK, потрёпанный',
+    name: 'Потрёпанный лук бандита',
+    desc: '+2 ATK, с оборванной тетивой',
     type: 'bow',
     bonusAtk: 2,
     range: 190,

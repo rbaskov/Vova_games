@@ -186,7 +186,85 @@ function getItems(player) {
   return items;
 }
 
+// Bandit weapon icons — rough, damaged, unique look
+function drawBanditWeaponIcon(ctx, x, y, w) {
+  const cx = x + 16, cy = y + 16;
+
+  if (w.id === 'bandit_sword') {
+    // Jagged rusty sword
+    ctx.fillStyle = '#6d6d6d';
+    ctx.fillRect(cx - 1, cy - 10, 3, 14);
+    // Jagged edge (notches)
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx + 2, cy - 8, 2, 2);
+    ctx.fillRect(cx + 2, cy - 4, 2, 2);
+    ctx.fillRect(cx - 3, cy - 6, 2, 2);
+    // Tip — broken/angled
+    ctx.fillStyle = '#7a7a7a';
+    ctx.fillRect(cx - 2, cy - 12, 2, 3);
+    ctx.fillRect(cx, cy - 11, 2, 2);
+    // Guard — wrapped leather
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 4, cy + 3, 9, 3);
+    // Handle
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(cx - 1, cy + 5, 3, 5);
+    // Blood stain
+    ctx.fillStyle = '#8b0000';
+    ctx.fillRect(cx, cy - 7, 2, 3);
+  } else if (w.id === 'bandit_spear') {
+    // Rough spear with crude tip
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx, cy - 6, 2, 20);
+    // Rough binding
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(cx - 1, cy + 2, 4, 2);
+    ctx.fillRect(cx - 1, cy + 8, 4, 2);
+    // Crude stone/bone tip
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillRect(cx - 2, cy - 12, 6, 8);
+    ctx.fillStyle = '#bdbdbd';
+    ctx.fillRect(cx - 1, cy - 14, 4, 4);
+    // Sharpened edge
+    ctx.fillStyle = '#757575';
+    ctx.fillRect(cx + 3, cy - 10, 2, 4);
+    ctx.fillRect(cx - 3, cy - 10, 2, 4);
+    // Wrapped cord
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 1, cy - 4, 4, 1);
+    ctx.fillRect(cx - 1, cy - 1, 4, 1);
+  } else if (w.id === 'bandit_bow') {
+    // Rough wooden bow with frayed string
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(cx - 7, cy - 10, 3, 20);
+    // Curve
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(cx - 9, cy - 8, 2, 4);
+    ctx.fillRect(cx - 9, cy + 4, 2, 4);
+    ctx.fillRect(cx - 5, cy - 12, 3, 3);
+    ctx.fillRect(cx - 5, cy + 9, 3, 3);
+    // String (frayed)
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(cx - 5, cy - 10, 1, 20);
+    // Frayed bits
+    ctx.fillStyle = '#888';
+    ctx.fillRect(cx - 4, cy - 4, 2, 1);
+    ctx.fillRect(cx - 4, cy + 3, 2, 1);
+    // Arrow nocked
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(cx - 4, cy - 1, 10, 2);
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillRect(cx + 5, cy - 2, 3, 4);
+  }
+}
+
 function drawWeaponIcon(ctx, x, y, w) {
+  // Bandit weapons have unique rough/damaged icons
+  if (w.id && w.id.startsWith('bandit_')) {
+    drawBanditWeaponIcon(ctx, x, y, w);
+    return;
+  }
+
   const cx = x + 16, cy = y + 16;
   switch (w.type) {
     case 'sword':
