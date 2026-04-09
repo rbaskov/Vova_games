@@ -177,8 +177,8 @@ export const ARMOR = {
   },
   moremirida_shield: {
     id: 'moremirida_shield', slot: 'shield',
-    name: 'Щит Моремирида', desc: '+10 DEF, 100% блок, x3 отражение',
-    def: 10, bonusHp: 30, price: 600,
+    name: 'Щит Моремирида', desc: '+1000 DEF, 100% блок, x3 отражение',
+    def: 1000, bonusHp: 30, price: 600,
     blockChance: 1.0,
     reflects: true,
     tripleReflect: true,
