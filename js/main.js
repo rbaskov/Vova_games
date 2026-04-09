@@ -1,4 +1,8 @@
-import { initInput, isKeyPressed } from './input.js';
+import { initInput, isKeyDown, isKeyPressed } from './input.js';
+import { createTileMap, renderMap, isSolid, isPortal, TILE_SIZE } from './tilemap.js';
+import { createCamera, updateCamera } from './camera.js';
+import { villageMap } from './maps/village.js';
+import { drawHero, drawNPC } from './sprites.js';
 
 // --- Game States ---
 export const STATE = {
@@ -16,13 +20,197 @@ export const game = {
   ctx: null,
   width: 640,
   height: 480,
+  dt: 0,
+  currentMap: null,
+  camera: null,
+  player: null,
+  enemies: [],
+  npcs: [],
+  particles: [],
+  projectiles: [],
   animFrame: 0,
   animTimer: 0,
   animSpeed: 0.15,
   totalTime: 0,
+  boss: null,
+  showHelp: false,
 };
 
-// --- Menu Data ---
+// --- Map Registry ---
+const MAP_REGISTRY = {
+  village: villageMap,
+};
+
+// --- Player Creation ---
+function createPlayer(startX, startY) {
+  return {
+    x: startX * TILE_SIZE,
+    y: startY * TILE_SIZE,
+    hitW: 24,
+    hitH: 28,
+    facing: 'down',
+    moving: false,
+    attacking: false,
+    attackTimer: 0,
+    hp: 100,
+    maxHp: 100,
+    atk: 5,
+    xp: 0,
+    level: 1,
+    coins: 0,
+    potions: 3,
+    artifacts: { earth: false, fire: false, water: false },
+    cooldowns: { earth: 0, fire: 0, water: 0 },
+    invincibleTimer: 0,
+  };
+}
+
+// --- Load Map ---
+function loadMap(mapKey, spawnX, spawnY) {
+  const mapData = MAP_REGISTRY[mapKey];
+  if (!mapData) return;
+
+  const tileMap = createTileMap(mapData);
+  game.currentMap = tileMap;
+
+  // Create or reposition player
+  const sx = spawnX !== undefined ? spawnX : tileMap.playerStart.x;
+  const sy = spawnY !== undefined ? spawnY : tileMap.playerStart.y;
+
+  if (game.player) {
+    // Preserve stats, update position
+    game.player.x = sx * TILE_SIZE;
+    game.player.y = sy * TILE_SIZE;
+  } else {
+    game.player = createPlayer(sx, sy);
+  }
+
+  // Camera
+  game.camera = createCamera(game.width, game.height);
+
+  // NPCs from map data
+  game.npcs = tileMap.npcs.map(n => ({
+    ...n,
+    x: n.col * TILE_SIZE,
+    y: n.row * TILE_SIZE,
+  }));
+
+  // Enemies from spawns
+  game.enemies = []; // Will be populated by enemy system later
+}
+
+// --- Collision ---
+function collidesWithMap(x, y, w, h) {
+  const map = game.currentMap;
+  // Check all 4 corners
+  const left = Math.floor(x / TILE_SIZE);
+  const right = Math.floor((x + w - 1) / TILE_SIZE);
+  const top = Math.floor(y / TILE_SIZE);
+  const bottom = Math.floor((y + h - 1) / TILE_SIZE);
+
+  return (
+    isSolid(map, left, top) ||
+    isSolid(map, right, top) ||
+    isSolid(map, left, bottom) ||
+    isSolid(map, right, bottom)
+  );
+}
+
+// --- Check Portals ---
+function checkPortals() {
+  const p = game.player;
+  const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
+  const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
+  const portal = isPortal(game.currentMap, centerCol, centerRow);
+  if (portal) {
+    loadMap(portal.target, portal.spawnX, portal.spawnY);
+  }
+}
+
+// --- Update Player ---
+const MOVE_SPEED = 120;
+
+function updatePlayer(dt) {
+  const p = game.player;
+  if (!p) return;
+
+  // Attack timer
+  if (p.attacking) {
+    p.attackTimer -= dt;
+    if (p.attackTimer <= 0) {
+      p.attacking = false;
+    }
+  }
+
+  // Invincibility timer
+  if (p.invincibleTimer > 0) {
+    p.invincibleTimer -= dt;
+  }
+
+  // Cooldowns
+  for (const key of Object.keys(p.cooldowns)) {
+    if (p.cooldowns[key] > 0) p.cooldowns[key] -= dt;
+  }
+
+  // Movement
+  let dx = 0;
+  let dy = 0;
+
+  if (isKeyDown('KeyW') || isKeyDown('ArrowUp')) dy -= 1;
+  if (isKeyDown('KeyS') || isKeyDown('ArrowDown')) dy += 1;
+  if (isKeyDown('KeyA') || isKeyDown('ArrowLeft')) dx -= 1;
+  if (isKeyDown('KeyD') || isKeyDown('ArrowRight')) dx += 1;
+
+  // Diagonal normalization
+  if (dx !== 0 && dy !== 0) {
+    dx *= 0.707;
+    dy *= 0.707;
+  }
+
+  p.moving = dx !== 0 || dy !== 0;
+
+  // Facing direction
+  if (dy < 0) p.facing = 'up';
+  else if (dy > 0) p.facing = 'down';
+  else if (dx < 0) p.facing = 'left';
+  else if (dx > 0) p.facing = 'right';
+
+  // Apply movement with collision
+  const moveX = dx * MOVE_SPEED * dt;
+  const moveY = dy * MOVE_SPEED * dt;
+
+  // X axis
+  const newX = p.x + moveX;
+  if (!collidesWithMap(newX, p.y, p.hitW, p.hitH)) {
+    p.x = newX;
+  }
+
+  // Y axis
+  const newY = p.y + moveY;
+  if (!collidesWithMap(p.x, newY, p.hitW, p.hitH)) {
+    p.y = newY;
+  }
+
+  // Attack
+  if (isKeyPressed('Space') && !p.attacking) {
+    p.attacking = true;
+    p.attackTimer = 0.3;
+  }
+
+  // Portal check
+  checkPortals();
+
+  // Update camera
+  updateCamera(
+    game.camera,
+    p.x + p.hitW / 2,
+    p.y + p.hitH / 2,
+    game.currentMap.width,
+    game.currentMap.height
+  );
+}
+
+// --- Menu ---
 const stars = [];
 const NUM_STARS = 80;
 
@@ -38,7 +226,6 @@ function initStars() {
   }
 }
 
-// --- Mountain Silhouette ---
 function drawMountains(ctx) {
   ctx.fillStyle = '#1a1a2e';
   ctx.beginPath();
@@ -58,7 +245,6 @@ function drawMountains(ctx) {
   ctx.closePath();
   ctx.fill();
 
-  // Darker foreground mountains
   ctx.fillStyle = '#0f0f23';
   ctx.beginPath();
   ctx.moveTo(0, 380);
@@ -76,11 +262,9 @@ function drawMountains(ctx) {
   ctx.fill();
 }
 
-// --- Menu Render ---
 function renderMenu(ctx, dt) {
   const { width, height } = game;
 
-  // Background
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0, 0, width, height);
 
@@ -92,7 +276,6 @@ function renderMenu(ctx, dt) {
     ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);
   }
 
-  // Mountains
   drawMountains(ctx);
 
   // Title shadow
@@ -121,6 +304,114 @@ function renderMenu(ctx, dt) {
   ctx.fillText('VOVA GAMES 2026', width / 2, 460);
 }
 
+// --- HUD ---
+function renderHUD(ctx) {
+  const p = game.player;
+  if (!p) return;
+
+  // Top bar background
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, game.width, 36);
+
+  // HP bar
+  const hpBarX = 8;
+  const hpBarY = 8;
+  const hpBarW = 120;
+  const hpBarH = 12;
+
+  ctx.fillStyle = '#333';
+  ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
+  const hpRatio = Math.max(0, p.hp / p.maxHp);
+  ctx.fillStyle = hpRatio > 0.3 ? '#cc2222' : '#ff4444';
+  ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
+  ctx.strokeStyle = '#666';
+  ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+
+  // HP text
+  ctx.font = '8px "Press Start 2P"';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(`HP ${p.hp}/${p.maxHp}`, hpBarX, hpBarY + hpBarH + 12);
+
+  // XP bar
+  const xpBarX = 140;
+  const xpNeeded = p.level * 50;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(xpBarX, hpBarY, 80, hpBarH);
+  const xpRatio = Math.min(1, p.xp / xpNeeded);
+  ctx.fillStyle = '#8844cc';
+  ctx.fillRect(xpBarX, hpBarY, 80 * xpRatio, hpBarH);
+  ctx.strokeStyle = '#666';
+  ctx.strokeRect(xpBarX, hpBarY, 80, hpBarH);
+
+  // Level
+  ctx.fillStyle = '#f0c040';
+  ctx.fillText(`LV ${p.level}`, xpBarX, hpBarY + hpBarH + 12);
+
+  // Coins
+  ctx.fillStyle = '#f0c040';
+  ctx.textAlign = 'left';
+  ctx.fillText(`$ ${p.coins}`, 240, hpBarY + 10);
+
+  // Potions
+  ctx.fillStyle = '#44cc44';
+  ctx.fillText(`POT ${p.potions}`, 310, hpBarY + 10);
+
+  // Map name
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#aaa';
+  ctx.fillText(game.currentMap ? game.currentMap.name : '', game.width - 8, hpBarY + 10);
+
+  // Reset textAlign
+  ctx.textAlign = 'left';
+}
+
+// --- Render Play State ---
+function renderPlay(ctx) {
+  const cam = game.camera;
+  const map = game.currentMap;
+  if (!map || !cam) return;
+
+  // Clear
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, game.width, game.height);
+
+  // Map tiles
+  renderMap(ctx, map, cam, game.animFrame);
+
+  // NPCs
+  for (const npc of game.npcs) {
+    const sx = npc.x - cam.x;
+    const sy = npc.y - cam.y;
+    // Only render if on screen
+    if (sx > -TILE_SIZE && sx < game.width + TILE_SIZE &&
+        sy > -TILE_SIZE && sy < game.height + TILE_SIZE) {
+      drawNPC(ctx, sx, sy, npc.bodyColor, npc.headDetail);
+      // Name label
+      ctx.font = '8px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(npc.name, sx + TILE_SIZE / 2, sy - 4);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // Player
+  const p = game.player;
+  if (p) {
+    const px = p.x - cam.x;
+    const py = p.y - cam.y;
+    // Blink when invincible
+    const visible = p.invincibleTimer <= 0 || Math.floor(p.invincibleTimer * 10) % 2 === 0;
+    if (visible) {
+      drawHero(ctx, px, py, p.facing, p.moving ? game.animFrame : 0, p.attacking);
+    }
+  }
+
+  // HUD on top
+  renderHUD(ctx);
+}
+
 // --- Game Loop ---
 let lastTime = 0;
 
@@ -128,6 +419,7 @@ function gameLoop(timestamp) {
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
 
+  game.dt = dt;
   game.totalTime += dt;
 
   // Animation frame counter
@@ -144,17 +436,13 @@ function gameLoop(timestamp) {
       renderMenu(ctx, dt);
       if (isKeyPressed('Enter')) {
         game.state = STATE.PLAY;
+        loadMap('village');
       }
       break;
 
     case STATE.PLAY:
-      // Placeholder — will be implemented in later tasks
-      ctx.fillStyle = '#0a0a1a';
-      ctx.fillRect(0, 0, game.width, game.height);
-      ctx.font = '14px "Press Start 2P"';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#f0c040';
-      ctx.fillText('ИГРА ЗАГРУЖАЕТСЯ...', game.width / 2, game.height / 2);
+      updatePlayer(dt);
+      renderPlay(ctx);
       break;
 
     case STATE.DIALOG:
@@ -168,8 +456,8 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
-// --- Init ---
-function init() {
+// --- Start Game ---
+function startGame() {
   game.canvas = document.getElementById('game');
   game.ctx = game.canvas.getContext('2d');
   game.width = game.canvas.width;
@@ -184,4 +472,4 @@ function init() {
   });
 }
 
-init();
+startGame();
