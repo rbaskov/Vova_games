@@ -26,10 +26,11 @@ export function getRelayUrl() {
  *   net.disconnect();
  */
 export function createNetwork() {
-  let ws      = null;
-  let _state  = 'disconnected'; // 'disconnected' | 'connecting' | 'connected'
+  let ws        = null;
+  let _state    = 'disconnected'; // 'disconnected' | 'connecting' | 'connected'
   let pingTimer = null;
-  const queue = [];   // входящие сообщения (объекты)
+  let _hadError = false;
+  const queue   = [];   // входящие сообщения (объекты)
 
   function getState() { return _state; }
 
@@ -56,13 +57,15 @@ export function createNetwork() {
     };
 
     ws.onclose = () => {
+      const wasError = _hadError;
+      _hadError = false;
       _cleanup();
-      // Пишем специальный маркер в очередь чтобы lobby/game могли среагировать
-      queue.push({ type: '_disconnected' });
+      // onerror всегда предшествует onclose — не дублируем teardown
+      if (!wasError) queue.push({ type: '_disconnected' });
     };
 
     ws.onerror = () => {
-      // onerror всегда предшествует onclose — достаточно пометки
+      _hadError = true;
       queue.push({ type: '_error' });
     };
   }
