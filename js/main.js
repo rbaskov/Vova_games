@@ -41,6 +41,7 @@ import {
   unstickPlayer, awardLoot,
   getStructureChestRarity, getOpenWorldSaveState,
 } from './map-loading.js';
+import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
 
 // Re-export для обратной совместимости на случай если кто-то импортирует из main.js
 export { game, STATE };
@@ -1245,6 +1246,7 @@ function handleDialogAction(action) {
       game.particles.push(createParticle(p.x, p.y - 4, q.rewardText, '#44cc44', 1.5));
       if (checkLevelUp(p)) {
         game.particles.push(createParticle(p.x, p.y - 28, 'LEVEL UP!', '#f0c040', 1.5));
+        vibrate(HAPTIC_LEVELUP);
       }
     }
   }
@@ -1271,6 +1273,7 @@ function handleDialogAction(action) {
       game.particles.push(createParticle(p.x, p.y - 16, 'Награда!', '#ffd54f', 1.5));
       if (checkLevelUp(p)) {
         game.particles.push(createParticle(p.x, p.y - 28, 'LEVEL UP!', '#f0c040', 1.5));
+        vibrate(HAPTIC_LEVELUP);
       }
       SFX.playQuestComplete();
     }
@@ -2683,6 +2686,7 @@ function gameLoop(timestamp) {
           // Check level up
           if (checkLevelUp(game.player)) {
             SFX.playLevelUp();
+            vibrate(HAPTIC_LEVELUP);
             game.particles.push(createParticle(
               game.player.x, game.player.y - 20,
               'LEVEL UP!', '#f0c040', 1.5
@@ -2723,6 +2727,7 @@ function gameLoop(timestamp) {
               game.state = STATE.GAMEOVER;
               SFX.playPlayerDeath();
               SFX.stopMusic();
+              vibrate(HAPTIC_DEATH);
             }
           }
         }
@@ -2759,6 +2764,7 @@ function gameLoop(timestamp) {
             game.particles.push(createParticle(enemy.x, enemy.y - 32, '+1 POT', '#44cc44'));
           }
           if (checkLevelUp(game.player)) {
+            vibrate(HAPTIC_LEVELUP);
             game.particles.push(createParticle(
               game.player.x, game.player.y - 20,
               'LEVEL UP!', '#f0c040', 1.5
@@ -2822,7 +2828,10 @@ function gameLoop(timestamp) {
             game.particles.push(createParticle(game.player.x, game.player.y - 8, `-${dmg}`, '#ff4444'));
             if (game.player.hp <= 0) {
               game.player.hp = 0;
-              if (!game.sandbox) game.state = STATE.GAMEOVER;
+              if (!game.sandbox) {
+                game.state = STATE.GAMEOVER;
+                vibrate(HAPTIC_DEATH);
+              }
             }
           }
         }
@@ -2905,6 +2914,7 @@ function gameLoop(timestamp) {
                 game.particles.push(createParticle(game.boss.x, game.boss.y - 44, 'Меч Бальдионидов!', '#ff00ff', 2.5));
               }
               if (checkLevelUp(game.player)) {
+                vibrate(HAPTIC_LEVELUP);
                 game.particles.push(createParticle(game.player.x, game.player.y - 20, 'LEVEL UP!', '#f0c040', 1.5));
               }
               // Win condition
@@ -3024,6 +3034,7 @@ function gameLoop(timestamp) {
                   game.state = STATE.GAMEOVER;
                   SFX.playPlayerDeath();
                   SFX.stopMusic();
+                  vibrate(HAPTIC_DEATH);
                 }
               }
             }

@@ -287,21 +287,18 @@
 - Modify: `js/touch.js`, `js/combat.js`, `js/player-update.js`
 - Create: `js/haptics.js`
 
-- [ ] **Step 7.1: Создать `js/haptics.js`:**
-  - `export function vibrate(pattern)` — обёртка над `navigator.vibrate`. Если API недоступно — no-op.
-  - Предустановленные паттерны: `HAPTIC_HIT = 20`, `HAPTIC_HURT = [30, 40, 30]`, `HAPTIC_DEATH = [100, 50, 100, 50, 200]`, `HAPTIC_LEVELUP = [40, 30, 40, 30, 60]`
-  - Настройка в `game.settings.haptics = true` (default), тумблер в меню паузы (если есть)
+- [x] **Step 7.1:** `js/haptics.js` создан — vibrate() wrapper, graceful no-op если API недоступно, rate-limit 80мс, setHapticsEnabled/isHapticsSupported. Паттерны: HAPTIC_TAP=10, HAPTIC_HIT=20, HAPTIC_HURT=[30,40,30], HAPTIC_LEVELUP=[40,30,40,30,60], HAPTIC_DEATH=[100,50,100,50,200].
 
-- [ ] **Step 7.2:** Вызвать `vibrate(HAPTIC_HIT)` при успешном попадании по врагу (в `combat.js` — функция `dealDamage`).
-- [ ] **Step 7.3:** Вызвать `vibrate(HAPTIC_HURT)` при получении урона игроком (в `applyDamageToPlayer`).
-- [ ] **Step 7.4:** Вызвать `vibrate(HAPTIC_LEVELUP)` при повышении уровня.
-- [ ] **Step 7.5:** Вызвать `vibrate(HAPTIC_DEATH)` при смерти.
+- [x] **Step 7.2:** vibrate(HAPTIC_HIT) в `combat.js:playerAttackEnemies` после уменьшения enemy.hp.
+- [x] **Step 7.3:** vibrate(HAPTIC_HURT) в `combat.js:enemyAttackPlayer` после уменьшения player.hp.
+- [x] **Step 7.4:** vibrate(HAPTIC_LEVELUP) во всех 5 местах вызова checkLevelUp в main.js.
+- [x] **Step 7.5:** vibrate(HAPTIC_DEATH) во всех 3 местах перехода в STATE.GAMEOVER в main.js.
 
-- [ ] **Step 7.6: Touch feedback** — в `touch.js` при каждом нажатии на кнопку (touchstart) также `vibrate(10)` — короткий тик, чтобы Vova чувствовал отклик.
+- [x] **Step 7.6:** Touch feedback в `touch.js:handleTouchStart` — vibrate(HAPTIC_TAP) при нажатии menu/game кнопок.
 
-- [ ] **Step 7.7:** Smoke-test на реальном Android (через HTTPS домен — `navigator.vibrate` не работает по HTTP, нужен eldo.evgosyan.ru). Проверить что вибрация не спамит (не более одной на кадр).
+- [ ] **Step 7.7:** Smoke-test на реальном Android — отложен, требует eldo.evgosyan.ru HTTPS. Локально haptics будут no-op на десктопе.
 
-- [ ] **Step 7.8:** Коммит: `mobile: haptic feedback on hit/hurt/levelup/death`
+- [x] **Step 7.8:** Коммит: `mobile: haptic feedback on hit/hurt/levelup/death + touch tap`
 
 ---
 

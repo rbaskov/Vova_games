@@ -5,6 +5,7 @@
 import { isSolid, TILE_SIZE } from './tilemap.js';
 import { getTotalAtk, getWeaponRange, getKnockback, getWeapon } from './weapons.js';
 import { getTotalDef, tryBlockProjectile } from './armor.js';
+import { vibrate, HAPTIC_HIT, HAPTIC_HURT } from './haptics.js';
 
 // Safe knockback: only apply if target won't end up inside a wall
 function safeKnockback(entity, dx, dy, w, h, map) {
@@ -100,6 +101,7 @@ export function playerAttackEnemies(player, enemies) {
       const dmg = calcDamage(Math.floor(rawAtk * (player._atkMultiplier || 1)), 0);
       enemy.hp -= dmg;
       enemy.hitTimer = 0.3;
+      vibrate(HAPTIC_HIT);
 
       // Knockback away from player (with collision check)
       const kb = getKnockback(player);
@@ -160,6 +162,7 @@ export function enemyAttackPlayer(enemies, player, dt) {
       player.hp -= dmg;
       totalDamage += dmg;
       player.invincibleTimer = 0.5;
+      vibrate(HAPTIC_HURT);
 
       // Knockback player 30px away from enemy (with collision check)
       const angle = Math.atan2(py - ey, px - ex);

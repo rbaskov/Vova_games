@@ -2,6 +2,8 @@
 // touch.js — Mobile Touch Controls (Virtual Joystick + Buttons)
 // ============================================================
 
+import { vibrate, HAPTIC_TAP } from './haptics.js';
+
 let joystick = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 };
 let touchButtons = {};  // button name → pressed this frame
 let touchHeld = {};     // button name → currently held
@@ -164,6 +166,7 @@ function handleTouchStart(e) {
       if (hitMenuButton(pos, btn)) {
         touchButtons[btn.key] = true;
         touchHeld[btn.key] = true;
+        vibrate(HAPTIC_TAP);
         return;
       }
     }
@@ -177,6 +180,7 @@ function handleTouchStart(e) {
         touchButtons[btn.key] = true;
         touchHeld[btn.key] = true;
         hitButton = true;
+        vibrate(HAPTIC_TAP);
         break;
       }
     }
