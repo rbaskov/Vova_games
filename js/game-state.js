@@ -13,6 +13,7 @@ export const STATE = {
   INVENTORY: 'INVENTORY',
   GAMEOVER: 'GAMEOVER',
   WIN: 'WIN',
+  LOBBY: 'LOBBY',
 };
 
 export const game = {
@@ -58,6 +59,10 @@ export const game = {
   minimapRenderer: null,
   fastTravel: null,
   worldEventManager: null,
+  // --- Coop (Session 1+) ---
+  network: null,       // экземпляр createNetwork() пока в лобби/игре
+  coopRole: 'none',   // 'none' | 'host' | 'guest'
+  coopCode: null,     // код комнаты (строка 6 символов)
   // Подтверждение выхода в меню — модальный оверлей поверх PLAY.
   // Когда true: update пропускается (игра на паузе), input ловится напрямую,
   // рендер добавляет confirm-оверлей поверх обычного игрового кадра.
