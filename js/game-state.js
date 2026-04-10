@@ -24,7 +24,8 @@ export const game = {
   dt: 0,
   currentMap: null,
   camera: null,
-  player: null,
+  // game.player — accessor property, определённый ниже через Object.defineProperty.
+  // Читает/пишет players[0]. Подробности — см. блок после export.
   enemies: [],
   npcs: [],
   particles: [],
@@ -57,6 +58,28 @@ export const game = {
   minimapRenderer: null,
   fastTravel: null,
   worldEventManager: null,
-  // Pre-coop prep (Task 3 добавит полноценный массив игроков):
+  // Массив игроков. players[0] — локальный (он же game.player через геттер).
+  // players[1..] — место под будущих кооп-гостей (Task coop-session1).
   players: [],
 };
+
+// game.player — accessor proxy to players[0]. Введено в Task 3.1 (pre-coop refactor).
+//
+// Зачем: существующий код делает `game.player = createPlayer(...)`,
+// `game.player.hp -= dmg`, `if (!game.player)` и т.д. — 217 обращений в 5 файлах.
+// Геттер/сеттер делает эти обращения прозрачным фасадом над players[0], чтобы
+// миграция на массив игроков не требовала переписывания call-site'ов.
+//
+// Семантика:
+//   game.player           → game.players[0]   (undefined если массив пуст)
+//   game.player = x       → game.players[0] = x (создаёт slot 0 если нужно)
+//   game.player = null    → game.players[0] = null (length остаётся 1)
+//
+// configurable: true — на случай если тесты захотят переопределить для моков.
+// enumerable: true — чтобы for..in и Object.keys видели поле как раньше.
+Object.defineProperty(game, 'player', {
+  get() { return this.players[0]; },
+  set(v) { this.players[0] = v; },
+  enumerable: true,
+  configurable: true,
+});
