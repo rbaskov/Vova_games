@@ -299,10 +299,7 @@ export const STRUCTURE_TEMPLATES = {
       [_, _, _, D, D, _, _, _],
     ],
     npcs: [],
-    spawns: [
-      { type: 'wolf', localCol: 1, localRow: 2 },
-      { type: 'wolf', localCol: 6, localRow: 2 },
-    ],
+    spawns: [],
     chests: [
       { localCol: 1, localRow: 1 },
     ],
@@ -329,10 +326,7 @@ export const STRUCTURE_TEMPLATES = {
       [_, W, W, W, DR, DR, W, W, W, _],
     ],
     npcs: [],
-    spawns: [
-      { type: 'skeleton', localCol: 1, localRow: 1 },
-      { type: 'skeleton', localCol: 8, localRow: 1 },
-    ],
+    spawns: [],
     chests: [
       { localCol: 1, localRow: 6 },
       { localCol: 8, localRow: 6 },
@@ -362,12 +356,7 @@ export const STRUCTURE_TEMPLATES = {
       [_, _, _, _, D, D, _, _, _, _],
     ],
     npcs: [],
-    spawns: [
-      { type: 'golem', localCol: 2, localRow: 2 },
-      { type: 'golem', localCol: 7, localRow: 2 },
-      { type: 'skeleton', localCol: 2, localRow: 6 },
-      { type: 'skeleton', localCol: 7, localRow: 6 },
-    ],
+    spawns: [],
     chests: [
       { localCol: 1, localRow: 1 },
       { localCol: 8, localRow: 1 },
@@ -397,12 +386,7 @@ export const STRUCTURE_TEMPLATES = {
       [_, _, _, _, D, D, _, _, _, _],
     ],
     npcs: [],
-    spawns: [
-      { type: 'skeleton', localCol: 2, localRow: 3 },
-      { type: 'skeleton', localCol: 7, localRow: 3 },
-      { type: 'golem', localCol: 2, localRow: 6 },
-      { type: 'golem', localCol: 7, localRow: 6 },
-    ],
+    spawns: [],
     chests: [
       { localCol: 1, localRow: 1 },
       { localCol: 8, localRow: 1 },

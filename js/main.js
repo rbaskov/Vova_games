@@ -1128,6 +1128,17 @@ function checkPortals() {
   }
 }
 
+// --- Loot scaling helper (applies difficulty lootMul in open world) ---
+function awardLoot(xp, coins) {
+  let mul = 1;
+  if (game.openWorld) {
+    const diff = getDifficulty(game.difficulty);
+    mul = diff.lootMul || 1;
+  }
+  game.player.xp += Math.floor(xp * mul);
+  game.player.coins += Math.floor(coins * mul);
+}
+
 // --- Checkpoint System ---
 function saveCheckpoint() {
   const p = game.player;
@@ -1149,6 +1160,11 @@ function saveCheckpoint() {
     ownedArmor: [...(p.ownedArmor || [])],
     quests: p.quests ? JSON.parse(JSON.stringify(p.quests)) : {},
     defeatedBosses: [...p.defeatedBosses],
+    // Open world state: allows respawn in the open world at this structure
+    openWorld: game.openWorld ? {
+      seed: game.worldSeed,
+      difficulty: game.difficulty,
+    } : null,
   };
 }
 
@@ -1182,8 +1198,13 @@ function respawnAtCheckpoint() {
   const cp = game.checkpoint;
   if (!cp) return false;
 
-  // Load the checkpoint map
-  loadMap(cp.mapName);
+  // Load the checkpoint map — or re-enter open world if checkpoint was there
+  if (cp.openWorld && cp.mapName === 'openworld') {
+    enterOpenWorld(cp.openWorld.seed, cp.x, cp.y);
+    if (cp.openWorld.difficulty) game.difficulty = cp.openWorld.difficulty;
+  } else {
+    loadMap(cp.mapName);
+  }
 
   // Restore player stats from checkpoint
   const p = game.player;
@@ -2731,8 +2752,7 @@ function gameLoop(timestamp) {
             if (!game.chunkKills.has(enemy._chunkKey)) game.chunkKills.set(enemy._chunkKey, new Set());
             game.chunkKills.get(enemy._chunkKey).add(enemy._spawnIndex);
           }
-          game.player.xp += enemy.xp;
-          game.player.coins += enemy.coins;
+          awardLoot(enemy.xp, enemy.coins);
           SFX.playKillEnemy();
           SFX.playPickupCoin();
           // Elite kill effect
@@ -2846,8 +2866,7 @@ function gameLoop(timestamp) {
             if (!game.chunkKills.has(enemy._chunkKey)) game.chunkKills.set(enemy._chunkKey, new Set());
             game.chunkKills.get(enemy._chunkKey).add(enemy._spawnIndex);
           }
-          game.player.xp += enemy.xp;
-          game.player.coins += enemy.coins;
+          awardLoot(enemy.xp, enemy.coins);
           game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
           game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
           if (Math.random() < 0.2) {
@@ -2976,8 +2995,7 @@ function gameLoop(timestamp) {
                 game.particles.push(createParticle(game.player.x, game.player.y - 40, `Квест: ${q.name}!`, '#4caf50', 2));
               }
               // Rewards
-              game.player.xp += game.boss.xp;
-              game.player.coins += game.boss.coins;
+              awardLoot(game.boss.xp, game.boss.coins);
               game.particles.push(createParticle(game.boss.x, game.boss.y - 8, `+${game.boss.xp} XP`, '#cc66ff'));
               game.particles.push(createParticle(game.boss.x, game.boss.y - 20, `+${game.boss.coins} $`, '#f0c040'));
               // Grant artifact
@@ -3043,8 +3061,7 @@ function gameLoop(timestamp) {
                 if (!game._killedOpenWorldBosses) game._killedOpenWorldBosses = new Set();
                 game._killedOpenWorldBosses.add(game.boss.type);
               }
-              game.player.xp += game.boss.xp;
-              game.player.coins += game.boss.coins;
+              awardLoot(game.boss.xp, game.boss.coins);
               if (game.boss.artifact) {
                 game.player.artifacts[game.boss.artifact] = true;
               }
