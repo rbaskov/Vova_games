@@ -347,8 +347,8 @@ function gameLoop(timestamp) {
         p.facing = p.input.dy > 0 ? 'down' : 'up';
       }
       if (game.currentMap) {
-        p.x = Math.max(0, Math.min(p.x, game.currentMap.pixelW - p.hitW));
-        p.y = Math.max(0, Math.min(p.y, game.currentMap.pixelH - p.hitH));
+        p.x = Math.max(0, Math.min(p.x, game.currentMap.width  * TILE_SIZE - p.hitW));
+        p.y = Math.max(0, Math.min(p.y, game.currentMap.height * TILE_SIZE - p.hitH));
       }
     } else {
       p.moving = false;
