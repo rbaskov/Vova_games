@@ -34,61 +34,11 @@ import { getDifficulty, cycleDifficulty, DIFFICULTY_COLORS } from './difficulty.
 import { createMinimapRenderer } from './minimap.js';
 import { createHazardManager } from './biome-hazards.js';
 import { createWorldEventManager } from './world-events.js';
+import { game, STATE } from './game-state.js';
+import { initCanvasLayout } from './canvas-layout.js';
 
-// --- Game States ---
-export const STATE = {
-  MENU: 'MENU',
-  CLASS_SELECT: 'CLASS_SELECT',
-  PLAY: 'PLAY',
-  DIALOG: 'DIALOG',
-  INVENTORY: 'INVENTORY',
-  GAMEOVER: 'GAMEOVER',
-  WIN: 'WIN',
-};
-
-export const game = {
-  state: STATE.MENU,
-  canvas: null,
-  ctx: null,
-  width: 640,
-  height: 480,
-  dt: 0,
-  currentMap: null,
-  camera: null,
-  player: null,
-  enemies: [],
-  npcs: [],
-  particles: [],
-  projectiles: [],
-  animFrame: 0,
-  animTimer: 0,
-  animSpeed: 0.15,
-  totalTime: 0,
-  boss: null,
-  showHelp: false,
-  portalCooldown: 0,
-  currentMapName: null,
-  checkpoint: null,
-  sandbox: false,
-  showQuestLog: false,
-  arenaWave: 0,
-  arenaTimer: 0,
-  companions: [],
-  selectedClass: 0,
-  playerClass: null, // 'knight','archer','landsknecht','standard','gladiator'
-  hasHorse: false,
-  openWorld: false,
-  chunkManager: null,
-  worldGen: null,
-  worldSeed: null,
-  chunkEnemies: new Map(),
-  chunkKills: new Map(),
-  difficulty: 'normal',
-  visitedChunks: new Set(),
-  minimapRenderer: null,
-  fastTravel: null,
-  worldEventManager: null,
-};
+// Re-export для обратной совместимости на случай если кто-то импортирует из main.js
+export { game, STATE };
 
 // --- Class Definitions ---
 const CLASSES = [
@@ -3470,48 +3420,8 @@ function gameLoop(timestamp) {
 }
 
 // --- Start Game ---
-function resizeCanvas() {
-  const maxW = window.innerWidth;
-  const maxH = window.innerHeight;
-
-  if (isMobileDevice()) {
-    // Mobile: game area is 640x480, but canvas is wider to fit side panels
-    // Scale based on screen height to keep game area proportional
-    const screenRatio = maxW / maxH;
-    const gameRatio = 640 / 480;
-    // Canvas height = 480 always, width = enough for game + panels
-    const totalW = Math.round(480 * screenRatio);
-    canvas.width = totalW;
-    canvas.height = 480;
-    game.width = totalW;
-    game.height = 480;
-    // Fill screen
-    canvas.style.width = maxW + 'px';
-    canvas.style.height = maxH + 'px';
-  } else {
-    // Desktop: maintain aspect ratio
-    const ratio = 640 / 480;
-    let w, h;
-    if (maxW / maxH > ratio) {
-      h = maxH;
-      w = h * ratio;
-    } else {
-      w = maxW;
-      h = w / ratio;
-    }
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-  }
-}
-
-let canvas; // module-level reference
-
 function startGame() {
-  canvas = document.getElementById('game');
-  game.canvas = canvas;
-  game.ctx = canvas.getContext('2d');
-  game.width = canvas.width;
-  game.height = canvas.height;
+  const canvas = initCanvasLayout(document.getElementById('game'));
 
   detectMobile();
   initInput();
@@ -3519,17 +3429,6 @@ function startGame() {
   SFX.initAudio();
   setProjectileCallback((proj) => game.projectiles.push(proj));
 
-  // Resize canvas to fit screen
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => {
-    // Delay to let browser finish orientation transition
-    setTimeout(resizeCanvas, 150);
-    setTimeout(resizeCanvas, 500);
-  });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', resizeCanvas);
-  }
   initStars();
 
   requestAnimationFrame((timestamp) => {
