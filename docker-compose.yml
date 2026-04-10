@@ -6,15 +6,18 @@ services:
     ports:
       - "3040:80"
     restart: unless-stopped
+    depends_on:
+      - relay
 
-  # --- Coop relay (раскомментировать в coop-session1) ---
-  # WebSocket relay для кооп-режима. Node.js + ws library.
-  # См. docs/superpowers/specs/2026-04-10-coop-design.md
-  # relay:
-  #   build: ./server
-  #   container_name: eldoria-relay
-  #   restart: unless-stopped
-  #   expose:
-  #     - "8080"
-  #   networks:
-  #     - default
+  relay:
+    build: ./server
+    container_name: eldoria-relay
+    restart: unless-stopped
+    expose:
+      - "8080"
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge
