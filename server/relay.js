@@ -84,6 +84,10 @@ wss.on('connection', (ws) => {
       let newCode;
       let tries = 0;
       do { newCode = generateCode(); tries++; } while (rooms.has(newCode) && tries < 100);
+      if (rooms.has(newCode)) {
+        safeSend(ws, { type: 'error', reason: 'serverFull' });
+        return;
+      }
       rooms.set(newCode, { host: ws, guest: null, lastActivity: now });
       socketRoom.set(ws, newCode);
       safeSend(ws, { type: 'roomCreated', code: newCode, role: 'host' });
