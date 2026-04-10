@@ -10,7 +10,7 @@ import { castleMap } from './maps/castle.js';
 import { kingdomMap } from './maps/kingdom.js';
 import { hellpitMap } from './maps/hellpit.js';
 import { arenaMap } from './maps/arena.js';
-import { drawHero, drawNPC, TILE, SOLID_TILES } from './sprites.js';
+import { drawHero, drawNPC, TILE, SOLID_TILES, OPEN_WORLD_SOLID_TILES, SLOW_TILES, SLOW_TILE_SPEED_MULT } from './sprites.js';
 import { spawnEnemy, updateEnemies, renderEnemies, setProjectileCallback } from './enemies.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { createParticle, updateParticles, renderParticles } from './particles.js';
@@ -838,6 +838,7 @@ function createOpenWorldMapProxy() {
     height: 999999,
     tiles: null,
     portals: [],
+    isOpenWorld: true, // isSolid() использует OPEN_WORLD_SOLID_TILES для этого map
     getTileAt(col, row) {
       return game.chunkManager ? game.chunkManager.getTileAtWorld(col, row) : 0;
     },
@@ -885,6 +886,9 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.minimapRenderer = createMinimapRenderer(game.worldGen);
   game.worldEventManager = createWorldEventManager(game.worldGen);
   syncChunkEnemies();
+
+  // Защита от спавна внутри стены после возврата из подземелья или fast travel
+  unstickPlayer();
 
   // Teleport companions
   for (let i = 0; i < game.companions.length; i++) {
@@ -946,11 +950,12 @@ function collidesWithOpenWorld(x, y, w, h) {
   const top = Math.floor(y / TILE_SIZE);
   const bottom = Math.floor((y + h - 1) / TILE_SIZE);
   const cm = game.chunkManager;
+  // В открытом мире деревья не блокируют движение (только замедляют), см. OPEN_WORLD_SOLID_TILES
   return (
-    SOLID_TILES.has(cm.getTileAtWorld(left, top)) ||
-    SOLID_TILES.has(cm.getTileAtWorld(right, top)) ||
-    SOLID_TILES.has(cm.getTileAtWorld(left, bottom)) ||
-    SOLID_TILES.has(cm.getTileAtWorld(right, bottom))
+    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(left, top)) ||
+    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(right, top)) ||
+    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(left, bottom)) ||
+    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(right, bottom))
   );
 }
 
@@ -1008,8 +1013,7 @@ function checkPortals() {
       game.player._companions = game.companions.map(c => c.type);
       game.player._playerClass = game.playerClass;
       game.player._hasHorse = game.hasHorse;
-      // Use chunk coords as dungeon seed for consistency
-      const { cx, cy } = game.chunkManager.pixelToChunk(p.x, p.y);
+      // Use chunk coords as dungeon seed for consistency (cx, cy уже объявлены выше)
       const owDungeonDepth = Math.max(1, Math.floor(Math.sqrt(cx * cx + cy * cy) / 3));
       const dungeonMapData = generateDungeon(owDungeonDepth);
       if (dungeonMapData) {
@@ -1426,7 +1430,16 @@ function updatePlayer(dt) {
   }
 
   // Apply movement with collision
-  const actualSpeed = (game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED) * getBuffSpeedMultiplier(game) * (game.hazardManager ? game.hazardManager.getSpeedMultiplier() : 1);
+  // Замедление при стоянии на дереве (SLOW_TILES) — позволяет "продираться" через лес
+  let slowTileMul = 1;
+  const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
+  const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
+  const tileUnder = game.openWorld
+    ? (game.chunkManager ? game.chunkManager.getTileAtWorld(centerCol, centerRow) : -1)
+    : (game.currentMap ? getTile(game.currentMap, centerCol, centerRow) : -1);
+  if (SLOW_TILES.has(tileUnder)) slowTileMul = SLOW_TILE_SPEED_MULT;
+
+  const actualSpeed = (game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED) * getBuffSpeedMultiplier(game) * (game.hazardManager ? game.hazardManager.getSpeedMultiplier() : 1) * slowTileMul;
   const moveX = dx * actualSpeed * dt;
   const moveY = dy * actualSpeed * dt;
 
@@ -3153,6 +3166,57 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
       if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
       if (isKeyPressed('KeyM')) SFX.toggleMusic();
+
+      // --- Emergency rescue (R key) — всегда спасает: телепорт в безопасную точку ---
+      if (isKeyPressed('KeyR') && game.player) {
+        if (game.openWorld && game.chunkManager) {
+          // Телепорт на ближайшую свободную клетку в радиусе 5 тайлов, либо к village portal (0,0)
+          const p = game.player;
+          const origCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
+          const origRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
+          let rescued = false;
+          // Поиск спиралью в радиусе до 8 тайлов
+          for (let r = 1; r <= 8 && !rescued; r++) {
+            for (let dr = -r; dr <= r && !rescued; dr++) {
+              for (let dc = -r; dc <= r && !rescued; dc++) {
+                if (Math.abs(dr) !== r && Math.abs(dc) !== r) continue; // только периметр
+                const col = origCol + dc;
+                const row = origRow + dr;
+                const tx = col * TILE_SIZE;
+                const ty = row * TILE_SIZE;
+                if (!collides(tx, ty, p.hitW, p.hitH) &&
+                    !collides(tx + TILE_SIZE, ty, p.hitW, p.hitH) &&
+                    !collides(tx, ty + TILE_SIZE, p.hitW, p.hitH)) {
+                  // Проверяем что есть хотя бы одна соседняя walkable клетка (чтобы не прыгнуть в такую же ловушку)
+                  p.x = tx;
+                  p.y = ty;
+                  rescued = true;
+                  game.portalCooldown = 0.5;
+                  game.particles.push(createParticle(p.x, p.y - 16, 'Спасён!', '#4fc3f7', 1.5));
+                  // Очистить чанки врагов чтобы обновились с новой позиции
+                  game.chunkEnemies = new Map();
+                }
+              }
+            }
+          }
+          if (!rescued) {
+            // Крайний случай — телепорт к village portal (0,0)
+            p.x = 0;
+            p.y = 0;
+            game.portalCooldown = 1.0;
+            const { cx, cy } = game.chunkManager.pixelToChunk(0, 0);
+            game.chunkManager.updateCenter(cx, cy);
+            game.chunkEnemies = new Map();
+            syncChunkEnemies();
+            game.particles.push(createParticle(p.x, p.y - 16, 'В деревню!', '#4fc3f7', 2));
+          }
+        } else if (game.checkpoint) {
+          respawnAtCheckpoint();
+        } else {
+          // Фолбек — просто unstick
+          unstickPlayer();
+        }
+      }
       if (isKeyPressed('Escape')) {
         game.player._companions = game.companions.map(c => c.type);
         game.player._playerClass = game.playerClass;

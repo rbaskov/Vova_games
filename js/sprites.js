@@ -30,7 +30,17 @@ export const TILE = {
   SWAMP_WATER: 18,
 };
 
+// Твёрдые тайлы — абсолютно непроходимые в ручных картах (village, castle, etc.)
+// В ручных картах деревья часто используются как граница карты, поэтому они здесь solid.
 export const SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.TREE, TILE.ICE, TILE.ROCK, TILE.DEAD_TREE, TILE.SNOW_TREE, TILE.SWAMP_WATER]);
+
+// Твёрдые тайлы в ОТКРЫТОМ МИРЕ — без деревьев, их заменяет медленное прохождение.
+// Это решает проблему ловушек в процедурных биомах, где деревья заспавнены везде.
+export const OPEN_WORLD_SOLID_TILES = new Set([TILE.WALL, TILE.WATER, TILE.LAVA, TILE.ICE, TILE.ROCK, TILE.SWAMP_WATER]);
+
+// Медленно-проходимые тайлы: деревья можно "прорубиться" в открытом мире, скорость падает
+export const SLOW_TILES = new Set([TILE.TREE, TILE.DEAD_TREE, TILE.SNOW_TREE]);
+export const SLOW_TILE_SPEED_MULT = 0.45; // 45% от обычной скорости
 
 // -------  TILE DRAW FUNCTIONS  -------
 

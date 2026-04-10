@@ -121,13 +121,14 @@ export const STRUCTURE_TEMPLATES = {
     id: 'cave_entrance',
     name: 'Вход в пещеру',
     width: 3,
-    height: 3,
+    height: 4,
     biomes: ['mountains'],
     rarity: 0.08,
     tiles: [
       [W, W, W],
       [W, P, W],
       [W, DR, W],
+      [D, D, D], // гарантированная свободная площадка перед дверью — чтобы игрок не застревал
     ],
     npcs: [],
     spawns: [],

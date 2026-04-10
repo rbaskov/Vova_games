@@ -1,4 +1,4 @@
-import { tileDrawers, SOLID_TILES } from './sprites.js';
+import { tileDrawers, SOLID_TILES, OPEN_WORLD_SOLID_TILES } from './sprites.js';
 
 export const TILE_SIZE = 32;
 
@@ -28,7 +28,11 @@ export function getTile(map, col, row) {
 
 export function isSolid(map, col, row) {
   const tile = getTile(map, col, row);
-  return tile === -1 || SOLID_TILES.has(tile);
+  if (tile === -1) return true;
+  // В открытом мире деревья не блокируют движение — только замедляют.
+  // Это решает проблему застревания в процедурных лесах/пущах.
+  if (map && map.isOpenWorld) return OPEN_WORLD_SOLID_TILES.has(tile);
+  return SOLID_TILES.has(tile);
 }
 
 export function isPortal(map, col, row) {
