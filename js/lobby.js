@@ -223,7 +223,7 @@ export function renderLobby(ctx, canvasW, canvasH) {
       ctx.fillText('Подключаемся...', cx, cy + 10);
       break;
     case 'waiting_for_peer':
-      _renderWaiting(ctx, cx, cy, bx, by, BOX_W, canvasW, canvasH);
+      _renderWaiting(ctx, cx, cy, bx, by, BOX_W, BOX_H, canvasW, canvasH);
       break;
     case 'error':
       _renderError(ctx, cx, cy);
@@ -286,7 +286,7 @@ function _renderJoinInput(ctx, cx, cy, bx, by, BOX_W) {
   ctx.fillText('[ESC] Отмена', cx, cellY + cellH + 46);
 }
 
-function _renderWaiting(ctx, cx, cy, bx, by, BOX_W, canvasW, canvasH) {
+function _renderWaiting(ctx, cx, cy, bx, by, BOX_W, BOX_H, canvasW, canvasH) {
   if (game.coopRole === 'host') {
     ctx.font = '9px "Press Start 2P"';
     ctx.fillStyle = '#aaa';
