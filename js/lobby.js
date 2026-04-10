@@ -141,6 +141,10 @@ export function updateLobby() {
         if (typeof window !== 'undefined') window._coopNet = game.network;
         break;
 
+      case 'chat':
+        console.log(`[coop chat] ${game.coopRole}: ${msg.text}`);
+        break;
+
       case 'error':
         _state = 'error';
         _errorMsg = ({
