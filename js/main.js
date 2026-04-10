@@ -33,6 +33,7 @@ import { createFastTravel } from './fasttravel.js';
 import { getDifficulty, cycleDifficulty, DIFFICULTY_COLORS } from './difficulty.js';
 import { createMinimapRenderer } from './minimap.js';
 import { createHazardManager } from './biome-hazards.js';
+import { createWorldEventManager } from './world-events.js';
 
 // --- Game States ---
 export const STATE = {
@@ -86,6 +87,7 @@ export const game = {
   visitedChunks: new Set(),
   minimapRenderer: null,
   fastTravel: null,
+  worldEventManager: null,
 };
 
 // --- Class Definitions ---
@@ -893,6 +895,7 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.chunkManager.updateCenter(cx, cy);
   game.visitedChunks.add(`${cx},${cy}`);
   game.minimapRenderer = createMinimapRenderer(game.worldGen);
+  game.worldEventManager = createWorldEventManager(game.worldGen);
   syncChunkEnemies();
 
   // Teleport companions
@@ -910,6 +913,7 @@ function exitOpenWorld() {
   game.chunkKills = null;
   game.minimapRenderer = null;
   game.hazardManager = null;
+  game.worldEventManager = null;
   loadMap('village', 14, 10);
 }
 
@@ -2038,6 +2042,61 @@ function renderMinimap(ctx) {
       p, game.enemies, game.chunkManager,
       game.visitedChunks, game.totalTime
     );
+
+    // --- World Event minimap marker ---
+    if (game.worldEventManager) {
+      const marker = game.worldEventManager.getMinimapMarker();
+      if (marker) {
+        // Convert world pixel coords to minimap pixel coords
+        // Minimap shows RADIUS chunks in each direction (GRID = 7 chunks)
+        const { cx: playerCX, cy: playerCY } = game.chunkManager.pixelToChunk(
+          p.x + (p.hitW || 0) / 2,
+          p.y + (p.hitH || 0) / 2
+        );
+        const RADIUS = 3;
+        const GRID   = RADIUS * 2 + 1;
+        const cellW  = mmW / GRID;
+        const cellH  = mmH / GRID;
+
+        const { cx: evCX, cy: evCY } = game.chunkManager.pixelToChunk(marker.worldX, marker.worldY);
+        const edx = evCX - playerCX;
+        const edy = evCY - playerCY;
+
+        // Clamp to minimap edge if out of range
+        const clampedDx = Math.max(-RADIUS, Math.min(RADIUS, edx));
+        const clampedDy = Math.max(-RADIUS, Math.min(RADIUS, edy));
+
+        const fracX = (((marker.worldX / TILE_SIZE) % CHUNK_W) + CHUNK_W) % CHUNK_W / CHUNK_W;
+        const fracY = (((marker.worldY / TILE_SIZE) % CHUNK_H) + CHUNK_H) % CHUNK_H / CHUNK_H;
+
+        // Only draw sub-cell fraction if not clamped
+        const useSubX = edx === clampedDx ? fracX : (edx < 0 ? 0 : 1);
+        const useSubY = edy === clampedDy ? fracY : (edy < 0 ? 0 : 1);
+
+        const mx = Math.floor(mmX + (clampedDx + RADIUS + useSubX) * cellW);
+        const my = Math.floor(mmY + (clampedDy + RADIUS + useSubY) * cellH);
+
+        // Pulsing dot
+        const pulse = Math.floor(game.totalTime / 0.4) % 2 === 0;
+        const dotR  = pulse ? 4 : 3;
+        ctx.fillStyle = marker.color;
+        ctx.globalAlpha = pulse ? 1.0 : 0.7;
+        ctx.beginPath();
+        ctx.arc(mx, my, dotR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Small indicator if event is out of minimap range
+        if (Math.abs(edx) > RADIUS || Math.abs(edy) > RADIUS) {
+          ctx.font = '6px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = marker.color;
+          ctx.fillText('!', mx, my + 1);
+          ctx.textAlign = 'left';
+        }
+      }
+    }
+
     return;
   }
 
@@ -2215,6 +2274,11 @@ function renderPlay(ctx) {
         drawSecretPortal(ctx, px, py, game.totalTime);
       }
     }
+  }
+
+  // World Event beams (rendered before enemies so beam is behind them)
+  if (game.openWorld && game.worldEventManager) {
+    game.worldEventManager.render(ctx, cam);
   }
 
   // Enemies
@@ -2531,6 +2595,11 @@ function gameLoop(timestamp) {
       // --- Random Events ---
       updateAmbush(game, dt, createParticle, spawnEnemy);
       updateBuff(game, dt);
+
+      // --- World Events (open world only) ---
+      if (game.openWorld && game.worldEventManager) {
+        game.worldEventManager.update(game.player, dt, game.totalTime, game.enemies, game.particles);
+      }
 
       // Buff invincibility
       if (isBuffInvincible(game)) {
