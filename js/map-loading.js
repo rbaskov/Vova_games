@@ -586,9 +586,37 @@ export function exitOpenWorld() {
 }
 
 // --- Check if player is standing on a portal tile, handle teleport ---
+// --- Sticky-tile helpers ---
+// После телепорта игрок спавнится на destination-тайле. Чтобы избежать
+// мгновенного повторного срабатывания (игрок продолжает держать движение
+// в сторону, где теперь находится обратный портал), запоминаем тайл
+// спавна и не триггерим порталы пока игрок не сойдёт с него.
+// Это надёжнее чем только portalCooldown таймер: работает независимо
+// от скорости игрока (конь + buff ветра могут "проскочить" cooldown).
+function _playerTileColRow() {
+  const p = game.player;
+  return {
+    col: Math.floor((p.x + p.hitW / 2) / TILE_SIZE),
+    row: Math.floor((p.y + p.hitH / 2) / TILE_SIZE),
+  };
+}
+
+function _setTeleportAnchor() {
+  game._teleportAnchor = _playerTileColRow();
+}
+
 export function checkPortals() {
   // Grace period after teleport to prevent instant re-teleport
   if (game.portalCooldown > 0) return;
+
+  // Sticky-tile guard: не триггерим порталы пока игрок стоит на тайле,
+  // на котором заспавнился после последнего телепорта. Как только сошёл
+  // на другой тайл — очищаем якорь и порталы снова активны.
+  if (game._teleportAnchor) {
+    const cur = _playerTileColRow();
+    if (cur.col === game._teleportAnchor.col && cur.row === game._teleportAnchor.row) return;
+    game._teleportAnchor = null;
+  }
 
   // Open world: check for structure portal tiles (cave entrances, village portal)
   if (game.openWorld) {
@@ -604,6 +632,7 @@ export function checkPortals() {
         saveGame(game.player, 'openworld', getOpenWorldSaveState());
         exitOpenWorld();
         game.portalCooldown = 0.5;
+        _setTeleportAnchor();
         SFX.playPortal();
         return;
       }
@@ -641,6 +670,7 @@ export function checkPortals() {
         game.buffStones = [];
         game.camera = createCamera(640, 480);
         game.portalCooldown = 0.5;
+        _setTeleportAnchor();
         SFX.playPortal();
       }
     }
@@ -660,6 +690,7 @@ export function checkPortals() {
       enterOpenWorld(game.worldSeed);
       saveGame(game.player, 'openworld', getOpenWorldSaveState());
       game.portalCooldown = 0.5;
+      _setTeleportAnchor();
       SFX.playPortal();
       return;
     }
@@ -670,6 +701,7 @@ export function checkPortals() {
       enterOpenWorld(game.worldSeed, ret.x, ret.y);
       saveGame(game.player, 'openworld', getOpenWorldSaveState());
       game.portalCooldown = 0.5;
+      _setTeleportAnchor();
       SFX.playPortal();
       return;
     }
@@ -677,6 +709,7 @@ export function checkPortals() {
     saveGame(game.player, portal.target);
     loadMap(portal.target, portal.spawnX, portal.spawnY);
     game.portalCooldown = 0.5;
+    _setTeleportAnchor();
     SFX.playPortal();
     SFX.playMusic(SFX.getMusicTheme(game.currentMapName));
   }
@@ -746,5 +779,6 @@ export function respawnAtCheckpoint() {
   p._map = game.currentMap;
 
   game.portalCooldown = 0.5;
+  _setTeleportAnchor(); // защита от мгновенной активации соседнего портала после respawn
   return true;
 }
