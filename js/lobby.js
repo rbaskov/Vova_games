@@ -19,6 +19,7 @@ let _state = 'idle';
 let _codeInput = '';   // набираемый код при joinRoom
 let _roomCode  = null; // присвоенный нам код (для хоста) или тот что вводили (для гостя)
 let _errorMsg  = null;
+let _pendingStart = null; // { map: 'village' } когда кооп готов к старту
 
 // ---------- Жизненный цикл ----------
 
@@ -134,11 +135,15 @@ export function updateLobby() {
         break;
 
       case 'peerJoined':
-        // Хост: гость подключился.
-        // Session 1: просто меняем подсказку. Session 2: перейти в PLAY.
-        // Пока оставляем в LOBBY для демонстрации чата через DevTools.
-        // Для теста: window._coopNet = game.network;
+        // Хост: гость подключился — запускаем игру
         if (typeof window !== 'undefined') window._coopNet = game.network;
+        game.network.send({ type: 'startGame', map: 'village' });
+        _pendingStart = { map: 'village' };
+        break;
+
+      case 'startGame':
+        // Гость: хост запустил игру
+        _pendingStart = { map: msg.map };
         break;
 
       case 'chat':
@@ -332,3 +337,10 @@ function _renderError(ctx, cx, cy) {
 // ---------- Геттеры для game-loop ----------
 export function getLobbyState()      { return _state; }
 export function getLobbyCodeInput()  { return _codeInput; }
+
+/** Возвращает pending-старт кооп-игры и сбрасывает флаг. Вызывать в game-loop. */
+export function getPendingStart() {
+  const s = _pendingStart;
+  _pendingStart = null;
+  return s;
+}
