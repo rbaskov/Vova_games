@@ -180,13 +180,17 @@ export function updateLobby() {
 export function renderLobby(ctx, canvasW, canvasH) {
   const cx = Math.floor(canvasW / 2);
   const cy = Math.floor(canvasH / 2);
-  const BOX_W = 420;
-  const BOX_H = 280;
+  const BOX_W = Math.min(460, canvasW - 20);
+  const BOX_H = 300;
   const bx = cx - Math.floor(BOX_W / 2);
   const by = cy - Math.floor(BOX_H / 2);
 
+  // Затемнение всего экрана — скрывает кнопки меню под боксом
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
   // Фон + рамка
-  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillStyle = '#0a0a18';
   ctx.fillRect(bx, by, BOX_W, BOX_H);
   ctx.strokeStyle = '#f0c040';
   ctx.lineWidth = 3;
