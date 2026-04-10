@@ -27,9 +27,9 @@ function safeSend(ws, obj) {
   }
 }
 
-function forward(data, peer) {
+function forward(data, peer, isBinary) {
   if (peer && peer.readyState === WebSocket.OPEN) {
-    peer.send(data);
+    peer.send(data, { binary: isBinary });
   }
 }
 
@@ -63,7 +63,7 @@ wss.on('connection', (ws) => {
   let msgCount = 0;
   let rateWindow = Date.now();
 
-  ws.on('message', (raw) => {
+  ws.on('message', (raw, isBinary) => {
     // Rate limiting: > 100 msg/sec — silent drop
     const now = Date.now();
     if (now - rateWindow >= 1000) { msgCount = 0; rateWindow = now; }
@@ -121,7 +121,7 @@ wss.on('connection', (ws) => {
     if (!room) return;
     room.lastActivity = now;
     const peer = room.host === ws ? room.guest : room.host;
-    forward(raw, peer);
+    forward(raw, peer, isBinary);
   });
 
   ws.on('close', () => cleanupSocket(ws));
