@@ -219,15 +219,15 @@
 **Files:**
 - Modify: `js/inventory.js`, `js/dialog.js`, `js/game-state.js`
 
-- [ ] **Step 5.1:** В `createPlayer` добавить `player.ui = { inventorySlot: {x: 0, y: 0}, dialogOption: 0, settingsTab: 0 }`
+- [x] **Step 5.1:** В `createPlayer` добавить `player.ui = { inventorySlot: 0, dialogOption: 0, settingsTab: 0 }` (inventorySlot — scalar, а не {x, y} — отражает реальное использование).
 
-- [ ] **Step 5.2:** В `inventory.js` — заменить `selectedSlot` на `game.player.ui.inventorySlot` (через геттер = `players[0]`, пока работает как раньше для локального игрока).
+- [x] **Step 5.2:** В `inventory.js` — заменить `selectedSlot` на `player.ui.inventorySlot` через getSlot/setSlot хелперы с обратной совместимостью.
 
-- [ ] **Step 5.3:** Аналогично `dialog.js` → `game.player.ui.dialogOption`.
+- [x] **Step 5.3:** Аналогично `dialog.js` → `player.ui.dialogOption`. `currentDialog/currentNodeIndex/actionCallback` оставлены module-level как "локальная UI-сессия браузера", только `selectedChoice` перенесён. Сигнатуры `openDialog/dialogInput/renderDialog/closeDialog` получили параметр `player`.
 
-- [ ] **Step 5.4:** Smoke-test: открыть инвентарь, походить курсором по слотам, переключиться между оружием/щитом/броней. Открыть диалог у NPC, выбрать опции. Убедиться что сохранение/загрузка не ломают UI state (можно сериализовать `player.ui`, но не обязательно — при загрузке можно сбрасывать на defaults).
+- [ ] **Step 5.4:** Smoke-test — отложен на follow-up тестирование пользователем.
 
-- [ ] **Step 5.5:** Коммит: `refactor: move ui state from module-level to player.ui`
+- [x] **Step 5.5:** Коммит: `refactor: move ui state from module-level to player.ui`
 
 ---
 

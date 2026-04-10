@@ -1,11 +1,26 @@
 import { DIALOGS } from './npc.js';
 
+// currentDialog/currentNodeIndex/actionCallback остаются module-level — это
+// локальная UI-сессия конкретного браузера (в коопе у хоста и гостя свои
+// независимые экземпляры). selectedChoice перенесён в player.ui.dialogOption
+// чтобы в будущем каждый игрок мог держать свою текущую подсветку опции.
 let currentDialog = null;
 let currentNodeIndex = 0;
-let selectedChoice = 0;
 let actionCallback = null;
 
-export function openDialog(npcId, npcName, onAction, customTree, extraChoices) {
+function getOption(player) {
+  if (!player) return 0;
+  if (!player.ui) player.ui = { inventorySlot: 0, dialogOption: 0, settingsTab: 0 };
+  if (typeof player.ui.dialogOption !== 'number') player.ui.dialogOption = 0;
+  return player.ui.dialogOption;
+}
+function setOption(player, v) {
+  if (!player) return;
+  if (!player.ui) player.ui = { inventorySlot: 0, dialogOption: 0, settingsTab: 0 };
+  player.ui.dialogOption = v;
+}
+
+export function openDialog(npcId, npcName, onAction, customTree, extraChoices, player) {
   const sourceTree = customTree || DIALOGS[npcId];
   if (!sourceTree) return false;
 
@@ -32,7 +47,7 @@ export function openDialog(npcId, npcName, onAction, customTree, extraChoices) {
 
   currentDialog._npcName = npcName;
   currentNodeIndex = 0;
-  selectedChoice = 0;
+  if (player) setOption(player, 0);
   actionCallback = onAction;
   return true;
 }
@@ -41,15 +56,17 @@ export function isDialogOpen() {
   return currentDialog !== null;
 }
 
-export function dialogInput(key) {
+export function dialogInput(key, player) {
   if (!currentDialog) return;
   const node = currentDialog[currentNodeIndex];
   if (!node) return;
 
+  const selectedChoice = getOption(player);
+
   if (key === 'up') {
-    selectedChoice = Math.max(0, selectedChoice - 1);
+    setOption(player, Math.max(0, selectedChoice - 1));
   } else if (key === 'down') {
-    selectedChoice = Math.min(node.choices.length - 1, selectedChoice + 1);
+    setOption(player, Math.min(node.choices.length - 1, selectedChoice + 1));
   } else if (key === 'confirm') {
     const choice = node.choices[selectedChoice];
     if (!choice) return;
@@ -59,25 +76,26 @@ export function dialogInput(key) {
     }
 
     if (choice.next === null) {
-      closeDialog();
+      closeDialog(player);
     } else {
       currentNodeIndex = choice.next;
-      selectedChoice = 0;
+      setOption(player, 0);
     }
   }
 }
 
-export function closeDialog() {
+export function closeDialog(player) {
   currentDialog = null;
   currentNodeIndex = 0;
-  selectedChoice = 0;
+  if (player) setOption(player, 0);
   actionCallback = null;
 }
 
-export function renderDialog(ctx, width, height) {
+export function renderDialog(ctx, width, height, player) {
   if (!currentDialog) return;
   const node = currentDialog[currentNodeIndex];
   if (!node) return;
+  const selectedChoice = getOption(player);
 
   const boxH = 160;
   const boxY = height - boxH - 10;

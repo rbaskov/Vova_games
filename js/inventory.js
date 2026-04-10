@@ -6,10 +6,21 @@ import { drawPotionSprite, drawCoinSprite } from './sprites.js';
 import { WEAPONS, getWeapon, getTotalAtk } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorIcon } from './armor.js';
 
-let selectedSlot = 0;
+// UI state вынесен в player.ui.inventorySlot (было module-level `let selectedSlot`).
+// Это даёт поддержку кооп: у гостя будет свой player с собственным UI-состоянием.
+// Хелпер — обратная совместимость: ensureUiState создаёт player.ui если он отсутствует.
+function getSlot(player) {
+  if (!player.ui) player.ui = { inventorySlot: 0, dialogOption: 0, settingsTab: 0 };
+  if (typeof player.ui.inventorySlot !== 'number') player.ui.inventorySlot = 0;
+  return player.ui.inventorySlot;
+}
+function setSlot(player, v) {
+  if (!player.ui) player.ui = { inventorySlot: 0, dialogOption: 0, settingsTab: 0 };
+  player.ui.inventorySlot = v;
+}
 
-export function resetInventorySelection() {
-  selectedSlot = 0;
+export function resetInventorySelection(player) {
+  if (player) setSlot(player, 0);
 }
 
 export function inventoryInput(key, player, particles, createParticle) {
@@ -17,25 +28,27 @@ export function inventoryInput(key, player, particles, createParticle) {
   if (totalSlots === 0) return 'close';
 
   if (key === 'up') {
-    selectedSlot = Math.max(0, selectedSlot - 4);
+    setSlot(player, Math.max(0, getSlot(player) - 4));
   } else if (key === 'down') {
-    selectedSlot = Math.min(totalSlots - 1, selectedSlot + 4);
+    setSlot(player, Math.min(totalSlots - 1, getSlot(player) + 4));
   } else if (key === 'left') {
-    selectedSlot = Math.max(0, selectedSlot - 1);
+    setSlot(player, Math.max(0, getSlot(player) - 1));
   } else if (key === 'right') {
-    selectedSlot = Math.min(totalSlots - 1, selectedSlot + 1);
+    setSlot(player, Math.min(totalSlots - 1, getSlot(player) + 1));
   } else if (key === 'use') {
     const items = getItems(player);
-    if (selectedSlot < items.length) {
-      const item = items[selectedSlot];
+    const slot = getSlot(player);
+    if (slot < items.length) {
+      const item = items[slot];
       if (item.action) {
         item.action(player, particles, createParticle);
       }
     }
   } else if (key === 'sell') {
     const items = getItems(player);
-    if (selectedSlot < items.length) {
-      const item = items[selectedSlot];
+    const slot = getSlot(player);
+    if (slot < items.length) {
+      const item = items[slot];
       if (item.sellPrice && item.sellPrice > 0 && item.onSell) {
         item.onSell(player);
         player.coins += item.sellPrice;
@@ -44,8 +57,8 @@ export function inventoryInput(key, player, particles, createParticle) {
         }
         // Adjust selection if last item sold
         const newItems = getItems(player);
-        if (selectedSlot >= newItems.length) {
-          selectedSlot = Math.max(0, newItems.length - 1);
+        if (slot >= newItems.length) {
+          setSlot(player, Math.max(0, newItems.length - 1));
         }
       }
     }
@@ -692,6 +705,7 @@ export function renderInventory(ctx, player, width, height, sandbox) {
   ctx.fillText('ПРЕДМЕТЫ', gridX, gridY);
 
   const items = getItems(player);
+  const selectedSlot = getSlot(player);
 
   for (let row = 0; row < gridRows; row++) {
     for (let col = 0; col < gridCols; col++) {

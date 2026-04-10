@@ -136,6 +136,10 @@ function createPlayer(startX, startY) {
     equippedArmor: { helmet: null, chest: null, legs: null, shield: null },
     ownedArmor: [],
     quests: {},
+    // UI state per player (вынесено из module-level в inventory.js/dialog.js).
+    // В коопе у гостя будет свой player с собственным ui — инвентарь/диалоги
+    // не конфликтуют между хостом и гостем.
+    ui: { inventorySlot: 0, dialogOption: 0, settingsTab: 0 },
   };
 }
 
@@ -2858,7 +2862,7 @@ function gameLoop(timestamp) {
             game.boss._dialogShown = true;
             const bossDialog = BOSS_DIALOGS[game.boss.type];
             if (bossDialog) {
-              openDialog('_boss', game.boss.name, handleDialogAction, bossDialog);
+              openDialog('_boss', game.boss.name, handleDialogAction, bossDialog, null, game.player);
               game.state = STATE.DIALOG;
             }
           }
@@ -3226,7 +3230,7 @@ function gameLoop(timestamp) {
         SFX.stopMusic();
       }
       if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
-        resetInventorySelection();
+        resetInventorySelection(game.player);
         game.state = STATE.INVENTORY;
       }
 
@@ -3271,7 +3275,7 @@ function gameLoop(timestamp) {
           // Trader has custom dialog
           if (nearNPC._isTrader) {
             const traderDialog = getTraderDialog(nearNPC._mapName);
-            if (openDialog('_trader', nearNPC.name, handleDialogAction, traderDialog)) {
+            if (openDialog('_trader', nearNPC.name, handleDialogAction, traderDialog, null, game.player)) {
               game.state = STATE.DIALOG;
               SFX.playDialogOpen();
             }
@@ -3295,7 +3299,7 @@ function gameLoop(timestamp) {
             extraChoices.push({ text: '★ Новое задание', action: `gen_offer_${nearNPC.id}`, next: 0 });
           }
 
-          if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction, null, extraChoices)) {
+          if (openDialog(nearNPC.id, nearNPC.name, handleDialogAction, null, extraChoices, game.player)) {
             game.state = STATE.DIALOG;
             SFX.playDialogOpen();
           }
@@ -3349,14 +3353,14 @@ function gameLoop(timestamp) {
 
     case STATE.DIALOG:
       // Dialog input handling
-      if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) dialogInput('up');
-      if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) dialogInput('down');
-      if (isKeyPressed('Enter') || isKeyPressed('Space') || isKeyPressed('KeyE')) dialogInput('confirm');
+      if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) dialogInput('up', game.player);
+      if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) dialogInput('down', game.player);
+      if (isKeyPressed('Enter') || isKeyPressed('Space') || isKeyPressed('KeyE')) dialogInput('confirm', game.player);
       // Mobile: joystick flick for dialog navigation
       if (isMobileDevice()) {
         const flick = getJoystickFlick();
-        if (flick.dy < 0) dialogInput('up');
-        if (flick.dy > 0) dialogInput('down');
+        if (flick.dy < 0) dialogInput('up', game.player);
+        if (flick.dy > 0) dialogInput('down', game.player);
       }
 
       // Return to play if dialog closed
@@ -3369,7 +3373,7 @@ function gameLoop(timestamp) {
       renderPlay(ctx);
       { const gOff = getGameOffsetX();
         if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
-        renderDialog(ctx, 640, 480);
+        renderDialog(ctx, 640, 480, game.player);
         if (gOff > 0) ctx.restore();
       }
       if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
