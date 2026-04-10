@@ -40,6 +40,7 @@ import {
   collides, collidesWithMap, collidesWithOpenWorld,
   unstickPlayer, awardLoot,
   getStructureChestRarity, getOpenWorldSaveState,
+  createOpenWorldMapProxy, saveCheckpoint,
 } from './map-loading.js';
 import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
 import * as FPS from './debug-fps.js';
@@ -834,20 +835,7 @@ function syncChunkEnemies() {
 }
 
 /** Determine chest rarity based on distance from origin */
-function createOpenWorldMapProxy() {
-  // A proxy map object that routes isSolid/getTile calls to chunkManager
-  // This allows enemies.js AI to use map-based collision in open world
-  return {
-    width: 999999,
-    height: 999999,
-    tiles: null,
-    portals: [],
-    isOpenWorld: true, // isSolid() использует OPEN_WORLD_SOLID_TILES для этого map
-    getTileAt(col, row) {
-      return game.chunkManager ? game.chunkManager.getTileAtWorld(col, row) : 0;
-    },
-  };
-}
+// createOpenWorldMapProxy → вынесено в map-loading.js (Фаза 1 Task 2.4)
 
 function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.openWorld = true;
@@ -1018,33 +1006,7 @@ function checkPortals() {
 // awardLoot вынесен в map-loading.js
 
 // --- Checkpoint System ---
-function saveCheckpoint() {
-  const p = game.player;
-  game.checkpoint = {
-    mapName: game.currentMapName,
-    x: p.x,
-    y: p.y,
-    hp: p.hp,
-    maxHp: p.maxHp,
-    atk: p.atk,
-    xp: p.xp,
-    level: p.level,
-    coins: p.coins,
-    potions: p.potions,
-    artifacts: { ...p.artifacts },
-    weapon: p.weapon,
-    ownedWeapons: [...p.ownedWeapons],
-    equippedArmor: { ...p.equippedArmor },
-    ownedArmor: [...(p.ownedArmor || [])],
-    quests: p.quests ? JSON.parse(JSON.stringify(p.quests)) : {},
-    defeatedBosses: [...p.defeatedBosses],
-    // Open world state: allows respawn in the open world at this structure
-    openWorld: game.openWorld ? {
-      seed: game.worldSeed,
-      difficulty: game.difficulty,
-    } : null,
-  };
-}
+// saveCheckpoint → вынесено в map-loading.js (Фаза 1 Task 2.4)
 
 function checkCheckpoint() {
   const p = game.player;

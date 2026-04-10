@@ -8,11 +8,14 @@
 //   - Unstick-логика (выталкивание из стен)
 //   - Сохранение состояния открытого мира для save.js
 //   - Мелкие утилиты (rarity сундуков, лут-бонус по сложности)
+//   - Open world map proxy (routes isSolid/getTile через chunkManager)
+//   - saveCheckpoint (чистый snapshot player state)
 //
 // Функции с глубокими зависимостями на createPlayer/loadMap/enemies/chunks
 // (syncChunkEnemies, enterOpenWorld, exitOpenWorld, loadMap, checkPortals,
-//  checkCheckpoint, saveCheckpoint, respawnAtCheckpoint) пока остаются в main.js.
-// Они будут вынесены в следующей сессии с smoke-тестами между шагами.
+//  checkCheckpoint, respawnAtCheckpoint) пока остаются в main.js.
+// Они будут вынесены после Task 2.3 (createPlayer → player-update.js),
+// чтобы избежать циклического импорта.
 
 import { isSolid, TILE_SIZE } from './tilemap.js';
 import { OPEN_WORLD_SOLID_TILES } from './sprites.js';
@@ -115,4 +118,55 @@ export function awardLoot(xp, coins) {
   }
   game.player.xp += Math.floor(xp * mul);
   game.player.coins += Math.floor(coins * mul);
+}
+
+// --- Open world map proxy ---
+// Фейковый map-объект для открытого мира. Нужен потому что enemies.js AI
+// вызывает isSolid(map, col, row), а в открытом мире нет реального map.tiles —
+// тайлы берутся из chunkManager. Этот proxy перенаправляет getTileAt в chunks.
+// Флаг isOpenWorld=true заставляет isSolid() использовать OPEN_WORLD_SOLID_TILES
+// (деревья проходимы, см. sprites.js).
+export function createOpenWorldMapProxy() {
+  return {
+    width: 999999,
+    height: 999999,
+    tiles: null,
+    portals: [],
+    isOpenWorld: true,
+    getTileAt(col, row) {
+      return game.chunkManager ? game.chunkManager.getTileAtWorld(col, row) : 0;
+    },
+  };
+}
+
+// --- Checkpoint: snapshot player + world state ---
+// Вызывается при попадании игрока на CHECKPOINT тайл (checkCheckpoint),
+// при смерти босса в открытом мире, и при смене крупных зон.
+// Данные лежат в game.checkpoint и используются respawnAtCheckpoint.
+export function saveCheckpoint() {
+  const p = game.player;
+  game.checkpoint = {
+    mapName: game.currentMapName,
+    x: p.x,
+    y: p.y,
+    hp: p.hp,
+    maxHp: p.maxHp,
+    atk: p.atk,
+    xp: p.xp,
+    level: p.level,
+    coins: p.coins,
+    potions: p.potions,
+    artifacts: { ...p.artifacts },
+    weapon: p.weapon,
+    ownedWeapons: [...p.ownedWeapons],
+    equippedArmor: { ...p.equippedArmor },
+    ownedArmor: [...(p.ownedArmor || [])],
+    quests: p.quests ? JSON.parse(JSON.stringify(p.quests)) : {},
+    defeatedBosses: [...p.defeatedBosses],
+    // Open world state: allows respawn in the open world at this structure
+    openWorld: game.openWorld ? {
+      seed: game.worldSeed,
+      difficulty: game.difficulty,
+    } : null,
+  };
 }
