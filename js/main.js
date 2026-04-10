@@ -663,6 +663,9 @@ function loadMap(mapKey, spawnX, spawnY) {
 function syncChunkEnemies() {
   const cm = game.chunkManager;
   const newEnemies = [];
+  const newNpcs = [];
+  const newChests = [];
+  const newBuffStones = [];
 
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
@@ -675,6 +678,7 @@ function syncChunkEnemies() {
         const kills = game.chunkKills.get(k) || new Set();
         const enemies = [];
 
+        // --- Terrain enemy spawns ---
         chunk.spawns.forEach((s, i) => {
           if (kills.has(i)) return;
           const enemy = spawnEnemy(s.type, s.col, s.row);
@@ -692,10 +696,103 @@ function syncChunkEnemies() {
           }
         });
 
+        // --- Structure enemy spawns ---
+        if (chunk.structure) {
+          const st = chunk.structure;
+          const structKills = game.chunkKills.get(k) || new Set();
+          st.spawns.forEach((s, i) => {
+            if (structKills.has('s' + i)) return;
+            const enemy = spawnEnemy(s.type, s.col, s.row);
+            if (enemy) {
+              enemy.x = s.worldCol * TILE_SIZE;
+              enemy.y = s.worldRow * TILE_SIZE;
+              enemy.originX = enemy.x;
+              enemy.originY = enemy.y;
+              const tier = s.tier || 1;
+              const bossMul = s.isBoss ? 3 : 1;
+              enemy.hp = Math.floor(enemy.hp * tier * bossMul);
+              enemy.maxHp = enemy.hp;
+              enemy.atk = Math.floor(enemy.atk * tier * (s.isBoss ? 2 : 1));
+              if (s.isBoss) {
+                enemy.xp = (enemy.xp || 10) * 5;
+                enemy.coins = (enemy.coins || 5) * 5;
+              }
+              enemy._chunkKey = k;
+              enemy._spawnIndex = 's' + i; // structure spawn index prefixed with 's'
+              enemy._isStructureSpawn = true;
+              enemies.push(enemy);
+            }
+          });
+        }
+
         game.chunkEnemies.set(k, enemies);
       }
 
       newEnemies.push(...game.chunkEnemies.get(k));
+
+      // --- Structure NPCs, chests, buff stones ---
+      const chunk = cm.getChunk(cx, cy);
+      if (chunk.structure) {
+        const st = chunk.structure;
+        const openedChests = game._openedStructChests || new Set();
+
+        // NPCs
+        for (const npc of st.npcs) {
+          newNpcs.push({
+            id: npc.id,
+            col: npc.col,
+            row: npc.row,
+            x: npc.col * TILE_SIZE,
+            y: npc.row * TILE_SIZE,
+            name: npc.name,
+            bodyColor: npc.bodyColor,
+            headDetail: npc.headDetail,
+            _chunkKey: k,
+            _structureNpc: true,
+          });
+        }
+
+        // Chests
+        for (const chest of st.chests) {
+          const chestKey = `${chest.col},${chest.row}`;
+          const isOpened = openedChests.has(chestKey);
+          newChests.push({
+            x: chest.col * TILE_SIZE,
+            y: chest.row * TILE_SIZE,
+            col: chest.col,
+            row: chest.row,
+            rarity: getStructureChestRarity(cx, cy),
+            opened: isOpened,
+            _chunkKey: k,
+            _structureChest: true,
+            _chestKey: chestKey,
+          });
+        }
+
+        // Buff stones (ruins)
+        if (st.hasBuffStone && st.buffStoneCol !== null) {
+          const bsKey = `bs_${st.buffStoneCol},${st.buffStoneRow}`;
+          const picked = (game._pickedBuffStones || new Set()).has(bsKey);
+          if (!picked) {
+            const BUFF_TYPES_LOCAL = [
+              { id: 'rage', name: 'Ярость', effect: 'atkMul', value: 2, color: '#ff1744', glow: '#ff5252' },
+              { id: 'godshield', name: 'Щит богов', effect: 'invincible', value: 1, color: '#ffd54f', glow: '#ffecb3' },
+              { id: 'wind', name: 'Ветер', effect: 'speedMul', value: 2, color: '#29b6f6', glow: '#81d4fa' },
+              { id: 'vampirism', name: 'Вампиризм', effect: 'vampirism', value: 5, color: '#66bb6a', glow: '#a5d6a7' },
+            ];
+            // Deterministic buff from chunk coords
+            const buffIdx = Math.abs((cx * 7 + cy * 13) % BUFF_TYPES_LOCAL.length);
+            newBuffStones.push({
+              x: st.buffStoneCol * TILE_SIZE,
+              y: st.buffStoneRow * TILE_SIZE,
+              buff: BUFF_TYPES_LOCAL[buffIdx],
+              picked: false,
+              _bsKey: bsKey,
+              _structureBuff: true,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -708,6 +805,23 @@ function syncChunkEnemies() {
   }
 
   game.enemies = newEnemies;
+  game.npcs = newNpcs;
+  game.chests = newChests;
+  if (newBuffStones.length > 0) {
+    // Merge structure buff stones with any existing non-structure ones
+    game.buffStones = [
+      ...(game.buffStones || []).filter(b => !b._structureBuff),
+      ...newBuffStones,
+    ];
+  }
+}
+
+/** Determine chest rarity based on distance from origin */
+function getStructureChestRarity(cx, cy) {
+  const dist = Math.sqrt(cx * cx + cy * cy);
+  if (dist < 4) return 'common';
+  if (dist < 8) return 'good';
+  return 'rare';
 }
 
 function createOpenWorldMapProxy() {
@@ -740,6 +854,8 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.secretPortals = [];
   game._ambush = null;
   game.activeBuff = null;
+  game._openedStructChests = game._openedStructChests || new Set();
+  game._pickedBuffStones = game._pickedBuffStones || new Set();
 
   const px = playerWorldX !== undefined ? playerWorldX : 15 * TILE_SIZE;
   const py = playerWorldY !== undefined ? playerWorldY : 10 * TILE_SIZE;
@@ -783,6 +899,8 @@ function getOpenWorldSaveState() {
     playerY: game.player.y,
     changes: game.chunkManager.serializeChanges(),
     kills,
+    openedChests: game._openedStructChests ? [...game._openedStructChests] : [],
+    pickedBuffStones: game._pickedBuffStones ? [...game._pickedBuffStones] : [],
   };
 }
 
@@ -847,7 +965,54 @@ function unstickPlayer() {
 function checkPortals() {
   // Grace period after teleport to prevent instant re-teleport
   if (game.portalCooldown > 0) return;
-  if (game.openWorld) return; // No portals in open world
+
+  // Open world: check for structure portal tiles (cave entrances)
+  if (game.openWorld) {
+    const p = game.player;
+    const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
+    const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
+    const tile = game.chunkManager.getTileAtWorld(centerCol, centerRow);
+    if (tile === TILE.PORTAL) {
+      // Save return position
+      game._openWorldReturn = { x: p.x, y: p.y + TILE_SIZE * 2 };
+      // Enter a procedural dungeon
+      game.player._companions = game.companions.map(c => c.type);
+      game.player._playerClass = game.playerClass;
+      game.player._hasHorse = game.hasHorse;
+      // Use chunk coords as dungeon seed for consistency
+      const { cx, cy } = game.chunkManager.pixelToChunk(p.x, p.y);
+      const owDungeonDepth = Math.max(1, Math.floor(Math.sqrt(cx * cx + cy * cy) / 3));
+      const dungeonMapData = generateDungeon(owDungeonDepth);
+      if (dungeonMapData) {
+        saveGame(game.player, 'openworld', getOpenWorldSaveState());
+        game.openWorld = false;
+        game.currentMapName = 'dungeon_ow';
+        const tileMap = createTileMap(dungeonMapData);
+        game.currentMap = tileMap;
+        game.player.x = (dungeonMapData.playerStart ? dungeonMapData.playerStart.x : 2) * TILE_SIZE;
+        game.player.y = (dungeonMapData.playerStart ? dungeonMapData.playerStart.y : 2) * TILE_SIZE;
+        game.player._map = tileMap;
+        game.npcs = tileMap.npcs ? tileMap.npcs.map(n => ({ ...n, x: n.col * TILE_SIZE, y: n.row * TILE_SIZE })) : [];
+        game.enemies = [];
+        if (tileMap.spawns) {
+          for (const s of tileMap.spawns) {
+            const enemy = spawnEnemy(s.type, s.col, s.row);
+            if (enemy) game.enemies.push(enemy);
+          }
+        }
+        game.boss = null;
+        if (dungeonMapData.boss) {
+          game.boss = createBoss(dungeonMapData.boss.type, dungeonMapData.boss.col, dungeonMapData.boss.row);
+        }
+        game.chests = [];
+        game.buffStones = [];
+        game.camera = createCamera(640, 480);
+        game.portalCooldown = 0.5;
+        SFX.playPortal();
+      }
+    }
+    return;
+  }
 
   const p = game.player;
   const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
@@ -860,6 +1025,16 @@ function checkPortals() {
 
     if (portal.target === 'openworld') {
       enterOpenWorld(game.worldSeed);
+      saveGame(game.player, 'openworld', getOpenWorldSaveState());
+      game.portalCooldown = 0.5;
+      SFX.playPortal();
+      return;
+    }
+
+    // Return from open-world dungeon to open world
+    if (game.currentMapName === 'dungeon_ow' && portal.target === 'village') {
+      const ret = game._openWorldReturn || { x: 15 * TILE_SIZE, y: 10 * TILE_SIZE };
+      enterOpenWorld(game.worldSeed, ret.x, ret.y);
       saveGame(game.player, 'openworld', getOpenWorldSaveState());
       game.portalCooldown = 0.5;
       SFX.playPortal();
@@ -899,11 +1074,17 @@ function saveCheckpoint() {
 }
 
 function checkCheckpoint() {
-  if (game.openWorld) return; // No checkpoints in open world
   const p = game.player;
   const col = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
   const row = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
-  const tile = getTile(game.currentMap, col, row);
+
+  // In open world, check via chunkManager; otherwise use map tiles
+  let tile;
+  if (game.openWorld) {
+    tile = game.chunkManager.getTileAtWorld(col, row);
+  } else {
+    tile = getTile(game.currentMap, col, row);
+  }
   if (tile === TILE.CHECKPOINT) {
     // Only save if this is a new checkpoint position
     if (!game.checkpoint || game.checkpoint.mapName !== game.currentMapName ||
@@ -987,6 +1168,17 @@ function handleDialogAction(action) {
     p.hp = p.maxHp;
     game.particles.push(createParticle(p.x, p.y - 16, 'Благословение!', '#ffd54f', 1.5));
     game.particles.push(createParticle(p.x, p.y - 4, 'HP восстановлено', '#44cc44'));
+  } else if (action === 'heal_full') {
+    // Healer NPC — heal to full for 20 coins
+    if (p.hp >= p.maxHp) {
+      game.particles.push(createParticle(p.x, p.y - 8, 'HP уже полные!', '#ff9800'));
+    } else if (p.coins >= 20) {
+      p.coins -= 20;
+      p.hp = p.maxHp;
+      game.particles.push(createParticle(p.x, p.y - 8, 'HP восстановлено!', '#44cc44', 1.5));
+    } else {
+      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    }
   } else if (action.startsWith('buy_armor_')) {
     // Armor purchase
     const armorId = action.slice(10); // remove 'buy_armor_'
@@ -2184,6 +2376,13 @@ function gameLoop(timestamp) {
               game.chunkEnemies = new Map();
               syncChunkEnemies();
             }
+            // Restore structure persistence
+            if (save.openWorld.openedChests) {
+              game._openedStructChests = new Set(save.openWorld.openedChests);
+            }
+            if (save.openWorld.pickedBuffStones) {
+              game._pickedBuffStones = new Set(save.openWorld.pickedBuffStones);
+            }
           } else {
             loadMap(save.currentMap);
           }
@@ -2296,6 +2495,11 @@ function gameLoop(timestamp) {
             stone.picked = true;
             applyBuff(game, stone.buff);
             game.particles.push(createParticle(game.player.x, game.player.y - 16, stone.buff.name + '!', stone.buff.color, 2));
+            // Track structure buff stone persistence
+            if (stone._structureBuff && stone._bsKey) {
+              if (!game._pickedBuffStones) game._pickedBuffStones = new Set();
+              game._pickedBuffStones.add(stone._bsKey);
+            }
             SFX.playPickupItem();
           }
         }
@@ -2779,6 +2983,11 @@ function gameLoop(timestamp) {
                   game.player.ownedWeapons.push(loot.weapon);
                   const w = getWeapon(loot.weapon);
                   game.particles.push(createParticle(chest.x, chest.y - 32, w ? w.name + '!' : 'Оружие!', '#ffd54f', 2));
+                }
+                // Track structure chest persistence
+                if (chest._structureChest && chest._chestKey) {
+                  if (!game._openedStructChests) game._openedStructChests = new Set();
+                  game._openedStructChests.add(chest._chestKey);
                 }
                 SFX.playPickupItem();
                 interacted = true;

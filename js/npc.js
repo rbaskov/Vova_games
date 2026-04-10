@@ -340,6 +340,51 @@ export const DIALOGS = {
       choices: [{ text: 'Спасибо!', next: null }],
     },
   ],
+
+  // === OPEN WORLD STRUCTURE NPCs ===
+  wandering_merchant: [
+    {
+      text: 'Привет, странник! Я торгую по всей Эльдории. Что-нибудь нужно?',
+      choices: [
+        { text: 'Зелье HP (10$)', action: 'buy_potion', next: 0 },
+        { text: 'Большое зелье (25$)', action: 'buy_big_potion', next: 0 },
+        { text: 'Зелье x5 (40$)', action: 'buy_potion_pack', next: 0 },
+        { text: 'Доспехи...', next: 1 },
+        { text: 'Уйти', next: null },
+      ],
+    },
+    {
+      text: 'У меня есть кое-что для защиты:',
+      choices: [
+        { text: 'Кож. шлем (15$)', action: 'buy_armor_leather_helmet', next: 1 },
+        { text: 'Кож. доспех (25$)', action: 'buy_armor_leather_chest', next: 1 },
+        { text: 'Кож. поножи (20$)', action: 'buy_armor_leather_legs', next: 1 },
+        { text: 'Кольчуга (45$)', action: 'buy_armor_chain_chest', next: 1 },
+        { text: 'Назад', next: 0 },
+      ],
+    },
+  ],
+  healer: [
+    {
+      text: 'Я — странствующий целитель. Могу исцелить твои раны за скромную плату.',
+      choices: [
+        { text: 'Исцелить (20$)', action: 'heal_full', next: 0 },
+        { text: 'Уйти', next: null },
+      ],
+    },
+  ],
+  witch: [
+    {
+      text: 'Хе-хе... Заглянул в мою хижину? У меня есть особые зелья и заклинания...',
+      choices: [
+        { text: 'Зелье HP (10$)', action: 'buy_potion', next: 0 },
+        { text: 'Большое зелье (25$)', action: 'buy_big_potion', next: 0 },
+        { text: 'Эликсир силы +2 ATK (150$)', action: 'buy_trader_atkup', next: 0 },
+        { text: 'Эликсир жизни +20 HP (150$)', action: 'buy_trader_hpup', next: 0 },
+        { text: 'Уйти', next: null },
+      ],
+    },
+  ],
 };
 
 export function getNearbyNPC(npcs, playerX, playerY) {
