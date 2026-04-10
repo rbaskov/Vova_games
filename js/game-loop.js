@@ -673,7 +673,7 @@ function gameLoop(timestamp) {
             // На гостевой стороне: players[0] = наш аватар (p1 у хоста), players[1] = хост (p0)
             if (msg.p1 && game.players[0]) Object.assign(game.players[0], msg.p1);
             if (msg.p0 && game.players[1]) Object.assign(game.players[1], msg.p0);
-            console.log('[GUEST] snapshot p1.x='+(msg.p1&&msg.p1.x));
+            console.log('[GUEST] snap x='+msg._d?.x+' host_input='+msg._d?.dx+','+msg._d?.dy);
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
           }
@@ -703,10 +703,12 @@ function gameLoop(timestamp) {
       if (game.coopRole === 'host' && game.players[1]) {
         _updateCoopAvatar(game.players[1], dt);
         if (game.network) {
+          const p1 = game.players[1];
           game.network.send({
             type: 'snapshot',
             p0: _snap(game.players[0]),
-            p1: _snap(game.players[1]),
+            p1: _snap(p1),
+            _d: { dx: p1.input.dx, dy: p1.input.dy, x: Math.round(p1.x) },
           });
         }
       }
