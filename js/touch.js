@@ -176,7 +176,10 @@ function handleTouchStart(e) {
     for (const btn of buttonAreas) {
       const dx = pos.x - btn.x;
       const dy = pos.y - btn.y;
-      if (dx * dx + dy * dy < btn.r * btn.r * 3.0) {
+      // Минимальный hit-radius 20px — гарантирует, что на узких экранах
+      // (Galaxy S20, iPhone SE) мелкие кнопки всё равно остаются тапабельными
+      const effR = Math.max(btn.r, 20);
+      if (dx * dx + dy * dy < effR * effR * 3.0) {
         touchButtons[btn.key] = true;
         touchHeld[btn.key] = true;
         hitButton = true;

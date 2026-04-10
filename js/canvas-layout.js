@@ -9,9 +9,26 @@ import { game } from './game-state.js';
 
 let canvas;
 
+/**
+ * Возвращает доступную область экрана с учётом safe-area insets.
+ * На устройствах без чёлки env() возвращает 0 — поведение не меняется.
+ */
+function getAvailableScreenSize() {
+  // Создаём временный элемент для чтения env() значений через getComputedStyle
+  const probe = document.body || document.documentElement;
+  const cs = window.getComputedStyle(probe);
+  const padTop = parseInt(cs.paddingTop, 10) || 0;
+  const padBottom = parseInt(cs.paddingBottom, 10) || 0;
+  const padLeft = parseInt(cs.paddingLeft, 10) || 0;
+  const padRight = parseInt(cs.paddingRight, 10) || 0;
+  return {
+    w: Math.max(320, window.innerWidth - padLeft - padRight),
+    h: Math.max(240, window.innerHeight - padTop - padBottom),
+  };
+}
+
 function resizeCanvas() {
-  const maxW = window.innerWidth;
-  const maxH = window.innerHeight;
+  const { w: maxW, h: maxH } = getAvailableScreenSize();
 
   if (isMobileDevice()) {
     // Mobile: game area is 640x480, but canvas is wider to fit side panels

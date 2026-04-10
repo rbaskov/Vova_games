@@ -1,12 +1,23 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* html-level фон чёрный, чтобы safe-area по краям не светилась системным цветом */
+html {
+  background: #000;
+}
+
 body {
   background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 100vh — fallback для старых браузеров, 100dvh — учитывает динамический chrome mobile address-bar */
   height: 100vh;
   height: 100dvh;
+  /* Safe-area insets для iPhone с чёлкой/home indicator */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
   overflow: hidden;
   touch-action: none;
   -webkit-touch-callout: none;

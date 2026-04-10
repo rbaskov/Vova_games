@@ -238,31 +238,31 @@
 **Files:**
 - Modify: `index.html`, `css/style.css`, `js/canvas-layout.js`, `js/touch.js`
 
-- [ ] **Step 6.1: `index.html` meta viewport:**
+- [x] **Step 6.1: `index.html` meta viewport:**
   ```html
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   ```
   Добавить `viewport-fit=cover` и `interactive-widget=resizes-content`.
 
-- [ ] **Step 6.2:** Добавить `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">` если ещё нет — чтобы в standalone-режиме строка статуса не оттесняла игру.
+- [x] **Step 6.2:** apple-mobile-web-app-status-bar-style изменён на black-translucent.
 
-- [ ] **Step 6.3: `css/style.css`:**
+- [x] **Step 6.3: `css/style.css`:**
   - Добавить на `body`/`#game-wrapper`: `padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);`
   - Цвет фона на `html` сделать чёрным, чтобы safe-area по краям не светилась системным цветом
   - Убедиться что `100dvh` работает (fallback на `100vh` для старых браузеров)
 
-- [ ] **Step 6.4: `canvas-layout.js` — учесть safe-area в вычислении размера:**
+- [x] **Step 6.4: `canvas-layout.js` — учесть safe-area в вычислении размера:**
   - При resize брать `window.innerWidth/Height` и вычитать safe-area инсеты (через `getComputedStyle` или `CSS.supports('padding: env(safe-area-inset-top)')`)
   - Минимальная ширина canvas: 480px (если экран меньше — масштаб <1.0, но панели рисуются поверх игры, как сейчас)
   - Максимальная ширина панелей: 20% от экрана каждая (чтобы на iPad игровая зона не скукоживалась)
   - Если `screen.width < 400` — полностью отключить панели, рисовать touch-кнопки поверх canvas в полупрозрачном режиме (как было раньше)
 
-- [ ] **Step 6.5: `touch.js` — guard на минимальный hit-radius:**
+- [x] **Step 6.5: `touch.js` — guard на минимальный hit-radius:**
   - Каждая кнопка имеет `baseRadius`
   - При узком экране `effectiveRadius = max(baseRadius, 20)` — минимум 20px для точного тапа
   - Проверить, что хитбоксы не пересекаются: если суммарный диаметр двух соседних кнопок > расстояния между центрами, log warning в консоль (чтобы Vova мог сообщить при тесте)
 
-- [ ] **Step 6.6: Orientation hard-lock** — в bootstrap (после первого user-gesture — тап "Начать игру"):
+- [x] **Step 6.6: Orientation hard-lock** — `tryLockOrientation()` в main.js при первом Enter/Space в меню:
   ```javascript
   try { await screen.orientation.lock('landscape'); } catch (e) { /* unsupported, fallback hint */ }
   ```
@@ -277,7 +277,7 @@
 
 - [ ] **Step 6.8:** Поднять `?v=N` в `index.html` для `main.js` (если модули импортируются относительно — cache bust через main.js протягивается).
 
-- [ ] **Step 6.9:** Коммит: `mobile: safe-area support + viewport-fit=cover + orientation lock`
+- [x] **Step 6.9:** Коммит: `mobile: safe-area support + viewport-fit=cover + orientation lock`
 
 ---
 

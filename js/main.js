@@ -2390,6 +2390,7 @@ function gameLoop(timestamp) {
         game.selectedClass = 0;
         game.state = STATE.CLASS_SELECT;
         SFX.resumeAudio();
+        tryLockOrientation();
       }
       if (isKeyPressed('KeyS')) {
         deleteSave();
@@ -3422,6 +3423,20 @@ function gameLoop(timestamp) {
   FPS.render(ctx, game);
 
   requestAnimationFrame(gameLoop);
+}
+
+// --- Orientation lock (mobile) ---
+// Попытка зафиксировать landscape на Android. iOS Safari не поддерживает,
+// но там есть CSS @media orientation:portrait → rotate-hint.
+let _orientationLockAttempted = false;
+function tryLockOrientation() {
+  if (_orientationLockAttempted) return;
+  _orientationLockAttempted = true;
+  if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.lock === 'function') {
+    screen.orientation.lock('landscape').catch(() => {
+      // iOS Safari / unsupported browsers — ignore silently
+    });
+  }
 }
 
 // --- Start Game ---
