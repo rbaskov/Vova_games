@@ -313,7 +313,7 @@
 - Modify: `docker-compose.yml`, `nginx.conf`
 - Create: `server/` (пустая папка-заглушка с README)
 
-- [ ] **Step 8.1: `docker-compose.yml` — добавить закомментированный блок relay-сервиса:**
+- [x] **Step 8.1: `docker-compose.yml` — добавить закомментированный блок relay-сервиса:**
   ```yaml
   # relay:
   #   build: ./server
@@ -326,7 +326,7 @@
   ```
   Это напоминание на будущее и документация. Раскомментируется в coop-session1.
 
-- [ ] **Step 8.2: `nginx.conf` — добавить WebSocket upgrade-блок, закомментированный:**
+- [x] **Step 8.2: `nginx.conf` — добавить WebSocket upgrade-блок, закомментированный:**
   ```nginx
   # location /ws {
   #   proxy_pass http://relay:8080;
@@ -338,12 +338,12 @@
   # }
   ```
 
-- [ ] **Step 8.3: `server/README.md`** (новый файл, заглушка):
+- [x] **Step 8.3: `server/README.md`** (новый файл, заглушка):
   - Текст "WebSocket relay for coop mode. Not yet implemented. See `docs/superpowers/specs/2026-04-10-coop-design.md`."
 
-- [ ] **Step 8.4:** Проверить в Cloudflare панели (вручную, записать в ROADMAP): WebSockets включены для домена `eldo.evgosyan.ru`. Cloudflare включает их по умолчанию, но проверить.
+- [ ] **Step 8.4:** Проверить в Cloudflare панели (вручную, записать в ROADMAP): WebSockets включены для домена `eldo.evgosyan.ru`. Cloudflare включает их по умолчанию, но проверить. **TODO для Руслана** — добавлено в ROADMAP как ручная проверка.
 
-- [ ] **Step 8.5:** `docker-compose up -d --build` на локалке — убедиться что комментарии не сломали парсинг YAML, сервис nginx как и раньше поднимается.
+- [~] **Step 8.5:** Docker локально не установлен — базовая проверка YAML-синтаксиса прошла, блоки полностью закомментированы, парсинг не сломан. Реальная проверка `docker-compose up -d --build` — при деплое на NAS.
 
 - [ ] **Step 8.6:** Коммит: `infra: prep docker-compose and nginx for future relay service`
 
