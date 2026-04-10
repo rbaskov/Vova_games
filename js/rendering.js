@@ -25,7 +25,8 @@ import { getArmor, getTotalDef, drawArmorOnHero } from './armor.js';
 import { getDifficulty, DIFFICULTY_COLORS } from './difficulty.js';
 import { TILE_SIZE, renderMap, renderOpenWorld } from './tilemap.js';
 import { CHUNK_W, CHUNK_H } from './worldgen.js';
-import { drawNPC, drawHero } from './sprites.js';
+import { drawNPC, drawHero, TILE } from './sprites.js';
+import { getNearbyPortal, getPortalStyle } from './portals.js';
 import {
   drawChest, drawBuffStone, drawSecretPortal, drawEliteIndicator,
 } from './events.js';
@@ -1087,6 +1088,83 @@ export function renderPlay(ctx) {
 
   // Particles
   renderParticles(ctx, game.particles, game.camera);
+
+  // --- Portal label при приближении ---
+  // Для static maps используем map.portals напрямую.
+  // Для open world сканируем ближайшие тайлы через chunkManager.
+  // ВНИМАНИЕ: `cam` и `p` уже объявлены выше в renderPlay — не дублируй const.
+  {
+    const p = game.player;
+    if (p) {
+      let nearbyPortal = null;
+      let nearbyTarget = null;
+
+      if (!game.openWorld && game.currentMap && game.currentMap.portals) {
+        const result = getNearbyPortal(game.currentMap.portals, p.x, p.y, 2);
+        if (result) {
+          nearbyPortal = result.portal;
+          nearbyTarget = nearbyPortal.target;
+        }
+      } else if (game.openWorld && game.chunkManager) {
+        // Сканируем тайлы в радиусе 2 вокруг игрока
+        const pcx = p.x + 12;
+        const pcy = p.y + 14;
+        const centerCol = Math.floor(pcx / TILE_SIZE);
+        const centerRow = Math.floor(pcy / TILE_SIZE);
+        let bestDist = Infinity;
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            const col = centerCol + dc;
+            const row = centerRow + dr;
+            const tile = game.chunkManager.getTileAtWorld(col, row);
+            if (tile !== TILE.PORTAL) continue;
+            const tx = col * TILE_SIZE + TILE_SIZE / 2;
+            const ty = row * TILE_SIZE + TILE_SIZE / 2;
+            const dx = pcx - tx;
+            const dy = pcy - ty;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= 2 * TILE_SIZE && dist < bestDist) {
+              bestDist = dist;
+              nearbyPortal = { col, row };
+              const { cx, cy } = game.chunkManager.pixelToChunk(col * TILE_SIZE, row * TILE_SIZE);
+              nearbyTarget = (cx === 0 && cy === 0) ? 'village' : 'dungeon_ow';
+            }
+          }
+        }
+      }
+
+      if (nearbyPortal && nearbyTarget) {
+        const style = getPortalStyle(nearbyTarget);
+        // Экранная позиция портала (cam объявлен выше в renderPlay)
+        const portalScreenX = nearbyPortal.col * TILE_SIZE - game.camera.x + TILE_SIZE / 2;
+        const portalScreenY = nearbyPortal.row * TILE_SIZE - game.camera.y;
+        // Плашка над порталом (y - 14 от верха тайла)
+        const labelY = portalScreenY - 14;
+        ctx.font = '8px "Press Start 2P"';
+        const textWidth = ctx.measureText(style.label).width;
+        const padding = 6;
+        const boxW = textWidth + padding * 2;
+        const boxH = 14;
+        const boxX = portalScreenX - boxW / 2;
+        const boxY = labelY - boxH / 2;
+
+        // Тень/фон
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        // Обводка цветом кольца портала
+        ctx.strokeStyle = style.ringColor;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+        // Текст
+        ctx.fillStyle = '#ffd54f';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(style.label, portalScreenX, boxY + boxH / 2 + 1);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
+    }
+  }
 
   // Biome hazard overlays (before HUD)
   if (game.openWorld && game.hazardManager) {
