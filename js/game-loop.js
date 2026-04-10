@@ -57,6 +57,7 @@ import {
 import { cycleDifficulty, getDifficulty, DIFFICULTY_COLORS } from './difficulty.js';
 import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
 import * as FPS from './debug-fps.js';
+import { updateCamera, updateCameraOpenWorld } from './camera.js';
 import {
   CLASSES, renderMenu, renderClassSelect, renderPlay, renderHelpOverlay,
   renderExitConfirm, initStars, updateStars, tryLockOrientation,
@@ -673,6 +674,16 @@ function gameLoop(timestamp) {
             if (msg.p0 && game.players[1]) Object.assign(game.players[1], msg.p0);
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
+          }
+        }
+        // updatePlayer пропускается для гостя — обновляем камеру вручную
+        if (game.players[0] && game.camera) {
+          const p = game.players[0];
+          if (game.openWorld) {
+            updateCameraOpenWorld(game.camera, p.x + p.hitW / 2, p.y + p.hitH / 2);
+          } else if (game.currentMap) {
+            updateCamera(game.camera, p.x + p.hitW / 2, p.y + p.hitH / 2,
+              game.currentMap.width, game.currentMap.height);
           }
         }
       }
