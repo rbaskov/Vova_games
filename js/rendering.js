@@ -230,6 +230,14 @@ export function initStars() {
   }
 }
 
+// Обновление звёзд меню — state mutation, вызывается из update-фазы.
+// Вытащено из renderMenu в рамках update/render split'а чтобы updateMs был честным.
+export function updateStars(dt) {
+  for (const star of stars) {
+    star.brightness += star.speed * dt;
+  }
+}
+
 function drawMountains(ctx) {
   ctx.fillStyle = '#1a1a2e';
   ctx.beginPath();
@@ -266,16 +274,15 @@ function drawMountains(ctx) {
   ctx.fill();
 }
 
-export function renderMenu(ctx, dt) {
+export function renderMenu(ctx) {
   const { width, height } = game;
   const cx = getGameOffsetX() + 320; // center of game area
 
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0, 0, width, height);
 
-  // Stars
+  // Stars — обновление brightness в updateStars(dt), здесь только рендер.
   for (const star of stars) {
-    star.brightness += star.speed * dt;
     const alpha = 0.4 + 0.6 * Math.abs(Math.sin(star.brightness));
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);

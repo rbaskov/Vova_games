@@ -169,10 +169,13 @@
   - Вынесено: `collides`, `collidesWithMap`, `collidesWithOpenWorld`, `unstickPlayer`, `awardLoot`, `getStructureChestRarity`, `getOpenWorldSaveState` — 118 строк чистых helpers без глубоких зависимостей
   - **Остаётся в main.js**: `loadMap`, `enterOpenWorld`, `exitOpenWorld`, `saveCheckpoint`, `respawnAtCheckpoint`, `checkCheckpoint`, `checkPortals`, `syncChunkEnemies`, `createOpenWorldMapProxy` — требуют доступа к `createPlayer`, `companions`, `enemies`, `MAP_REGISTRY` и будут вынесены в следующей сессии после smoke-теста
 
-- [ ] **Step 2.5: Создать `js/game-loop.js`**
-  - Вынести: `gameLoop` (основной switch по state), `renderPlay`, `renderHUD`, `step`/`tick` функции
-  - В `main.js` оставить только bootstrap: `initCanvasLayout` → `initInput` → `startGameLoop()`
-  - Импортирует всё из предыдущих модулей
+- [x] **Step 2.5: Создать `js/game-loop.js`** — ЗАКРЫТО (commit bd60034)
+  - Вариант A: вывоз без update/render split. Два новых модуля:
+    - `js/rendering.js` (1093) — все render/draw функции, CLASSES, tryLockOrientation
+    - `js/game-loop.js` (1383) — gameLoop verbatim, handleDialogAction, BOSS_DIALOGS, startGame
+  - `main.js`: 2451 → 18 строк (только import + startGame() + re-export game/STATE)
+  - Граф импортов: main → game-loop → rendering, без циклов
+  - **НЕ сделано:** настоящий update/render split. FPS updateMs/renderMs по-прежнему показывает смешанные числа. Отложено до отдельной мини-задачи после Task 3.
 
 - [ ] **Step 2.6: Провести ручной smoke-test (чеклист):**
   - [ ] Меню → Новая игра → выбор класса работает

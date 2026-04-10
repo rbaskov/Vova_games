@@ -59,7 +59,7 @@ import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
 import * as FPS from './debug-fps.js';
 import {
   CLASSES, renderMenu, renderClassSelect, renderPlay, renderHelpOverlay,
-  initStars, tryLockOrientation,
+  initStars, updateStars, tryLockOrientation,
 } from './rendering.js';
 
 // --- Boss Dialogs ---
@@ -324,8 +324,9 @@ function gameLoop(timestamp) {
   }
 
   switch (game.state) {
-    case STATE.MENU:
-      renderMenu(ctx, dt);
+    case STATE.MENU: {
+      // --- UPDATE ---
+      updateStars(dt);
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
         game.selectedClass = 0;
         game.state = STATE.CLASS_SELECT;
@@ -437,10 +438,14 @@ function gameLoop(timestamp) {
           game.hasHorse = save.hasHorse || false;
         }
       }
-      break;
+      FPS.endUpdate();
+      // --- RENDER ---
+      renderMenu(ctx);
+      FPS.endRender();
+    } break;
 
-    case STATE.CLASS_SELECT:
-      renderClassSelect(ctx);
+    case STATE.CLASS_SELECT: {
+      // --- UPDATE ---
       // Navigate classes
       if (isKeyPressed('ArrowLeft') || isKeyPressed('KeyA')) {
         game.selectedClass = (game.selectedClass - 1 + CLASSES.length) % CLASSES.length;
@@ -483,9 +488,14 @@ function gameLoop(timestamp) {
       if (isKeyPressed('Escape')) {
         game.state = STATE.MENU;
       }
-      break;
+      FPS.endUpdate();
+      // --- RENDER ---
+      renderClassSelect(ctx);
+      FPS.endRender();
+    } break;
 
-    case STATE.PLAY:
+    case STATE.PLAY: {
+      // --- UPDATE ---
       // Sandbox: keep HP and coins maxed
       if (game.sandbox && game.player) {
         game.player.hp = game.player.maxHp;
@@ -1184,6 +1194,8 @@ function gameLoop(timestamp) {
       // --- Update particles ---
       updateParticles(game.particles, dt);
 
+      FPS.endUpdate();
+      // --- RENDER ---
       renderPlay(ctx);
 
       // --- NPC proximity prompt ---
@@ -1222,9 +1234,11 @@ function gameLoop(timestamp) {
 
       // Touch controls overlay (full canvas, outside game area)
       renderTouchControls(ctx, game.width, game.height);
-      break;
+      FPS.endRender();
+    } break;
 
-    case STATE.DIALOG:
+    case STATE.DIALOG: {
+      // --- UPDATE ---
       // Dialog input handling
       if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) dialogInput('up', game.player);
       if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) dialogInput('down', game.player);
@@ -1241,8 +1255,10 @@ function gameLoop(timestamp) {
         game.state = STATE.PLAY;
       }
 
-      // Render play scene underneath + dialog overlay
       updateParticles(game.particles, dt);
+      FPS.endUpdate();
+      // --- RENDER ---
+      // Render play scene underneath + dialog overlay
       renderPlay(ctx);
       { const gOff = getGameOffsetX();
         if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
@@ -1250,9 +1266,11 @@ function gameLoop(timestamp) {
         if (gOff > 0) ctx.restore();
       }
       if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
-      break;
+      FPS.endRender();
+    } break;
 
-    case STATE.INVENTORY:
+    case STATE.INVENTORY: {
+      // --- UPDATE ---
       // Input
       if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) inventoryInput('up', game.player);
       if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) inventoryInput('down', game.player);
@@ -1275,7 +1293,8 @@ function gameLoop(timestamp) {
       if (isKeyPressed('KeyI') || isKeyPressed('Tab') || isKeyPressed('Escape')) {
         game.state = STATE.PLAY;
       }
-      // Render
+      FPS.endUpdate();
+      // --- RENDER ---
       renderPlay(ctx);
       { const gOff = getGameOffsetX();
         if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
@@ -1283,9 +1302,26 @@ function gameLoop(timestamp) {
         if (gOff > 0) ctx.restore();
       }
       if (isMobileDevice()) renderTouchControls(ctx, game.width, game.height);
-      break;
+      FPS.endRender();
+    } break;
 
     case STATE.GAMEOVER: {
+      // --- UPDATE ---
+      // Respawn at checkpoint or return to menu
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
+        if (game.checkpoint && respawnAtCheckpoint()) {
+          game.state = STATE.PLAY;
+          game.particles = [];
+          game.projectiles = [];
+        } else {
+          game.state = STATE.MENU;
+          game.player = null;
+          game.enemies = [];
+          game.particles = [];
+        }
+      }
+      FPS.endUpdate();
+      // --- RENDER ---
       renderPlay(ctx);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
       ctx.fillRect(0, 0, game.width, game.height);
@@ -1308,22 +1344,21 @@ function gameLoop(timestamp) {
         }
       }
       ctx.textAlign = 'left';
-      // Respawn at checkpoint or return to menu
-      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
-        if (game.checkpoint && respawnAtCheckpoint()) {
-          game.state = STATE.PLAY;
-          game.particles = [];
-          game.projectiles = [];
-        } else {
-          game.state = STATE.MENU;
-          game.player = null;
-          game.enemies = [];
-          game.particles = [];
-        }
-      }
+      FPS.endRender();
     } break;
 
     case STATE.WIN: {
+      // --- UPDATE ---
+      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
+        game.state = STATE.MENU;
+        game.player = null;
+        game.enemies = [];
+        game.particles = [];
+        game.projectiles = [];
+        game.boss = null;
+      }
+      FPS.endUpdate();
+      // --- RENDER ---
       renderPlay(ctx);
       // Dark overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
@@ -1346,20 +1381,13 @@ function gameLoop(timestamp) {
         }
       }
       ctx.textAlign = 'left';
-      if (isKeyPressed('Enter') || isKeyPressed('Space')) {
-        game.state = STATE.MENU;
-        game.player = null;
-        game.enemies = [];
-        game.particles = [];
-        game.projectiles = [];
-        game.boss = null;
-      }
+      FPS.endRender();
     } break;
   }
 
-  // FPS overlay (F3 toggles visibility) — рисуем поверх всего
-  FPS.endUpdate();
-  FPS.endRender();
+  // FPS overlay (F3 toggles visibility) — рисуем поверх всего.
+  // FPS.endUpdate/endRender вызваны внутри каждого case на границе фаз —
+  // это даёт честные updateMs vs renderMs в overlay (Task 2.5 update/render split).
   FPS.render(ctx, game);
 
   requestAnimationFrame(gameLoop);
