@@ -27,7 +27,7 @@ import {
 } from './map-loading.js';
 import {
   createPlayer, createCompanion, COMPANION_TYPES,
-  updatePlayer, updateCompanions,
+  updatePlayer, updateCompanions, MOVE_SPEED,
 } from './player-update.js';
 import { WEAPONS, getWeapon, getWeaponRange, getTotalAtk } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, tryBlockProjectile } from './armor.js';
@@ -60,12 +60,14 @@ import * as FPS from './debug-fps.js';
 import {
   CLASSES, renderMenu, renderClassSelect, renderPlay, renderHelpOverlay,
   renderExitConfirm, initStars, updateStars, tryLockOrientation,
+  renderRemotePlayer,
 } from './rendering.js';
 import {
   openLobby, closeLobby, updateLobby, renderLobby,
   lobbyCreateRoom, lobbyStartJoinInput,
   lobbyAddCodeChar, lobbyRemoveCodeChar, lobbySubmitCode,
   lobbyBack, getLobbyState, getLobbyCodeInput,
+  getPendingStart,
 } from './lobby.js';
 
 // --- Boss Dialogs ---
@@ -329,6 +331,49 @@ function gameLoop(timestamp) {
     setTapAnywhereMode(game.state === STATE.GAMEOVER || game.state === STATE.WIN);
   }
 
+  // ─── Coop helpers (Session 2+) ────────────────────────────────────────────
+
+  /** Простое движение аватара удалённого игрока на стороне хоста. */
+  function _updateCoopAvatar(p, dt) {
+    const len = Math.hypot(p.input.dx, p.input.dy);
+    if (len > 0) {
+      p.x += (p.input.dx / len) * MOVE_SPEED * dt;
+      p.y += (p.input.dy / len) * MOVE_SPEED * dt;
+      p.moving = true;
+      if (Math.abs(p.input.dx) >= Math.abs(p.input.dy)) {
+        p.facing = p.input.dx > 0 ? 'right' : 'left';
+      } else {
+        p.facing = p.input.dy > 0 ? 'down' : 'up';
+      }
+      if (game.currentMap) {
+        p.x = Math.max(0, Math.min(p.x, game.currentMap.pixelW - p.hitW));
+        p.y = Math.max(0, Math.min(p.y, game.currentMap.pixelH - p.hitH));
+      }
+    } else {
+      p.moving = false;
+    }
+  }
+
+  /** Извлекает поля для снапшота из игрока. */
+  function _snap(p) {
+    return {
+      x: p.x, y: p.y, hp: p.hp, maxHp: p.maxHp,
+      facing: p.facing, moving: p.moving, attacking: p.attacking,
+      animFrame: p.animFrame, animTimer: p.animTimer,
+    };
+  }
+
+  /** Обрыв соединения во время игры — чистка и возврат в меню. */
+  function _coopDisconnect() {
+    if (game.network) { game.network.disconnect(); game.network = null; }
+    game.coopRole = 'none';
+    game.coopCode = null;
+    game.players.splice(1);
+    game.state = STATE.MENU;
+  }
+
+  // ─── End Coop helpers ─────────────────────────────────────────────────────
+
   switch (game.state) {
     case STATE.MENU: {
       // --- UPDATE ---
@@ -458,6 +503,22 @@ function gameLoop(timestamp) {
     case STATE.LOBBY: {
       // --- UPDATE ---
       updateLobby();
+
+      // Session 2: переход в PLAY когда оба игрока готовы
+      const coopPending = getPendingStart();
+      if (coopPending) {
+        loadMap(coopPending.map);
+        // Аватар удалённого игрока рядом со спавном
+        if (game.player) {
+          game.players[1] = createPlayer(
+            Math.floor(game.player.x / TILE_SIZE) + 2,
+            Math.floor(game.player.y / TILE_SIZE)
+          );
+        }
+        game.state = STATE.PLAY;
+        SFX.resumeAudio();
+        break;
+      }
 
       // Keyboard input для lobby
       const ls = getLobbyState();
