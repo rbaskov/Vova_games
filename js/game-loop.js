@@ -650,6 +650,25 @@ function gameLoop(timestamp) {
       // заполнять эти же поля из сетевого пакета в эквивалентной точке.
       captureLocalInput(game.player);
 
+      // --- Coop: гость отправляет инпут СРАЗУ после захвата клавиатуры,
+      // ДО flush'а сети. Это гарантирует, что свежий инпут уходит хосту
+      // до обработки входящих снапшотов (Object.assign не перезаписывает
+      // input, но такой порядок более предсказуем).
+      if (game.coopRole === 'guest' && game.network && game.players[0]) {
+        const _gp = game.players[0];
+        const _gdx = _gp.input.dx;
+        const _gdy = _gp.input.dy;
+        if (_gdx !== 0 || _gdy !== 0) {
+          console.log(`[COOP] guest→host input dx=${_gdx} dy=${_gdy}`);
+        }
+        game.network.send({
+          type: 'input',
+          dx: _gdx,
+          dy: _gdy,
+          attack: _gp.inputEdges.attack || false,
+        });
+      }
+
       // --- Coop: flush сеть, применить входящие сообщения ---
       let _coopMsgs = [];
       if (game.network) _coopMsgs = game.network.flush();
@@ -657,9 +676,14 @@ function gameLoop(timestamp) {
       if (game.coopRole === 'host') {
         for (const msg of _coopMsgs) {
           if (msg.type === 'input' && game.players[1]) {
-            game.players[1].input.dx = msg.dx ?? 0;
-            game.players[1].input.dy = msg.dy ?? 0;
+            const _rdx = msg.dx ?? 0;
+            const _rdy = msg.dy ?? 0;
+            game.players[1].input.dx = _rdx;
+            game.players[1].input.dy = _rdy;
             if (msg.attack) game.players[1].inputEdges.attack = true;
+            if (_rdx !== 0 || _rdy !== 0) {
+              console.log(`[COOP] host recv input dx=${_rdx} dy=${_rdy} p1.x=${game.players[1].x?.toFixed(1)}`);
+            }
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
           }
@@ -670,8 +694,12 @@ function gameLoop(timestamp) {
         for (const msg of _coopMsgs) {
           if (msg.type === 'snapshot') {
             // На гостевой стороне: players[0] = наш аватар (p1 у хоста), players[1] = хост (p0)
+            const _prevX = game.players[0]?.x;
             if (msg.p1 && game.players[0]) Object.assign(game.players[0], msg.p1);
             if (msg.p0 && game.players[1]) Object.assign(game.players[1], msg.p0);
+            if (msg.p1?.x !== _prevX) {
+              console.log(`[COOP] guest snap: x ${_prevX?.toFixed(1)} → ${msg.p1?.x?.toFixed(1)}`);
+            }
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
           }
@@ -697,9 +725,13 @@ function gameLoop(timestamp) {
       // Гость получает позицию от хоста — локальная симуляция не нужна
       if (game.coopRole !== 'guest') updatePlayer(dt);
 
-      // --- Coop: движение аватара (хост), отправка снапшота/инпута ---
+      // --- Coop: движение аватара гостя (хост), отправка снапшота ---
       if (game.coopRole === 'host' && game.players[1]) {
+        const _prevX = game.players[1].x;
         _updateCoopAvatar(game.players[1], dt);
+        if (game.players[1].x !== _prevX) {
+          console.log(`[COOP] host avatar moved: ${_prevX?.toFixed(1)} → ${game.players[1].x?.toFixed(1)}`);
+        }
         if (game.network) {
           game.network.send({
             type: 'snapshot',
@@ -707,15 +739,6 @@ function gameLoop(timestamp) {
             p1: _snap(game.players[1]),
           });
         }
-      }
-      if (game.coopRole === 'guest' && game.network && game.players[0]) {
-        const p = game.players[0];
-        game.network.send({
-          type: 'input',
-          dx: p.input.dx,
-          dy: p.input.dy,
-          attack: p.inputEdges.attack || false,
-        });
       }
 
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
