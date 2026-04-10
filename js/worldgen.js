@@ -5,6 +5,7 @@
 
 import { createNoise } from './simplex.js';
 import { TILE } from './sprites.js';
+import { getStructureForChunk, applyStructure } from './structures.js';
 
 // ---------------------------------------------------------------------------
 // Chunk dimensions
@@ -112,6 +113,7 @@ export function createWorldGen(seed) {
   const moistureNoise = createNoise(seed + 31337);
   const detailNoise   = createNoise(seed + 77777);
   const spawnNoise    = createNoise(seed + 99991);
+  const structNoise   = createNoise(seed + 55555);
 
   /**
    * Return the biome at a world tile coordinate.
@@ -190,6 +192,73 @@ export function createWorldGen(seed) {
       }
     }
 
+    // ----- Structure placement -----------------------------------------------
+    // Sample structure noise at chunk center (low frequency for sparse placement)
+    const centerWorldCol = cx * CHUNK_W + Math.floor(CHUNK_W / 2);
+    const centerWorldRow = cy * CHUNK_H + Math.floor(CHUNK_H / 2);
+    const sNoise = structNoise(cx * 1.7, cy * 1.7);
+    const dominantBiome = getBiomeAt(centerWorldCol, centerWorldRow);
+
+    const structureResult = getStructureForChunk(cx, cy, dominantBiome, sNoise);
+    let structure = null;
+
+    if (structureResult) {
+      const { template, col: sCol, row: sRow } = structureResult;
+
+      // Apply structure tiles onto the chunk
+      applyStructure(structureResult, tiles, sCol, sRow);
+
+      // Remove any terrain spawns that overlap the structure footprint
+      for (let i = spawns.length - 1; i >= 0; i--) {
+        const s = spawns[i];
+        if (s.col >= sCol && s.col < sCol + template.width &&
+            s.row >= sRow && s.row < sRow + template.height) {
+          spawns.splice(i, 1);
+        }
+      }
+
+      // Build structure info with world coordinates
+      const structNpcs = template.npcs.map(n => ({
+        ...n,
+        col: cx * CHUNK_W + sCol + n.localCol,
+        row: cy * CHUNK_H + sRow + n.localRow,
+      }));
+
+      const structChests = template.chests.map(c => ({
+        localCol: c.localCol,
+        localRow: c.localRow,
+        col: cx * CHUNK_W + sCol + c.localCol,
+        row: cy * CHUNK_H + sRow + c.localRow,
+      }));
+
+      const structSpawns = template.spawns.map(s => ({
+        type: s.type,
+        isBoss: s.isBoss || false,
+        col: sCol + s.localCol,
+        row: sRow + s.localRow,
+        worldCol: cx * CHUNK_W + sCol + s.localCol,
+        worldRow: cy * CHUNK_H + sRow + s.localRow,
+        biome: dominantBiome,
+        tier,
+      }));
+
+      structure = {
+        id: template.id,
+        name: template.name,
+        col: sCol,
+        row: sRow,
+        width: template.width,
+        height: template.height,
+        npcs: structNpcs,
+        chests: structChests,
+        spawns: structSpawns,
+        hasCheckpoint: template.hasCheckpoint || false,
+        hasBuffStone: template.hasBuffStone || false,
+        buffStoneCol: template.buffStoneCol !== undefined ? cx * CHUNK_W + sCol + template.buffStoneCol : null,
+        buffStoneRow: template.buffStoneRow !== undefined ? cy * CHUNK_H + sRow + template.buffStoneRow : null,
+      };
+    }
+
     return {
       cx,
       cy,
@@ -198,6 +267,7 @@ export function createWorldGen(seed) {
       spawns,
       width:  CHUNK_W,
       height: CHUNK_H,
+      structure,
     };
   }
 
