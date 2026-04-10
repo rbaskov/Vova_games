@@ -138,7 +138,7 @@ export function createMinimapRenderer(worldGen) {
    * @param {number} totalTime - Game total time for animation
    */
   function render(ctx, x, y, w, h, player, enemies, chunkManager, visitedChunks, totalTime) {
-    if (!terrainCanvas || !chunkManager) return;
+    if (!chunkManager) return;
 
     const { cx: playerCX, cy: playerCY } = chunkManager.pixelToChunk(
       player.x + (player.hitW || 0) / 2,

@@ -1039,7 +1039,9 @@ function gameLoop(timestamp) {
           if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) ftResult = game.fastTravel.input('up');
           if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) ftResult = game.fastTravel.input('down');
           if (isKeyPressed('Enter')) ftResult = game.fastTravel.input('confirm');
-          if (isKeyPressed('KeyT') || isKeyPressed('Escape')) ftResult = game.fastTravel.input('close');
+          // Escape/☰ уже захвачен captureLocalInput как menuToggle — читаем через consumeEdge.
+          // KeyT не в списке edges, поэтому проверяем напрямую.
+          if (isKeyPressed('KeyT') || consumeEdge(game.player, 'menuToggle')) ftResult = game.fastTravel.input('close');
 
           if (ftResult) {
             if (ftResult.action === 'travel') {
