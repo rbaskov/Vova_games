@@ -29,6 +29,9 @@ import { generateQuest, hasActiveGenQuest, getCompletedGenQuest, acceptGenQuest,
 import * as SFX from './audio.js';
 import { createWorldGen, CHUNK_W, CHUNK_H } from './worldgen.js';
 import { createChunkManager } from './chunks.js';
+import { createFastTravel } from './fasttravel.js';
+import { getDifficulty, cycleDifficulty, DIFFICULTY_COLORS } from './difficulty.js';
+import { createMinimapRenderer } from './minimap.js';
 
 // --- Game States ---
 export const STATE = {
@@ -78,6 +81,10 @@ export const game = {
   worldSeed: null,
   chunkEnemies: new Map(),
   chunkKills: new Map(),
+  difficulty: 'normal',
+  visitedChunks: new Set(),
+  minimapRenderer: null,
+  fastTravel: null,
 };
 
 // --- Class Definitions ---
@@ -666,12 +673,16 @@ function syncChunkEnemies() {
   const newNpcs = [];
   const newChests = [];
   const newBuffStones = [];
+  const diff = getDifficulty(game.difficulty);
 
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       const cx = cm.centerCX + dx;
       const cy = cm.centerCY + dy;
       const k = `${cx},${cy}`;
+
+      // Track visited chunks (for fast travel)
+      if (game.visitedChunks) game.visitedChunks.add(k);
 
       if (!game.chunkEnemies.has(k)) {
         const chunk = cm.getChunk(cx, cy);
@@ -681,15 +692,20 @@ function syncChunkEnemies() {
         // --- Terrain enemy spawns ---
         chunk.spawns.forEach((s, i) => {
           if (kills.has(i)) return;
+          // Apply countMul: for easy (<1) skip some; for hardcore (>1) allow more
+          if (diff.countMul < 1 && Math.random() > diff.countMul) return;
+          if (diff.countMul > 1 && Math.random() > 1 / diff.countMul) {
+            // duplicate will be handled naturally; we simply don't skip
+          }
           const enemy = spawnEnemy(s.type, s.col, s.row);
           if (enemy) {
             enemy.x = (cx * CHUNK_W + s.col) * TILE_SIZE;
             enemy.y = (cy * CHUNK_H + s.row) * TILE_SIZE;
             enemy.originX = enemy.x;
             enemy.originY = enemy.y;
-            enemy.hp = Math.floor(enemy.hp * s.tier);
+            enemy.hp = Math.floor(enemy.hp * s.tier * diff.hpMul);
             enemy.maxHp = enemy.hp;
-            enemy.atk = Math.floor(enemy.atk * s.tier);
+            enemy.atk = Math.floor(enemy.atk * s.tier * diff.atkMul);
             enemy._chunkKey = k;
             enemy._spawnIndex = i;
             enemies.push(enemy);
@@ -710,9 +726,9 @@ function syncChunkEnemies() {
               enemy.originY = enemy.y;
               const tier = s.tier || 1;
               const bossMul = s.isBoss ? 3 : 1;
-              enemy.hp = Math.floor(enemy.hp * tier * bossMul);
+              enemy.hp = Math.floor(enemy.hp * tier * bossMul * diff.hpMul);
               enemy.maxHp = enemy.hp;
-              enemy.atk = Math.floor(enemy.atk * tier * (s.isBoss ? 2 : 1));
+              enemy.atk = Math.floor(enemy.atk * tier * (s.isBoss ? 2 : 1) * diff.atkMul);
               if (s.isBoss) {
                 enemy.xp = (enemy.xp || 10) * 5;
                 enemy.coins = (enemy.coins || 5) * 5;
@@ -856,6 +872,8 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.activeBuff = null;
   game._openedStructChests = game._openedStructChests || new Set();
   game._pickedBuffStones = game._pickedBuffStones || new Set();
+  game.visitedChunks = game.visitedChunks instanceof Set ? game.visitedChunks : new Set();
+  game.fastTravel = createFastTravel();
 
   const px = playerWorldX !== undefined ? playerWorldX : 15 * TILE_SIZE;
   const py = playerWorldY !== undefined ? playerWorldY : 10 * TILE_SIZE;
@@ -871,6 +889,8 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
 
   const { cx, cy } = game.chunkManager.pixelToChunk(px, py);
   game.chunkManager.updateCenter(cx, cy);
+  game.visitedChunks.add(`${cx},${cy}`);
+  game.minimapRenderer = createMinimapRenderer(game.worldGen);
   syncChunkEnemies();
 
   // Teleport companions
@@ -901,6 +921,8 @@ function getOpenWorldSaveState() {
     kills,
     openedChests: game._openedStructChests ? [...game._openedStructChests] : [],
     pickedBuffStones: game._pickedBuffStones ? [...game._pickedBuffStones] : [],
+    difficulty: game.difficulty,
+    visitedChunks: game.visitedChunks ? [...game.visitedChunks] : [],
   };
 }
 
@@ -1328,6 +1350,9 @@ function updatePlayer(dt) {
 
   // Cooldowns handled by updateCooldowns() in game loop
 
+  // Movement blocked when fast travel is open
+  if (game.fastTravel && game.fastTravel.active) return;
+
   // Movement (keyboard + touch joystick)
   const move = getMovementInput();
   let dx = move.dx;
@@ -1420,6 +1445,7 @@ function updatePlayer(dt) {
     if (game.chunkManager.updateCenter(cx, cy)) {
       syncChunkEnemies();
     }
+    game.visitedChunks.add(`${cx},${cy}`);
     updateCameraOpenWorld(game.camera, p.x + p.hitW / 2, p.y + p.hitH / 2);
   } else {
     updateCamera(
@@ -1950,6 +1976,14 @@ function renderHUD(ctx) {
     ctx.fillText(`DEF ${def}`, 380, hpBarY + 10);
   }
 
+  // Difficulty indicator (open world, non-normal)
+  if (game.openWorld && game.difficulty && game.difficulty !== 'normal') {
+    const _diff = getDifficulty(game.difficulty);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = DIFFICULTY_COLORS[game.difficulty] || '#aaa';
+    ctx.fillText(_diff.name, 440, hpBarY + 10);
+  }
+
   // Map name + sandbox label
   ctx.textAlign = 'right';
   if (game.sandbox) {
@@ -2289,6 +2323,11 @@ function renderPlay(ctx) {
   // Minimap
   renderMinimap(ctx);
 
+  // Fast Travel overlay
+  if (game.fastTravel && game.fastTravel.active) {
+    game.fastTravel.render(ctx, 0, 0, 640, 480);
+  }
+
   // Restore from game area clip/translate
   ctx.restore();
 }
@@ -2382,6 +2421,13 @@ function gameLoop(timestamp) {
             }
             if (save.openWorld.pickedBuffStones) {
               game._pickedBuffStones = new Set(save.openWorld.pickedBuffStones);
+            }
+            // Restore difficulty and visited chunks
+            if (save.openWorld.difficulty) {
+              game.difficulty = save.openWorld.difficulty;
+            }
+            if (save.openWorld.visitedChunks) {
+              game.visitedChunks = new Set(save.openWorld.visitedChunks);
             }
           } else {
             loadMap(save.currentMap);
@@ -2944,6 +2990,51 @@ function gameLoop(timestamp) {
             }
           }
         }
+      }
+
+      // --- Fast Travel (T key, open world only) ---
+      if (game.openWorld && game.fastTravel) {
+        if (game.fastTravel.active) {
+          // Fast travel UI is open — intercept input
+          let ftResult = null;
+          if (isKeyPressed('ArrowUp') || isKeyPressed('KeyW')) ftResult = game.fastTravel.input('up');
+          if (isKeyPressed('ArrowDown') || isKeyPressed('KeyS')) ftResult = game.fastTravel.input('down');
+          if (isKeyPressed('Enter')) ftResult = game.fastTravel.input('confirm');
+          if (isKeyPressed('KeyT') || isKeyPressed('Escape')) ftResult = game.fastTravel.input('close');
+
+          if (ftResult) {
+            if (ftResult.action === 'travel') {
+              const dest = ftResult.dest;
+              game.player.x = dest.worldX;
+              game.player.y = dest.worldY;
+              const { cx, cy } = game.chunkManager.pixelToChunk(dest.worldX, dest.worldY);
+              game.chunkManager.updateCenter(cx, cy);
+              syncChunkEnemies();
+              // Teleport companions
+              for (let i = 0; i < game.companions.length; i++) {
+                game.companions[i].x = game.player.x + (i + 1) * 20;
+                game.companions[i].y = game.player.y + 30;
+              }
+              game.fastTravel.close();
+              game.particles.push(createParticle(game.player.x, game.player.y - 16, 'ТЕЛЕПОРТ!', '#b388ff', 1.5));
+              SFX.playPortal();
+            } else if (ftResult.action === 'close') {
+              game.fastTravel.close();
+            }
+          }
+        } else if (isKeyPressed('KeyT')) {
+          game.fastTravel.open(game.chunkManager, game.visitedChunks);
+        }
+      }
+
+      // --- Difficulty cycling (D key, open world only) ---
+      if (game.openWorld && isKeyPressed('KeyD') && !game.fastTravel?.active) {
+        game.difficulty = cycleDifficulty(game.difficulty);
+        const diff = getDifficulty(game.difficulty);
+        game.particles.push(createParticle(game.player.x, game.player.y - 16, diff.name, DIFFICULTY_COLORS[game.difficulty], 1.5));
+        // Clear cached enemies so they respawn with new multipliers
+        game.chunkEnemies = new Map();
+        syncChunkEnemies();
       }
 
       // --- Help toggle ---
