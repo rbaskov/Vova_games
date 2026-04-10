@@ -3,16 +3,14 @@
 
 /**
  * Возвращает URL relay-сервера исходя из window.location.
- * В dev (localhost) — прямо на relay порт 8080.
- * В prod (eldo.evgosyan.ru) — wss://eldo.evgosyan.ru/ws через nginx.
+ * Всегда использует тот же origin + /ws — nginx проксирует на relay:8080.
+ * Работает для dev (localhost:3040) и prod (eldo.evgosyan.ru).
  */
 export function getRelayUrl() {
-  const { hostname, protocol } = window.location;
+  const { hostname, port, protocol } = window.location;
   const wsProto = protocol === 'https:' ? 'wss:' : 'ws:';
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return `ws://localhost:8080`; // dev: прямо на relay, без nginx proxy
-  }
-  return `${wsProto}//${hostname}/ws`;
+  const portStr = port ? `:${port}` : '';
+  return `${wsProto}//${hostname}${portStr}/ws`;
 }
 
 /**
