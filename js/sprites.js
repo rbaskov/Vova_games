@@ -3,6 +3,8 @@
 // All sprites drawn with ctx.fillRect() — no external images.
 // ============================================================
 
+import { getPortalStyle, drawPortalSymbol } from './portals.js';
+
 const T = 32; // tile size
 const s = 2;  // character scale
 
@@ -159,34 +161,61 @@ export function drawLavaTile(ctx, x, y, frame = 0) {
   ctx.fillRect(x + ((off + 20) % 26), y + 22, 2, 2);
 }
 
-export function drawPortalTile(ctx, x, y, frame = 0) {
-  // Base dark purple
-  ctx.fillStyle = '#1a0a2e';
-  ctx.fillRect(x, y, T, T);
-  // Pulsing rings
+export function drawPortalTile(ctx, x, y, frame = 0, target = null) {
+  // Base — grass tile as neutral floor (упрощение: везде grass).
+  // Если в dungeon/cave под кольцами будет виден край травы — это
+  // приемлемый trade-off, см. спеку. Альтернатива — baseTile по target.
+  drawGrassTile(ctx, x, y);
+
+  const style = getPortalStyle(target);
+  const baseColor = style.ringColor;
+
+  // Анимация пульсации: 4 оттенка, переключаются по frame % 4
+  // Делаем градиент от тёмного к светлому: base → lighter → lightest → light
+  const shades = makePulseShades(baseColor);
   const pulse = frame % 4;
-  const colors = ['#5a1a8e', '#7b2ebd', '#a050e0', '#c080ff'];
+
   // Outer ring
-  ctx.fillStyle = colors[pulse];
+  ctx.fillStyle = shades[pulse];
   ctx.fillRect(x + 4, y + 2, 24, 2);
   ctx.fillRect(x + 4, y + 28, 24, 2);
   ctx.fillRect(x + 2, y + 4, 2, 24);
   ctx.fillRect(x + 28, y + 4, 2, 24);
+
   // Middle ring
-  ctx.fillStyle = colors[(pulse + 1) % 4];
+  ctx.fillStyle = shades[(pulse + 1) % 4];
   ctx.fillRect(x + 8, y + 6, 16, 2);
   ctx.fillRect(x + 8, y + 24, 16, 2);
   ctx.fillRect(x + 6, y + 8, 2, 16);
   ctx.fillRect(x + 24, y + 8, 2, 16);
-  // Inner glow
-  ctx.fillStyle = colors[(pulse + 2) % 4];
+
+  // Inner ring
+  ctx.fillStyle = shades[(pulse + 2) % 4];
   ctx.fillRect(x + 12, y + 10, 8, 2);
   ctx.fillRect(x + 12, y + 20, 8, 2);
   ctx.fillRect(x + 10, y + 12, 2, 8);
   ctx.fillRect(x + 20, y + 12, 2, 8);
-  // Center bright
-  ctx.fillStyle = '#e0c0ff';
-  ctx.fillRect(x + 14, y + 14, 4, 4);
+
+  // Symbol в центре — 8x8 квадрат с offset'ом (12, 12)
+  drawPortalSymbol(ctx, x + 12, y + 12, style.symbol, baseColor);
+}
+
+/**
+ * Создаёт палитру из 4 оттенков для пульсации кольца.
+ * shades[0] = base, shades[3] = самый светлый.
+ */
+function makePulseShades(hex) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const mix = (t) => {
+    const nr = Math.min(255, Math.round(r + (255 - r) * t));
+    const ng = Math.min(255, Math.round(g + (255 - g) * t));
+    const nb = Math.min(255, Math.round(b + (255 - b) * t));
+    return '#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join('');
+  };
+  return [mix(0), mix(0.2), mix(0.4), mix(0.6)];
 }
 
 export function drawTreeTile(ctx, x, y) {
@@ -497,7 +526,11 @@ export const tileDrawers = {
   [TILE.WALL]: drawWallTile,
   [TILE.WATER]: (ctx, x, y) => drawWaterTile(ctx, x, y, 0),
   [TILE.LAVA]: (ctx, x, y) => drawLavaTile(ctx, x, y, 0),
-  [TILE.PORTAL]: (ctx, x, y) => drawPortalTile(ctx, x, y, 0),
+  // Портал теперь рисуется в runtime через renderMap/renderOpenWorld
+  // с type-specific цветом и анимацией. Здесь — no-op: место портала
+  // в кеше остаётся прозрачным, runtime-рендер поверх восстанавливает
+  // всю визуалку (grass фон + кольца + символ).
+  [TILE.PORTAL]: (ctx, x, y) => {},
   [TILE.TREE]: drawTreeTile,
   [TILE.ICE]: drawIceTile,
   [TILE.CASTLE]: drawCastleTile,

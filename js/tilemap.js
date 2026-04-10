@@ -1,4 +1,4 @@
-import { tileDrawers, SOLID_TILES, OPEN_WORLD_SOLID_TILES } from './sprites.js';
+import { tileDrawers, SOLID_TILES, OPEN_WORLD_SOLID_TILES, drawPortalTile } from './sprites.js';
 
 export const TILE_SIZE = 32;
 
@@ -73,7 +73,21 @@ export function renderMap(ctx, map, camera, animFrame) {
   if (sw > 0 && sh > 0) {
     ctx.drawImage(cachedCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
   }
+
+  // Runtime portal layer — рисуем поверх кешированной карты.
+  // Здесь у нас есть animFrame (для пульсации) и target (для типизации).
+  if (map.portals && map.portals.length > 0) {
+    for (const p of map.portals) {
+      const px = p.col * TILE_SIZE - camera.x;
+      const py = p.row * TILE_SIZE - camera.y;
+      // Skip если портал за пределами экрана
+      if (px < -TILE_SIZE || px >= camera.width ||
+          py < -TILE_SIZE || py >= camera.height) continue;
+      drawPortalTile(ctx, px, py, animFrame, p.target);
+    }
+  }
 }
+
 
 export function renderOpenWorld(ctx, chunkManager, camera) {
   const chunks = chunkManager.getLoadedChunks();
