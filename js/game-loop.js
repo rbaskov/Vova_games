@@ -649,13 +649,64 @@ function gameLoop(timestamp) {
       // заполнять эти же поля из сетевого пакета в эквивалентной точке.
       captureLocalInput(game.player);
 
+      // --- Coop: flush сеть, применить входящие сообщения ---
+      let _coopMsgs = [];
+      if (game.network) _coopMsgs = game.network.flush();
+
+      if (game.coopRole === 'host') {
+        for (const msg of _coopMsgs) {
+          if (msg.type === 'input' && game.players[1]) {
+            game.players[1].input.dx = msg.dx ?? 0;
+            game.players[1].input.dy = msg.dy ?? 0;
+            if (msg.attack) game.players[1].inputEdges.attack = true;
+          } else if (msg.type === '_disconnected' || msg.type === '_error') {
+            _coopDisconnect(); break;
+          }
+        }
+      }
+
+      if (game.coopRole === 'guest') {
+        for (const msg of _coopMsgs) {
+          if (msg.type === 'snapshot') {
+            // На гостевой стороне: players[0] = наш аватар (p1 у хоста), players[1] = хост (p0)
+            if (msg.p1 && game.players[0]) Object.assign(game.players[0], msg.p1);
+            if (msg.p0 && game.players[1]) Object.assign(game.players[1], msg.p0);
+          } else if (msg.type === '_disconnected' || msg.type === '_error') {
+            _coopDisconnect(); break;
+          }
+        }
+      }
+
       // Sandbox: keep HP and coins maxed
       if (game.sandbox && game.player) {
         game.player.hp = game.player.maxHp;
         game.player.coins = 99999;
       }
 
-      updatePlayer(dt);
+      // Гость получает позицию от хоста — локальная симуляция не нужна
+      if (game.coopRole !== 'guest') updatePlayer(dt);
+
+      // --- Coop: движение аватара (хост), отправка снапшота/инпута ---
+      if (game.coopRole === 'host' && game.players[1]) {
+        _updateCoopAvatar(game.players[1], dt);
+        if (game.network) {
+          game.network.send({
+            type: 'snapshot',
+            p0: _snap(game.players[0]),
+            p1: _snap(game.players[1]),
+          });
+        }
+      }
+      if (game.coopRole === 'guest' && game.network && game.players[0]) {
+        const p = game.players[0];
+        game.network.send({
+          type: 'input',
+          dx: p.input.dx,
+          dy: p.input.dy,
+          attack: p.inputEdges.attack || false,
+        });
+      }
+
       updateEnemies(game.enemies, game.player, game.currentMap, dt);
       updateCompanions(dt);
 
@@ -1349,6 +1400,12 @@ function gameLoop(timestamp) {
       FPS.endUpdate();
       // --- RENDER ---
       renderPlay(ctx);
+
+      // --- Coop: рендер удалённого игрока ---
+      if (game.coopRole !== 'none' && game.players[1] && game.camera) {
+        const remoteLabel = game.coopRole === 'host' ? 'ГОСТЬ' : 'ХОСТ';
+        renderRemotePlayer(ctx, game.camera, game.players[1], remoteLabel);
+      }
 
       // --- NPC proximity prompt ---
       {
