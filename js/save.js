@@ -24,6 +24,10 @@ export function saveGame(player, currentMapName, openWorldState) {
       playerY: openWorldState.playerY,
       changes: openWorldState.changes,
       kills: openWorldState.kills,
+      openedChests: openWorldState.openedChests,
+      pickedBuffStones: openWorldState.pickedBuffStones,
+      difficulty: openWorldState.difficulty,
+      visitedChunks: openWorldState.visitedChunks,
     };
   }
 

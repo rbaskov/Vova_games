@@ -906,6 +906,7 @@ function exitOpenWorld() {
   game.worldGen = null;
   game.chunkEnemies = null;
   game.chunkKills = null;
+  game.minimapRenderer = null;
   loadMap('village', 14, 10);
 }
 
@@ -2012,34 +2013,23 @@ function renderMinimap(ctx) {
   if (!p) return;
   if (!map && !game.openWorld) return;
 
-  // Open world minimap: show enemies relative to player
-  if (game.openWorld) {
-    const mmW = 72, mmH = 72;
-    const mmX = 640 - mmW - 8;
-    const mmY = 480 - mmH - 8;
-    ctx.fillStyle = '#111';
-    ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
-    ctx.fillStyle = '#1a2a10';
-    ctx.fillRect(mmX, mmY, mmW, mmH);
-    // Show enemies as red dots relative to player center
-    const viewRange = CHUNK_W * TILE_SIZE * 1.5;
-    const scaleX = mmW / (viewRange * 2);
-    const scaleY = mmH / (viewRange * 2);
-    ctx.fillStyle = '#ff3333';
-    for (const e of game.enemies) {
-      if (!e.alive) continue;
-      const rx = (e.x - p.x) * scaleX + mmW / 2;
-      const ry = (e.y - p.y) * scaleY + mmH / 2;
-      if (rx >= 0 && rx <= mmW && ry >= 0 && ry <= mmH) {
-        ctx.fillRect(mmX + rx - 1, mmY + ry - 1, 3, 3);
-      }
+  // Open world minimap: enhanced with biome terrain, fog of war, structures
+  if (game.openWorld && game.minimapRenderer) {
+    const mmW = 120, mmH = 120;
+    let mmX, mmY;
+    if (isMobileDevice()) {
+      // Render in the right panel area (outside game clip — handled by caller)
+      mmX = 640 - mmW - 6;
+      mmY = 480 - mmH - 6;
+    } else {
+      mmX = 640 - mmW - 6;
+      mmY = 480 - mmH - 6;
     }
-    // Player dot at center
-    ctx.fillStyle = '#00ffff';
-    ctx.fillRect(mmX + mmW / 2 - 2, mmY + mmH / 2 - 2, 4, 4);
+    game.minimapRenderer.render(
+      ctx, mmX, mmY, mmW, mmH,
+      p, game.enemies, game.chunkManager,
+      game.visitedChunks, game.totalTime
+    );
     return;
   }
 
@@ -2428,6 +2418,9 @@ function gameLoop(timestamp) {
             }
             if (save.openWorld.visitedChunks) {
               game.visitedChunks = new Set(save.openWorld.visitedChunks);
+            }
+            if (game.minimapRenderer) {
+              game.minimapRenderer.invalidate();
             }
           } else {
             loadMap(save.currentMap);
