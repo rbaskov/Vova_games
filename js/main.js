@@ -42,6 +42,7 @@ import {
   getStructureChestRarity, getOpenWorldSaveState,
 } from './map-loading.js';
 import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
+import * as FPS from './debug-fps.js';
 
 // Re-export для обратной совместимости на случай если кто-то импортирует из main.js
 export { game, STATE };
@@ -2361,6 +2362,7 @@ function renderPlay(ctx) {
 let lastTime = 0;
 
 function gameLoop(timestamp) {
+  FPS.begin();
   const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
 
@@ -3097,6 +3099,7 @@ function gameLoop(timestamp) {
 
       // --- Help toggle ---
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
+      if (isKeyPressed('F3')) FPS.toggleFps();
       if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
       if (isKeyPressed('KeyM')) SFX.toggleMusic();
 
@@ -3412,6 +3415,11 @@ function gameLoop(timestamp) {
       }
     } break;
   }
+
+  // FPS overlay (F3 toggles visibility) — рисуем поверх всего
+  FPS.endUpdate();
+  FPS.endRender();
+  FPS.render(ctx, game);
 
   requestAnimationFrame(gameLoop);
 }

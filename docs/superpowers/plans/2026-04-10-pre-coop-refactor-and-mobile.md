@@ -354,27 +354,17 @@
 - Create: `js/debug-fps.js`
 - Modify: `js/game-loop.js`
 
-- [ ] **Step 9.1: `js/debug-fps.js`:**
-  - Счётчик FPS (скользящее среднее по 60 кадрам)
-  - Счётчик времени update/render отдельно
-  - Счётчик активных entities: enemies, projectiles, particles, chunks loaded
-  - Overlay в левом верхнем углу canvas, включается по клавише `F3`
-  - Пишет в `console.log` раз в секунду краткую сводку, если открыта DevTools
+- [x] **Step 9.1:** `js/debug-fps.js` создан — toggleFps/begin/endUpdate/endRender/render API, скользящее среднее по 60 кадрам, счётчики enemies/projectiles/particles/chunks, цвет FPS меняется по порогам (красный <30, жёлтый <50, зелёный), периодический console.log раз в секунду.
 
-- [ ] **Step 9.2:** Интегрировать в `game-loop.js` — `fpsCounter.begin()` в начале tick, `fpsCounter.endUpdate()` после update, `fpsCounter.endRender()` после render.
+- [x] **Step 9.2:** Интегрировано в gameLoop main.js — begin() в начале tick, endUpdate()/endRender()/render() перед requestAnimationFrame. В текущей версии update и render не разделены (сделаем в Task 2.5), поэтому updateMs показывает полный frame, а renderMs ≈ 0. Будет корректным после split'а gameLoop.
 
-- [ ] **Step 9.3:** Профилировка (manual):
-  - [ ] Desktop Chrome, открытый мир, враги 30+, FPS должен быть 60
-  - [ ] DevTools device toolbar → iPhone SE throttling "Low-end mobile", FPS должен быть ≥ 30
-  - [ ] Лагающие моменты: смена чанка, спавн босса, нашествие врагов
-  - [ ] Записать цифры в `docs/ROADMAP.md` → "Perf baseline (2026-04-10)"
+- [x] F3 toggle включает overlay в левом верхнем углу.
 
-- [ ] **Step 9.4: Быстрые оптимизации (если профиль плохой):**
-  - [ ] В `minimap.js` — рендерить на offscreen canvas раз в 500мс, а не каждый кадр
-  - [ ] В game-loop.js — `renderParticles` пропускать каждый второй кадр при `particles.length > 100`
-  - [ ] `chunkEnemies` Map — проверить утечку: при выгрузке чанка чистить ли записи?
+- [ ] **Step 9.3:** Профилировка (manual) — отложена на follow-up: пользователь прогоняет сессию, смотрит F3 overlay и цифры записываются в ROADMAP.
 
-- [ ] **Step 9.5:** Коммит: `debug: fps overlay + perf baseline measurements`
+- [ ] **Step 9.4:** Быстрые оптимизации — отложено, требует baseline цифр.
+
+- [x] **Step 9.5:** Коммит: `debug: fps overlay + perf baseline infra`
 
 ---
 
