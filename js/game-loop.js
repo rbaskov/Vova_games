@@ -35,7 +35,7 @@ import { spawnEnemy, updateEnemies, setProjectileCallback } from './enemies.js';
 import { createParticle, updateParticles } from './particles.js';
 import { playerAttackEnemies, enemyAttackPlayer, checkLevelUp } from './combat.js';
 import { getNearbyNPC } from './npc.js';
-import { openDialog, isDialogOpen, dialogInput, renderDialog } from './dialog.js';
+import { openDialog, isDialogOpen, dialogInput, renderDialog, showDialogFlash } from './dialog.js';
 import { renderInventory, inventoryInput, resetInventorySelection } from './inventory.js';
 import { updateBoss } from './bosses.js';
 import {
@@ -137,7 +137,7 @@ function handleDialogAction(action) {
       p.potions++;
       game.particles.push(createParticle(p.x, p.y - 8, '+1 зелье', '#44cc44'));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action === 'buy_big_potion') {
     if (p.coins >= 25) {
@@ -146,7 +146,7 @@ function handleDialogAction(action) {
       p.hp += heal;
       game.particles.push(createParticle(p.x, p.y - 8, '+60 HP', '#44cc44'));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action === 'buy_potion_pack') {
     if (p.coins >= 40) {
@@ -154,7 +154,7 @@ function handleDialogAction(action) {
       p.potions += 5;
       game.particles.push(createParticle(p.x, p.y - 8, '+5 зелий!', '#44cc44'));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action === 'king_blessing') {
     // King heals to full and gives +10 max HP (once per visit)
@@ -170,7 +170,7 @@ function handleDialogAction(action) {
       p.hp = p.maxHp;
       game.particles.push(createParticle(p.x, p.y - 8, 'HP восстановлено!', '#44cc44', 1.5));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action.startsWith('buy_armor_')) {
     // Armor purchase
@@ -187,24 +187,24 @@ function handleDialogAction(action) {
       p.equippedArmor[a.slot] = armorId;
       game.particles.push(createParticle(p.x, p.y - 8, a.name + '!', '#ffd54f'));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action === 'buy_trader_bigpot3') {
     if (p.coins >= 60) { p.coins -= 60; p.potions += 3; game.particles.push(createParticle(p.x, p.y - 8, '+3 зелья', '#44cc44')); }
-    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    else showDialogFlash('Недостаточно денег!');
   } else if (action === 'buy_trader_teleport') {
     if (p.coins >= 100) { p.coins -= 100; loadMap('village'); game.particles.push(createParticle(p.x, p.y - 8, 'Телепорт!', '#b388ff', 1.5)); }
-    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    else showDialogFlash('Недостаточно денег!');
   } else if (action === 'buy_trader_atkup') {
     if (p.coins >= 150) { p.coins -= 150; p.atk += 2; game.particles.push(createParticle(p.x, p.y - 8, '+2 ATK!', '#ff9800', 1.5)); }
-    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    else showDialogFlash('Недостаточно денег!');
   } else if (action === 'buy_trader_hpup') {
     if (p.coins >= 150) { p.coins -= 150; p.maxHp += 20; p.hp += 20; game.particles.push(createParticle(p.x, p.y - 8, '+20 HP!', '#cc2222', 1.5)); }
-    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    else showDialogFlash('Недостаточно денег!');
   } else if (action === 'buy_trader_revive') {
     if (p._hasRevive) { game.particles.push(createParticle(p.x, p.y - 8, 'Уже есть!', '#ff9800')); }
     else if (p.coins >= 200) { p.coins -= 200; p._hasRevive = true; game.particles.push(createParticle(p.x, p.y - 8, 'Камень воскрешения!', '#f0c040', 1.5)); }
-    else game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+    else showDialogFlash('Недостаточно денег!');
   } else if (action === 'buy_horse') {
     if (game.hasHorse) {
       game.particles.push(createParticle(p.x, p.y - 8, 'Конь уже есть!', '#ff9800'));
@@ -214,7 +214,7 @@ function handleDialogAction(action) {
       game.particles.push(createParticle(p.x, p.y - 8, 'Боевой конь!', '#f0c040', 2));
       SFX.playPickupItem();
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action.startsWith('buy_')) {
     // Weapon purchase (generic handler — must be after specific buy_ actions)
@@ -230,7 +230,7 @@ function handleDialogAction(action) {
       p.weapon = weaponId;
       game.particles.push(createParticle(p.x, p.y - 8, w.name + '!', '#ffd54f'));
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action.startsWith('hire_merc_')) {
     const mercType = action.slice(5); // 'merc_sword', 'merc_spear', 'merc_bow'
@@ -246,7 +246,7 @@ function handleDialogAction(action) {
       game.particles.push(createParticle(p.x, p.y - 8, comp.name + ' нанят!', '#4fc3f7', 1.5));
       SFX.playPickupItem();
     } else {
-      game.particles.push(createParticle(p.x, p.y - 8, 'Мало $', '#ff4444'));
+      showDialogFlash('Недостаточно денег!');
     }
   } else if (action.startsWith('quest_accept_')) {
     const qid = action.slice(13);
