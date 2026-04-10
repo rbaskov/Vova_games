@@ -2,6 +2,57 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+---
+
+## 📍 Текущее состояние (2026-04-10, после первой сессии)
+
+**Прогресс: 7.5/10 задач выполнено. 9 коммитов в main.**
+
+### ✅ Сделано
+- Task 1 — Spec кооп написана и отревьюена
+- Task 2.1 — `js/game-state.js` (62 строки)
+- Task 2.2 — `js/canvas-layout.js` (~95 строк) с safe-area
+- Task 2.4 — **ЧАСТИЧНО** — `js/map-loading.js` (118 строк, 7 чистых helpers)
+- Task 5 — UI state → `player.ui` (inventory + dialog)
+- Task 6 — Mobile safe-area + orientation lock
+- Task 7 — Haptics (`js/haptics.js`, 52 строки)
+- Task 8 — Docker/nginx заготовка relay
+- Task 9 — FPS overlay (`js/debug-fps.js`, 128 строк, клавиша F3)
+- **Bonus**: fix cx duplicate bug, walkable trees в открытом мире, emergency R rescue, cave_entrance +1 row
+
+### 🟡 Остаётся
+
+**Следующая сессия — продолжить Task 2.4 (большая часть):**
+1. Вынести из main.js в `js/map-loading.js`:
+   - `loadMap(mapKey, spawnX, spawnY)` — ~100 строк, зависит от createPlayer/companions/MAP_REGISTRY
+   - `syncChunkEnemies()` — ~200 строк, самая сложная (spawnEnemy, bosses, chests, buffStones)
+   - `createOpenWorldMapProxy()`, `enterOpenWorld()`, `exitOpenWorld()`
+   - `checkPortals()` — ~100 строк
+   - `saveCheckpoint()`, `checkCheckpoint()`, `respawnAtCheckpoint()`
+2. **ПОСЛЕ этого** Task 2.3 — `js/player-update.js` (createPlayer, updatePlayer, unstickPlayer-wrapper)
+3. **ПОСЛЕ этого** Task 2.5 — `js/game-loop.js` с чистым update/render split (исправит updateMs/renderMs в FPS overlay)
+
+**Потом крупные задачи:**
+- Task 3 — `game.player` → `game.players[]` с геттер-трюком (трогает ~16 js-файлов)
+- Task 4 — input queue через `player.input` структуру
+- Task 10 — регресс-тест всех 5 классов + деплой на Synology (SSH порт 33122, **спрашивать перед деплоем**)
+
+**После завершения pre-coop refactor → coop-session1:**
+- `server/relay.js` + Dockerfile (Node.js + ws, ~140 строк)
+- Раскомментировать relay в `docker-compose.yml` и `/ws` в `nginx.conf` (уже подготовлены)
+- `js/network.js` + `js/lobby.js`
+- См. `specs/2026-04-10-coop-design.md` раздел "Следующий шаг"
+
+### 🧪 Что нужно от пользователя
+
+1. **Smoke-test всех коммитов этой сессии** — игра должна работать: меню, классы, инвентарь, диалоги, бой, открытый мир, сохранение/загрузка. Если сломалось — `git revert <hash>`.
+2. **Cloudflare проверка** — WebSockets ON для `eldo.evgosyan.ru` (Step 8.4).
+3. **Baseline FPS** — нажать F3 в игре, побегать 2-3 минуты на desktop + iPhone SE в DevTools, записать цифры в ROADMAP (Step 9.3).
+4. **Реальный Android тест** — haptics/orientation lock/safe-area. Требует HTTPS → `eldo.evgosyan.ru` после деплоя.
+
+---
+
+
 **Goal:** Привести кодовую базу в состояние, готовое к добавлению кооп-режима ("Drop-in герой"), и одновременно закрыть технический долг мобильной версии. Ничего из запланированного НЕ должно сломать текущий геймплей — все изменения либо чисто структурные (вынос в модули), либо точечные (добавление safe-area, guard'ов, новых API). После выполнения этого плана должен начинаться отдельный план `2026-04-XX-coop-session1.md`.
 
 **Scope:** Рефакторинг `main.js`, абстракция игрока, очередь ввода, фиксы мобильного UX, подготовка Docker/nginx к WebSocket-relay, дизайн-спека кооп-протокола, профилировка перфоманса.
