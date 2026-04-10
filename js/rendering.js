@@ -319,6 +319,8 @@ export function renderMenu(ctx) {
       ctx.font = '10px "Press Start 2P"';
       ctx.fillStyle = '#b388ff';
       ctx.fillText('S = Песочница', cx, 360);
+      ctx.fillStyle = '#80c8ff';
+      ctx.fillText('N = Кооп', cx, 390);
     }
   }
 

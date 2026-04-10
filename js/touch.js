@@ -129,9 +129,10 @@ function updateLayout(canvas) {
   // Menu touch areas (centered in game area)
   const gameCenterX = gameAreaX + 320;
   menuButtonAreas = [
-    { id: 'start', x: gameCenterX, y: 310, r: 60, w: 260, h: 46, key: 'Enter', label: 'ИГРАТЬ' },
-    { id: 'continue', x: gameCenterX, y: 365, r: 60, w: 260, h: 38, key: 'KeyC', label: 'ПРОДОЛЖИТЬ' },
-    { id: 'sandbox', x: gameCenterX, y: 415, r: 60, w: 200, h: 34, key: 'KeyS', label: 'ПЕСОЧНИЦА' },
+    { id: 'start',    x: gameCenterX, y: 290, r: 60, w: 260, h: 46, key: 'Enter', label: 'ИГРАТЬ'         },
+    { id: 'continue', x: gameCenterX, y: 345, r: 60, w: 260, h: 38, key: 'KeyC',  label: 'ПРОДОЛЖИТЬ'     },
+    { id: 'sandbox',  x: gameCenterX, y: 393, r: 60, w: 200, h: 34, key: 'KeyS',  label: 'ПЕСОЧНИЦА'      },
+    { id: 'coop',     x: gameCenterX, y: 437, r: 60, w: 200, h: 34, key: 'KeyN',  label: 'КООП'           },
   ];
 }
 
@@ -356,6 +357,9 @@ export function renderMenuTouchControls(ctx, width, height, hasSaveData) {
 
   const sandbox = menuButtonAreas[2];
   drawMenuButton(ctx, sandbox.x, sandbox.y, sandbox.w, sandbox.h, sandbox.label, '#b388ff', '#000');
+
+  const coop = menuButtonAreas[3];
+  drawMenuButton(ctx, coop.x, coop.y, coop.w, coop.h, coop.label, '#1a6aaa', '#fff');
 
   ctx.globalAlpha = 1;
 }
