@@ -11,7 +11,7 @@
 
 import { game, STATE } from './game-state.js';
 import { initCanvasLayout } from './canvas-layout.js';
-import { initInput, isKeyPressed } from './input.js';
+import { initInput, isKeyPressed, captureLocalInput, consumeEdge } from './input.js';
 import {
   detectMobile, initTouchControls, renderTouchControls,
   isMobileDevice, setTapAnywhereMode, getJoystickFlick, getGameOffsetX,
@@ -496,6 +496,11 @@ function gameLoop(timestamp) {
 
     case STATE.PLAY: {
       // --- UPDATE ---
+      // Task 4: capture local input into player.input / player.inputEdges
+      // ДО любой логики, которая может их прочитать. Гость (кооп) будет
+      // заполнять эти же поля из сетевого пакета в эквивалентной точке.
+      captureLocalInput(game.player);
+
       // Sandbox: keep HP and coins maxed
       if (game.sandbox && game.player) {
         game.player.hp = game.player.maxHp;
@@ -687,7 +692,7 @@ function gameLoop(timestamp) {
       }
 
       // --- Potion use: KeyQ ---
-      if (isKeyPressed('KeyQ') && game.player.potions > 0) {
+      if (consumeEdge(game.player, 'potion') && game.player.potions > 0) {
         game.player.potions--;
         const heal = Math.min(30, game.player.maxHp - game.player.hp);
         game.player.hp += heal;
@@ -699,9 +704,9 @@ function gameLoop(timestamp) {
       }
 
       // --- Abilities ---
-      if (isKeyPressed('Digit1') && useAbility('earth', game.player, game.projectiles, game.enemies)) SFX.playShield();
-      if (isKeyPressed('Digit2') && useAbility('fire', game.player, game.projectiles, game.enemies)) SFX.playFireball();
-      if (isKeyPressed('Digit3') && useAbility('water', game.player, game.projectiles, game.enemies)) SFX.playIceWave();
+      if (consumeEdge(game.player, 'ability1') && useAbility('earth', game.player, game.projectiles, game.enemies)) SFX.playShield();
+      if (consumeEdge(game.player, 'ability2') && useAbility('fire', game.player, game.projectiles, game.enemies)) SFX.playFireball();
+      if (consumeEdge(game.player, 'ability3') && useAbility('water', game.player, game.projectiles, game.enemies)) SFX.playIceWave();
       {
         const projKilled = updateProjectiles(game.projectiles, game.enemies, dt);
         for (const enemy of projKilled) {
@@ -1051,7 +1056,7 @@ function gameLoop(timestamp) {
       // --- Help toggle ---
       if (isKeyPressed('KeyH')) game.showHelp = !game.showHelp;
       if (isKeyPressed('F3')) FPS.toggleFps();
-      if (isKeyPressed('KeyJ')) game.showQuestLog = !game.showQuestLog;
+      if (consumeEdge(game.player, 'questsToggle')) game.showQuestLog = !game.showQuestLog;
       if (isKeyPressed('KeyM')) SFX.toggleMusic();
 
       // --- Emergency rescue (R key) — всегда спасает: телепорт в безопасную точку ---
@@ -1104,7 +1109,7 @@ function gameLoop(timestamp) {
           unstickPlayer();
         }
       }
-      if (isKeyPressed('Escape')) {
+      if (consumeEdge(game.player, 'menuToggle')) {
         game.player._companions = game.companions.map(c => c.type);
         game.player._playerClass = game.playerClass;
         game.player._hasHorse = game.hasHorse;
@@ -1112,13 +1117,13 @@ function gameLoop(timestamp) {
         game.state = STATE.MENU;
         SFX.stopMusic();
       }
-      if (isKeyPressed('KeyI') || isKeyPressed('Tab')) {
+      if (consumeEdge(game.player, 'inventoryToggle')) {
         resetInventorySelection(game.player);
         game.state = STATE.INVENTORY;
       }
 
       // --- Chest interaction ---
-      if (isKeyPressed('KeyE')) {
+      if (consumeEdge(game.player, 'interact')) {
         let interacted = false;
         // Check chests first
         if (game.chests) {

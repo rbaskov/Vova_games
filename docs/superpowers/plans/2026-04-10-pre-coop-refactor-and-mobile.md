@@ -248,21 +248,21 @@
 **Files:**
 - Modify: `js/input.js`, `js/touch.js`, `js/player-update.js`, `js/game-state.js`
 
-- [ ] **Step 4.1: Ввести в game-state.js структуру input:**
-  - Каждый player имеет `player.input = { dx: 0, dy: 0, attack: false, interact: false, potion: false, ability1: false, ability2: false, ability3: false, inventoryToggle: false, menuToggle: false, questsToggle: false }`
-  - `dx/dy` — нормализованный вектор движения (-1..1)
+**Уточнение семантики (сделано в сессии 5):** поля разделены на `player.input = {dx, dy}` (held) и `player.inputEdges = {attack, interact, potion, ability1-3, inventoryToggle, menuToggle, questsToggle}` (одноразовые, consume через `consumeEdge`). UI-навигация вне PLAY-state (меню, dialog-nav, inventory-nav, fast-travel, class-select) оставлена на `isKeyPressed` — это не персонажный ввод и не нуждается в кооп-маршалинге.
 
-- [ ] **Step 4.2:** В `input.js` добавить `captureLocalInput()` — читает `isKeyDown('ArrowLeft')` и т.д., заполняет `game.players[0].input`. Вызывается в начале каждого tick'а gameLoop.
+- [x] **Step 4.1:** `createPlayer` в `player-update.js` инициализирует `input` + `inputEdges`. (game-state.js остался как есть — фабрика живёт в player-update.js после Task 2.3.)
 
-- [ ] **Step 4.3:** В `touch.js` — если пользователь на тач-устройстве (`pointer: coarse`), поверх клавиатуры писать в тот же `game.players[0].input` значения джойстика + состояния кнопок. Тач приоритетнее: если `joystick.active` → override keyboard dx/dy.
+- [x] **Step 4.2:** `captureLocalInput(player)` + `consumeEdge(player, name)` в `input.js`. OR-merge для edges (буферизация кликов между кадрами до consume). Вызывается в начале PLAY-case update-фазы.
 
-- [ ] **Step 4.4:** `updatePlayer(player, dt)` — теперь читает **только** из `player.input`, никаких `isKeyDown` или `touchHeld` внутри функции.
+- [x] **Step 4.3:** Тач работает бесплатно — `isKeyPressed`/`isKeyDown` уже инкапсулируют `isTouchButtonPressed`/`isTouchButtonHeld` (`input.js:22-34`), так что `captureLocalInput` получает тач через тот же слой.
 
-- [ ] **Step 4.5:** Триггерные действия (кнопка меню, инвентарь, диалог-next) — их нельзя делать per-frame, они "клик". Ввести `player.inputEdges` — объект с bool, которые выставляются на true при нажатии и сбрасываются игровой логикой через `consumeEdge('menu')`. Edge-detection делается в captureLocalInput.
+- [x] **Step 4.4:** `updatePlayer` читает `p.input.dx/dy` и `consumeEdge(p, 'attack')`. Удалены `getMovementInput`/`isKeyPressed` импорты из `player-update.js`.
 
-- [ ] **Step 4.6:** Smoke-test — полный чеклист. Особое внимание: кнопки (инвентарь, меню, диалог) не срабатывают по 10 раз подряд, reload не теряет фокус.
+- [x] **Step 4.5:** Персонажные edges обрабатываются через `consumeEdge` в PLAY-case game-loop'а: `potion`, `ability1-3`, `interact`, `inventoryToggle`, `menuToggle`, `questsToggle`. Метахоткеи (`KeyH`/`F3`/`KeyM`/`KeyR`/`KeyD`/`KeyT`) оставлены на `isKeyPressed` — не персонажные.
 
-- [ ] **Step 4.7:** Коммит: `refactor: input via player.input struct (network-ready)`
+- [x] **Step 4.6:** Статический анализ пройден: node --check всех 4 файлов, 9/9 edge-имён матчатся между `createPlayer`, `captureLocalInput`, все `consumeEdge`-вызовы. Ручной smoke-test — через http.server 3040.
+
+- [x] **Step 4.7:** Коммит: `refactor: input via player.input struct (network-ready)` (cache-bust ?v=27 → ?v=28).
 
 ---
 

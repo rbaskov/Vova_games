@@ -16,7 +16,7 @@
 import { TILE_SIZE, getTile } from './tilemap.js';
 import { SLOW_TILES, SLOW_TILE_SPEED_MULT } from './sprites.js';
 import { game } from './game-state.js';
-import { getMovementInput, isKeyPressed } from './input.js';
+import { consumeEdge } from './input.js';
 import { updateCamera, updateCameraOpenWorld } from './camera.js';
 import { getBuffAtkMultiplier, getBuffSpeedMultiplier } from './events.js';
 import { getAttackSpeed, getWeapon, createArrow } from './weapons.js';
@@ -59,6 +59,27 @@ export function createPlayer(startX, startY) {
     // В коопе у гостя будет свой player с собственным ui — инвентарь/диалоги
     // не конфликтуют между хостом и гостем.
     ui: { inventorySlot: 0, dialogOption: 0, settingsTab: 0 },
+    // Ввод разделён на две структуры (Task 4, pre-coop refactor):
+    //   input      — непрерывный ввод (движение). Заполняется каждый кадр
+    //                из captureLocalInput(), updatePlayer читает dx/dy отсюда.
+    //   inputEdges — одноразовые триггеры (клик, а не hold). Заполняются
+    //                в captureLocalInput() по edge-события клавиатуры/тача,
+    //                сбрасываются в false через consumeEdge(player, name).
+    // Для кооп'а гость получит идентичную структуру, заполняемую из сетевого
+    // пакета вместо captureLocalInput(). updatePlayer читает ТОЛЬКО эти два
+    // поля — никаких глобальных isKeyDown/isKeyPressed внутри.
+    input: { dx: 0, dy: 0 },
+    inputEdges: {
+      attack: false,
+      interact: false,
+      potion: false,
+      ability1: false,
+      ability2: false,
+      ability3: false,
+      inventoryToggle: false,
+      menuToggle: false,
+      questsToggle: false,
+    },
   };
 }
 
@@ -338,12 +359,11 @@ export function updatePlayer(dt) {
   // Movement blocked when fast travel is open
   if (game.fastTravel && game.fastTravel.active) return;
 
-  // Movement (keyboard + touch joystick)
-  const move = getMovementInput();
-  let dx = move.dx;
-  let dy = move.dy;
+  // Movement — читается из player.input (заполнен captureLocalInput или сетью)
+  let dx = p.input.dx;
+  let dy = p.input.dy;
 
-  // Normalize if from keyboard (values are -1/0/1)
+  // Normalize if from keyboard (values are -1/0/1; touch joystick уже нормализован)
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len > 1) {
     dx /= len;
@@ -408,8 +428,8 @@ export function updatePlayer(dt) {
     p.y = newY;
   }
 
-  // Attack
-  if (isKeyPressed('Space') && !p.attacking) {
+  // Attack — edge-триггер через consumeEdge (заполнен captureLocalInput или сетью)
+  if (consumeEdge(p, 'attack') && !p.attacking) {
     p.attacking = true;
     p.attackTimer = getAttackSpeed(p);
     // Bow fires a projectile
