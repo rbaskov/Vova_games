@@ -653,8 +653,6 @@ function gameLoop(timestamp) {
       // --- Coop: flush сеть, применить входящие сообщения ---
       let _coopMsgs = [];
       if (game.network) _coopMsgs = game.network.flush();
-      if (game.coopRole !== 'none' && _coopMsgs.length > 0)
-        console.log('[COOP] role='+game.coopRole+' got:', _coopMsgs.map(m=>m.type).join(','));
 
       if (game.coopRole === 'host') {
         for (const msg of _coopMsgs) {
@@ -662,7 +660,6 @@ function gameLoop(timestamp) {
             game.players[1].input.dx = msg.dx ?? 0;
             game.players[1].input.dy = msg.dy ?? 0;
             if (msg.attack) game.players[1].inputEdges.attack = true;
-            if (msg.dx || msg.dy) console.log('[HOST] got input dx='+msg.dx+' dy='+msg.dy+' → p1.x='+game.players[1].x.toFixed(1));
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
           }
@@ -675,7 +672,6 @@ function gameLoop(timestamp) {
             // На гостевой стороне: players[0] = наш аватар (p1 у хоста), players[1] = хост (p0)
             if (msg.p1 && game.players[0]) Object.assign(game.players[0], msg.p1);
             if (msg.p0 && game.players[1]) Object.assign(game.players[1], msg.p0);
-            console.log('[GUEST] snap x='+msg._d?.x+' host_input='+msg._d?.dx+','+msg._d?.dy);
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
           }
@@ -705,18 +701,15 @@ function gameLoop(timestamp) {
       if (game.coopRole === 'host' && game.players[1]) {
         _updateCoopAvatar(game.players[1], dt);
         if (game.network) {
-          const p1 = game.players[1];
           game.network.send({
             type: 'snapshot',
             p0: _snap(game.players[0]),
-            p1: _snap(p1),
-            _d: { dx: p1.input.dx, dy: p1.input.dy, x: Math.round(p1.x) },
+            p1: _snap(game.players[1]),
           });
         }
       }
       if (game.coopRole === 'guest' && game.network && game.players[0]) {
         const p = game.players[0];
-        if (p.input.dx || p.input.dy) console.log('[GUEST] sending input dx='+p.input.dx+' dy='+p.input.dy);
         game.network.send({
           type: 'input',
           dx: p.input.dx,
