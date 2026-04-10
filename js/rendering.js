@@ -954,7 +954,7 @@ export function renderPlay(ctx) {
 
   // Map tiles
   if (game.openWorld) {
-    renderOpenWorld(ctx, game.chunkManager, cam);
+    renderOpenWorld(ctx, game.chunkManager, cam, game.animFrame);
   } else {
     renderMap(ctx, map, cam, game.animFrame);
   }

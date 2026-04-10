@@ -183,10 +183,14 @@ export function createChunkManager(worldGen) {
         const cx = centerCX + dx;
         const cy = centerCY + dy;
         const canvas = getChunkCanvas(cx, cy);
+        // loadChunk уже вызывался внутри getChunkCanvas и закеширован в chunkCache.
+        // Берём tiles из того же объекта chunk.
+        const chunk = loadChunk(cx, cy);
         result.push({
           cx,
           cy,
           canvas,
+          tiles: chunk.tiles,
           worldX: cx * CHUNK_W * TILE_SIZE,
           worldY: cy * CHUNK_H * TILE_SIZE,
         });

@@ -1,4 +1,4 @@
-import { tileDrawers, SOLID_TILES, OPEN_WORLD_SOLID_TILES, drawPortalTile } from './sprites.js';
+import { tileDrawers, SOLID_TILES, OPEN_WORLD_SOLID_TILES, drawPortalTile, TILE } from './sprites.js';
 
 export const TILE_SIZE = 32;
 
@@ -89,7 +89,7 @@ export function renderMap(ctx, map, camera, animFrame) {
 }
 
 
-export function renderOpenWorld(ctx, chunkManager, camera) {
+export function renderOpenWorld(ctx, chunkManager, camera, animFrame = 0) {
   const chunks = chunkManager.getLoadedChunks();
 
   for (const chunk of chunks) {
@@ -125,6 +125,30 @@ export function renderOpenWorld(ctx, chunkManager, camera) {
       ctx.drawImage(chunk.canvas,
         Math.floor(sx), Math.floor(sy), Math.floor(sw), Math.floor(sh),
         Math.floor(dx), Math.floor(dy), Math.floor(sw), Math.floor(sh));
+    }
+
+    // Runtime portal layer — сканируем chunk.tiles на TILE.PORTAL и рисуем
+    // каждый портал с type-specific визуалом. Target определяется по
+    // координате чанка: (0,0) → village (возврат), иначе → dungeon_ow.
+    if (chunk.tiles) {
+      const chunkTarget = (chunk.cx === 0 && chunk.cy === 0) ? 'village' : 'dungeon_ow';
+      for (let row = 0; row < chunk.tiles.length; row++) {
+        const tileRow = chunk.tiles[row];
+        if (!tileRow) continue;
+        for (let col = 0; col < tileRow.length; col++) {
+          if (tileRow[col] !== TILE.PORTAL) continue;
+          // Мировые пиксельные координаты тайла
+          const worldPx = chunkLeft + col * TILE_SIZE;
+          const worldPy = chunkTop + row * TILE_SIZE;
+          // Экранные координаты
+          const screenX = worldPx - camera.x;
+          const screenY = worldPy - camera.y;
+          // Skip off-screen
+          if (screenX < -TILE_SIZE || screenX >= camera.width ||
+              screenY < -TILE_SIZE || screenY >= camera.height) continue;
+          drawPortalTile(ctx, screenX, screenY, animFrame, chunkTarget);
+        }
+      }
     }
   }
 }
