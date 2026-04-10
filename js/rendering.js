@@ -1227,3 +1227,35 @@ export function tryLockOrientation() {
     });
   }
 }
+
+/**
+ * Рендерит аватар удалённого игрока — синий прямоугольник с меткой и полоской HP.
+ * Session 3 заменит на полноценный синхронизированный спрайт.
+ */
+export function renderRemotePlayer(ctx, cam, player, label) {
+  if (!player || !cam) return;
+  const px = Math.floor(player.x - cam.x);
+  const py = Math.floor(player.y - cam.y);
+  const w  = player.hitW || 24;
+  const h  = player.hitH || 28;
+
+  // Синий силуэт
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = '#4488ff';
+  ctx.fillRect(px, py, w, h);
+  ctx.globalAlpha = 1;
+
+  // HP-полоска
+  const hpPct = (player.hp || 0) / (player.maxHp || 100);
+  ctx.fillStyle = '#222';
+  ctx.fillRect(px - 1, py - 8, w + 2, 4);
+  ctx.fillStyle = hpPct > 0.5 ? '#44ff44' : hpPct > 0.25 ? '#ffaa00' : '#ff3333';
+  ctx.fillRect(px, py - 7, Math.ceil(w * hpPct), 2);
+
+  // Метка
+  ctx.font = '6px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(label || 'P2', px + w / 2, py - 11);
+  ctx.textAlign = 'left';
+}
