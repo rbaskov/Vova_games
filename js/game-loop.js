@@ -61,6 +61,12 @@ import {
   CLASSES, renderMenu, renderClassSelect, renderPlay, renderHelpOverlay,
   renderExitConfirm, initStars, updateStars, tryLockOrientation,
 } from './rendering.js';
+import {
+  openLobby, closeLobby, updateLobby, renderLobby,
+  lobbyCreateRoom, lobbyStartJoinInput,
+  lobbyAddCodeChar, lobbyRemoveCodeChar, lobbySubmitCode,
+  lobbyBack, getLobbyState, getLobbyCodeInput,
+} from './lobby.js';
 
 // --- Boss Dialogs ---
 const BOSS_DIALOGS = {
@@ -438,9 +444,67 @@ function gameLoop(timestamp) {
           game.hasHorse = save.hasHorse || false;
         }
       }
+      if (isKeyPressed('KeyN')) {
+        openLobby();
+        game.state = STATE.LOBBY;
+        SFX.resumeAudio();
+      }
       FPS.endUpdate();
       // --- RENDER ---
       renderMenu(ctx);
+      FPS.endRender();
+    } break;
+
+    case STATE.LOBBY: {
+      // --- UPDATE ---
+      updateLobby();
+
+      // Keyboard input для lobby
+      if (isKeyPressed('Escape') || isKeyPressed('KeyN')) {
+        // ESC/N — назад в меню (если в idle или error)
+        const ls = getLobbyState();
+        if (ls === 'idle' || ls === 'error') {
+          lobbyBack();
+          break;
+        }
+        if (ls === 'join_input') {
+          lobbyBack(); // полный выход из лобби
+          break;
+        }
+        if (ls === 'waiting_for_peer') {
+          lobbyBack(); // закрыть комнату/отключиться
+          break;
+        }
+      }
+
+      if (getLobbyState() === 'idle') {
+        if (isKeyPressed('KeyN')) {
+          lobbyCreateRoom();
+        } else if (isKeyPressed('KeyJ')) {
+          lobbyStartJoinInput();
+        }
+      } else if (getLobbyState() === 'join_input') {
+        // Буквы и цифры кода
+        const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        for (const ch of codeChars) {
+          if (isKeyPressed('Key' + ch) || isKeyPressed('Digit' + ch)) {
+            lobbyAddCodeChar(ch);
+          }
+        }
+        if (isKeyPressed('Backspace')) lobbyRemoveCodeChar();
+        if (isKeyPressed('Enter') && getLobbyCodeInput().length === 6) {
+          lobbySubmitCode();
+        }
+      }
+
+      FPS.endUpdate();
+      // --- RENDER ---
+      // Фон — звёзды и горы как в меню
+      updateStars(dt);
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, game.width, game.height);
+      renderMenu(ctx);          // рисует фон (звёзды, горы, title)
+      renderLobby(ctx, game.width, game.height);
       FPS.endRender();
     } break;
 
