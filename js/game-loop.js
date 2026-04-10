@@ -653,6 +653,8 @@ function gameLoop(timestamp) {
       // --- Coop: flush сеть, применить входящие сообщения ---
       let _coopMsgs = [];
       if (game.network) _coopMsgs = game.network.flush();
+      if (game.coopRole !== 'none' && _coopMsgs.length > 0)
+        console.log('[COOP] role='+game.coopRole+' got:', _coopMsgs.map(m=>m.type).join(','));
 
       if (game.coopRole === 'host') {
         for (const msg of _coopMsgs) {
