@@ -460,24 +460,16 @@ function gameLoop(timestamp) {
       updateLobby();
 
       // Keyboard input для lobby
-      if (isKeyPressed('Escape') || isKeyPressed('KeyN')) {
-        // ESC/N — назад в меню (если в idle или error)
-        const ls = getLobbyState();
-        if (ls === 'idle' || ls === 'error') {
+      const ls = getLobbyState();
+      if (isKeyPressed('Escape')) {
+        // ESC — назад в меню из любого состояния
+        if (ls === 'idle' || ls === 'error' || ls === 'join_input' || ls === 'waiting_for_peer') {
           lobbyBack();
-          break;
-        }
-        if (ls === 'join_input') {
-          lobbyBack(); // полный выход из лобби
-          break;
-        }
-        if (ls === 'waiting_for_peer') {
-          lobbyBack(); // закрыть комнату/отключиться
           break;
         }
       }
 
-      if (getLobbyState() === 'idle') {
+      if (ls === 'idle') {
         if (isKeyPressed('KeyN')) {
           lobbyCreateRoom();
         } else if (isKeyPressed('KeyJ')) {
