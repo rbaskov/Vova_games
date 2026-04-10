@@ -58,6 +58,10 @@ export const game = {
   minimapRenderer: null,
   fastTravel: null,
   worldEventManager: null,
+  // Подтверждение выхода в меню — модальный оверлей поверх PLAY.
+  // Когда true: update пропускается (игра на паузе), input ловится напрямую,
+  // рендер добавляет confirm-оверлей поверх обычного игрового кадра.
+  showExitConfirm: false,
   // Массив игроков. players[0] — локальный (он же game.player через геттер).
   // players[1..] — место под будущих кооп-гостей (Task coop-session1).
   players: [],

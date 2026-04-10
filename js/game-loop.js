@@ -59,7 +59,7 @@ import { vibrate, HAPTIC_LEVELUP, HAPTIC_DEATH } from './haptics.js';
 import * as FPS from './debug-fps.js';
 import {
   CLASSES, renderMenu, renderClassSelect, renderPlay, renderHelpOverlay,
-  initStars, updateStars, tryLockOrientation,
+  renderExitConfirm, initStars, updateStars, tryLockOrientation,
 } from './rendering.js';
 
 // --- Boss Dialogs ---
@@ -496,6 +496,37 @@ function gameLoop(timestamp) {
 
     case STATE.PLAY: {
       // --- UPDATE ---
+      // Модалка подтверждения выхода в меню — блокирует игру целиком.
+      // Обрабатывается ДО captureLocalInput, чтобы Escape/Y/N шли напрямую
+      // через isKeyPressed (а не через player.inputEdges). Это правильно,
+      // потому что модалка — UI-уровень, не персонажный ввод.
+      if (game.showExitConfirm) {
+        // Yes: Y / Enter / E (мобильный: тап по E-кнопке шлёт KeyE)
+        // No:  N / Escape    (мобильный: тап по ☰ шлёт Escape)
+        // Space НАМЕРЕННО не работает — это "атака", Вова её спамит,
+        // не хочу чтобы случайная атака выбросила в меню.
+        const yes = isKeyPressed('KeyY') || isKeyPressed('Enter') || isKeyPressed('KeyE');
+        const no = isKeyPressed('KeyN') || isKeyPressed('Escape');
+        if (yes) {
+          game.player._companions = game.companions.map(c => c.type);
+          game.player._playerClass = game.playerClass;
+          game.player._hasHorse = game.hasHorse;
+          saveGame(game.player, game.currentMapName, getOpenWorldSaveState());
+          game.state = STATE.MENU;
+          game.showExitConfirm = false;
+          SFX.stopMusic();
+        } else if (no) {
+          game.showExitConfirm = false;
+        }
+        FPS.endUpdate();
+        // --- RENDER ---
+        renderPlay(ctx);
+        renderTouchControls(ctx, game.width, game.height);
+        renderExitConfirm(ctx, game.width, game.height);
+        FPS.endRender();
+        break;
+      }
+
       // Task 4: capture local input into player.input / player.inputEdges
       // ДО любой логики, которая может их прочитать. Гость (кооп) будет
       // заполнять эти же поля из сетевого пакета в эквивалентной точке.
@@ -1110,12 +1141,9 @@ function gameLoop(timestamp) {
         }
       }
       if (consumeEdge(game.player, 'menuToggle')) {
-        game.player._companions = game.companions.map(c => c.type);
-        game.player._playerClass = game.playerClass;
-        game.player._hasHorse = game.hasHorse;
-        saveGame(game.player, game.currentMapName, getOpenWorldSaveState());
-        game.state = STATE.MENU;
-        SFX.stopMusic();
+        // Не выходим сразу — показываем модалку подтверждения.
+        // Реальный save+exit происходит в confirm-обработчике в начале PLAY.
+        game.showExitConfirm = true;
       }
       if (consumeEdge(game.player, 'inventoryToggle')) {
         resetInventorySelection(game.player);

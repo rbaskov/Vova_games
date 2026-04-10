@@ -876,6 +876,55 @@ export function renderHelpOverlay(ctx) {
   ctx.textAlign = 'left';
 }
 
+// --- Render Exit Confirm Modal ---
+// Полупрозрачный оверлей с подтверждением выхода в меню.
+// Рисуется ПОВЕРХ обычного рендера PLAY, внутри игровой области
+// (640x480), независимо от мобильных панелей — координаты локальные.
+export function renderExitConfirm(ctx, canvasW, canvasH) {
+  // Смещение игровой области (на мобильном — с учётом левой панели)
+  // Получаем через getGameOffsetX из touch.js, но проще рисовать в
+  // фиксированных координатах 640x480 и транслировать контекст.
+  const gOff = (canvasW - 640) / 2;  // центрирование игровой области
+  if (gOff > 0) { ctx.save(); ctx.translate(gOff, 0); }
+
+  // Затемнение поверх всего игрового поля
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(0, 0, 640, 480);
+
+  // Модальный бокс
+  const boxW = 420;
+  const boxH = 180;
+  const boxX = (640 - boxW) / 2;
+  const boxY = (480 - boxH) / 2;
+
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeStyle = '#ffd54f';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+  // Заголовок
+  ctx.font = '12px "Press Start 2P"';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54f';
+  ctx.fillText('ВЫЙТИ В МЕНЮ?', 320, boxY + 40);
+
+  // Пояснение
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('Прогресс будет сохранён', 320, boxY + 72);
+
+  // Подсказки управления
+  ctx.font = '10px "Press Start 2P"';
+  ctx.fillStyle = '#80ff80';
+  ctx.fillText('[Y] / [E] — Да', 320, boxY + 112);
+  ctx.fillStyle = '#ff8080';
+  ctx.fillText('[ESC] / [☰] — Нет', 320, boxY + 140);
+
+  ctx.textAlign = 'left';
+  if (gOff > 0) ctx.restore();
+}
+
 // --- Render Play State ---
 export function renderPlay(ctx) {
   const cam = game.camera;
