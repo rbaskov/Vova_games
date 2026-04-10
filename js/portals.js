@@ -74,11 +74,163 @@ export function getNearbyPortal(portals, playerX, playerY, radiusTiles = 2, tile
   return best ? { portal: best, dist: bestDist } : null;
 }
 
-// drawPortalSymbol определяется в Task 2 — здесь placeholder, чтобы импорты
-// не падали при dev-итерациях.
+/**
+ * Рисует pixel-art символ 8×8 в центре портала.
+ * Координаты (x, y) — левый верхний угол 8×8 квадрата.
+ * color — базовый цвет (обычно ringColor стиля).
+ */
 export function drawPortalSymbol(ctx, x, y, symbol, color) {
-  // Будет реализовано в Task 2. Пока рисуем заглушку — красный квадрат,
-  // чтобы визуально было видно, что функция вызвана, но не реализована.
-  ctx.fillStyle = '#ff00ff';
-  ctx.fillRect(x, y, 8, 8);
+  // Осветлённый цвет для деталей (подмешиваем белый)
+  const light = lightenColor(color, 0.4);
+  ctx.fillStyle = color;
+
+  switch (symbol) {
+    case 'house': {
+      // Крыша (треугольник) + корпус + дверь
+      ctx.fillRect(x + 3, y + 1, 2, 1);      // верх крыши
+      ctx.fillRect(x + 2, y + 2, 4, 1);
+      ctx.fillRect(x + 1, y + 3, 6, 1);
+      ctx.fillRect(x + 1, y + 4, 6, 4);      // корпус
+      ctx.fillStyle = light;
+      ctx.fillRect(x + 3, y + 6, 2, 2);      // дверь
+      break;
+    }
+    case 'compass': {
+      // 4 точки по сторонам света + центр
+      ctx.fillRect(x + 3, y + 0, 2, 1);      // N
+      ctx.fillRect(x + 3, y + 7, 2, 1);      // S
+      ctx.fillRect(x + 0, y + 3, 1, 2);      // W
+      ctx.fillRect(x + 7, y + 3, 1, 2);      // E
+      ctx.fillStyle = light;
+      ctx.fillRect(x + 3, y + 3, 2, 2);      // центр
+      break;
+    }
+    case 'tree': {
+      // Крона (треугольник) + ствол
+      ctx.fillRect(x + 3, y + 0, 2, 1);
+      ctx.fillRect(x + 2, y + 1, 4, 1);
+      ctx.fillRect(x + 1, y + 2, 6, 1);
+      ctx.fillRect(x + 0, y + 3, 8, 2);
+      ctx.fillStyle = '#4e342e';             // ствол коричневый
+      ctx.fillRect(x + 3, y + 5, 2, 3);
+      break;
+    }
+    case 'cliffs': {
+      // Три неровных зубца разной высоты
+      ctx.fillRect(x + 0, y + 4, 2, 4);
+      ctx.fillRect(x + 1, y + 3, 2, 5);
+      ctx.fillRect(x + 3, y + 5, 2, 3);
+      ctx.fillRect(x + 4, y + 2, 2, 6);
+      ctx.fillRect(x + 5, y + 4, 2, 4);
+      ctx.fillRect(x + 6, y + 1, 2, 7);
+      break;
+    }
+    case 'stalactite': {
+      // Сталактиты сверху + сталагмиты снизу
+      ctx.fillRect(x + 1, y + 0, 1, 3);
+      ctx.fillRect(x + 3, y + 0, 1, 2);
+      ctx.fillRect(x + 5, y + 0, 1, 4);
+      ctx.fillRect(x + 7, y + 0, 1, 2);
+      ctx.fillRect(x + 0, y + 6, 1, 2);
+      ctx.fillRect(x + 2, y + 5, 1, 3);
+      ctx.fillRect(x + 4, y + 6, 1, 2);
+      ctx.fillRect(x + 6, y + 4, 1, 4);
+      break;
+    }
+    case 'tower': {
+      // Прямоугольная башня с зубцами сверху
+      ctx.fillRect(x + 1, y + 0, 1, 2);      // зубец лев
+      ctx.fillRect(x + 3, y + 0, 2, 2);      // зубец центр
+      ctx.fillRect(x + 6, y + 0, 1, 2);      // зубец прав
+      ctx.fillRect(x + 1, y + 2, 6, 5);      // корпус
+      ctx.fillStyle = light;
+      ctx.fillRect(x + 3, y + 4, 2, 2);      // окно
+      break;
+    }
+    case 'crown': {
+      // Три зубца с кружками на вершинах
+      ctx.fillRect(x + 0, y + 3, 1, 1);
+      ctx.fillRect(x + 3, y + 2, 2, 1);
+      ctx.fillRect(x + 7, y + 3, 1, 1);
+      ctx.fillRect(x + 1, y + 4, 6, 3);      // обод
+      ctx.fillRect(x + 0, y + 4, 1, 2);
+      ctx.fillRect(x + 7, y + 4, 1, 2);
+      ctx.fillRect(x + 3, y + 3, 2, 2);      // средний зубец
+      break;
+    }
+    case 'skull': {
+      // Овал черепа + два глаза
+      ctx.fillRect(x + 2, y + 1, 4, 5);      // основная форма
+      ctx.fillRect(x + 1, y + 2, 6, 3);
+      ctx.fillRect(x + 3, y + 6, 2, 1);      // челюсть
+      ctx.fillStyle = '#0a0a0a';             // глаза тёмные
+      ctx.fillRect(x + 2, y + 3, 1, 1);
+      ctx.fillRect(x + 5, y + 3, 1, 1);
+      break;
+    }
+    case 'skull_stars': {
+      // Череп (уменьшенный) + 2 звёздочки
+      ctx.fillRect(x + 3, y + 2, 2, 4);
+      ctx.fillRect(x + 2, y + 3, 4, 2);
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(x + 3, y + 3, 1, 1);
+      ctx.fillRect(x + 4, y + 3, 1, 1);
+      ctx.fillStyle = light;
+      ctx.fillRect(x + 0, y + 0, 1, 1);      // звёздочка лев-верх
+      ctx.fillRect(x + 7, y + 1, 1, 1);
+      ctx.fillRect(x + 1, y + 7, 1, 1);
+      ctx.fillRect(x + 6, y + 6, 1, 1);
+      break;
+    }
+    case 'flame': {
+      // Волнистое пламя
+      ctx.fillRect(x + 3, y + 0, 2, 1);
+      ctx.fillRect(x + 2, y + 1, 4, 1);
+      ctx.fillRect(x + 1, y + 2, 6, 2);
+      ctx.fillRect(x + 2, y + 4, 4, 3);
+      ctx.fillRect(x + 3, y + 7, 2, 1);
+      ctx.fillStyle = light;
+      ctx.fillRect(x + 3, y + 3, 2, 2);      // внутренний яркий
+      break;
+    }
+    case 'swords': {
+      // Два меча крест-накрест
+      // Клинок 1 (лево-верх → право-низ)
+      ctx.fillRect(x + 1, y + 1, 1, 1);
+      ctx.fillRect(x + 2, y + 2, 1, 1);
+      ctx.fillRect(x + 3, y + 3, 2, 2);      // перекрестие
+      ctx.fillRect(x + 5, y + 5, 1, 1);
+      ctx.fillRect(x + 6, y + 6, 1, 1);
+      // Клинок 2 (право-верх → лево-низ)
+      ctx.fillRect(x + 6, y + 1, 1, 1);
+      ctx.fillRect(x + 5, y + 2, 1, 1);
+      ctx.fillRect(x + 2, y + 5, 1, 1);
+      ctx.fillRect(x + 1, y + 6, 1, 1);
+      break;
+    }
+    case 'question':
+    default: {
+      // '?' знак
+      ctx.fillRect(x + 2, y + 1, 4, 1);
+      ctx.fillRect(x + 5, y + 2, 1, 2);
+      ctx.fillRect(x + 3, y + 4, 2, 1);
+      ctx.fillRect(x + 3, y + 6, 2, 1);      // точка внизу
+      break;
+    }
+  }
+}
+
+/**
+ * Подмешивает белый в цвет для осветления.
+ * Принимает hex '#rrggbb', возвращает hex.
+ */
+function lightenColor(hex, amount) {
+  const h = hex.replace('#', '');
+  let r = parseInt(h.slice(0, 2), 16);
+  let g = parseInt(h.slice(2, 4), 16);
+  let b = parseInt(h.slice(4, 6), 16);
+  r = Math.min(255, Math.round(r + (255 - r) * amount));
+  g = Math.min(255, Math.round(g + (255 - g) * amount));
+  b = Math.min(255, Math.round(b + (255 - b) * amount));
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
 }
