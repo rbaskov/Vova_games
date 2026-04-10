@@ -158,6 +158,7 @@ export function updateLobby() {
         if (_state !== 'idle') {
           _state = 'error';
           _errorMsg = 'Соединение потеряно';
+          net.disconnect();
           game.network = null;
         }
         break;
