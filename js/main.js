@@ -36,6 +36,11 @@ import { createHazardManager } from './biome-hazards.js';
 import { createWorldEventManager } from './world-events.js';
 import { game, STATE } from './game-state.js';
 import { initCanvasLayout } from './canvas-layout.js';
+import {
+  collides, collidesWithMap, collidesWithOpenWorld,
+  unstickPlayer, awardLoot,
+  getStructureChestRarity, getOpenWorldSaveState,
+} from './map-loading.js';
 
 // Re-export для обратной совместимости на случай если кто-то импортирует из main.js
 export { game, STATE };
@@ -827,13 +832,6 @@ function syncChunkEnemies() {
 }
 
 /** Determine chest rarity based on distance from origin */
-function getStructureChestRarity(cx, cy) {
-  const dist = Math.sqrt(cx * cx + cy * cy);
-  if (dist < 4) return 'common';
-  if (dist < 8) return 'good';
-  return 'rare';
-}
-
 function createOpenWorldMapProxy() {
   // A proxy map object that routes isSolid/getTile calls to chunkManager
   // This allows enemies.js AI to use map-based collision in open world
@@ -913,81 +911,10 @@ function exitOpenWorld() {
   loadMap('village', 14, 10);
 }
 
-function getOpenWorldSaveState() {
-  if (!game.openWorld) return null;
-  const kills = {};
-  for (const [k, v] of game.chunkKills) kills[k] = [...v];
-  return {
-    seed: game.worldSeed,
-    playerX: game.player.x,
-    playerY: game.player.y,
-    changes: game.chunkManager.serializeChanges(),
-    kills,
-    openedChests: game._openedStructChests ? [...game._openedStructChests] : [],
-    pickedBuffStones: game._pickedBuffStones ? [...game._pickedBuffStones] : [],
-    difficulty: game.difficulty,
-    visitedChunks: game.visitedChunks ? [...game.visitedChunks] : [],
-    killedBosses: game._killedOpenWorldBosses ? [...game._killedOpenWorldBosses] : [],
-  };
-}
-
-// --- Collision ---
-function collidesWithMap(x, y, w, h) {
-  const map = game.currentMap;
-  // Check all 4 corners
-  const left = Math.floor(x / TILE_SIZE);
-  const right = Math.floor((x + w - 1) / TILE_SIZE);
-  const top = Math.floor(y / TILE_SIZE);
-  const bottom = Math.floor((y + h - 1) / TILE_SIZE);
-
-  return (
-    isSolid(map, left, top) ||
-    isSolid(map, right, top) ||
-    isSolid(map, left, bottom) ||
-    isSolid(map, right, bottom)
-  );
-}
-
-function collidesWithOpenWorld(x, y, w, h) {
-  const left = Math.floor(x / TILE_SIZE);
-  const right = Math.floor((x + w - 1) / TILE_SIZE);
-  const top = Math.floor(y / TILE_SIZE);
-  const bottom = Math.floor((y + h - 1) / TILE_SIZE);
-  const cm = game.chunkManager;
-  // В открытом мире деревья не блокируют движение (только замедляют), см. OPEN_WORLD_SOLID_TILES
-  return (
-    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(left, top)) ||
-    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(right, top)) ||
-    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(left, bottom)) ||
-    OPEN_WORLD_SOLID_TILES.has(cm.getTileAtWorld(right, bottom))
-  );
-}
-
-function collides(x, y, w, h) {
-  if (game.openWorld) return collidesWithOpenWorld(x, y, w, h);
-  return collidesWithMap(x, y, w, h);
-}
-
-// --- Unstick: push player out of solid tiles ---
-function unstickPlayer() {
-  const p = game.player;
-  if (!collides(p.x, p.y, p.hitW, p.hitH)) return;
-
-  // Try nudging in 4 directions (1px increments up to 32px)
-  for (let dist = 1; dist <= TILE_SIZE; dist++) {
-    const offsets = [
-      [dist, 0], [-dist, 0], [0, dist], [0, -dist],
-      [dist, dist], [-dist, -dist], [dist, -dist], [-dist, dist],
-    ];
-    for (const [dx, dy] of offsets) {
-      if (!collides(p.x + dx, p.y + dy, p.hitW, p.hitH)) {
-        p.x += dx;
-        p.y += dy;
-        return;
-      }
-    }
-  }
-}
+// getOpenWorldSaveState, collidesWithMap, collidesWithOpenWorld, collides,
+// unstickPlayer, getStructureChestRarity, awardLoot вынесены в map-loading.js
+// (Task 2.4 частичная экстракция). Остальные функции (loadMap, enterOpenWorld,
+// exitOpenWorld, checkPortals, syncChunkEnemies, checkpoint) пока в main.js.
 
 // --- Check Portals ---
 function checkPortals() {
@@ -1086,16 +1013,7 @@ function checkPortals() {
   }
 }
 
-// --- Loot scaling helper (applies difficulty lootMul in open world) ---
-function awardLoot(xp, coins) {
-  let mul = 1;
-  if (game.openWorld) {
-    const diff = getDifficulty(game.difficulty);
-    mul = diff.lootMul || 1;
-  }
-  game.player.xp += Math.floor(xp * mul);
-  game.player.coins += Math.floor(coins * mul);
-}
+// awardLoot вынесен в map-loading.js
 
 // --- Checkpoint System ---
 function saveCheckpoint() {

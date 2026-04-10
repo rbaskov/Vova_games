@@ -114,9 +114,9 @@
   - **Ограничение:** функции должны принимать `player` параметром, а не читать `game.player` напрямую. Внутри функции работаем с параметром. Это критично для Task 3.
   - Временно в `main.js` оставить обёртки: `function updatePlayer(dt) { return updatePlayerImpl(game.player, dt); }` — для обратной совместимости вызовов из gameLoop
 
-- [ ] **Step 2.4: Создать `js/map-loading.js`**
-  - Вынести: `loadMap`, `enterOpenWorld`, `exitOpenWorld`, `saveCheckpoint`, `respawnAtCheckpoint`, `collidesWithMap`
-  - Зависит только от `game-state.js`, `tilemap.js`, `worldgen.js`, `chunks.js`, `save.js`
+- [~] **Step 2.4: Создать `js/map-loading.js`** — ЧАСТИЧНО
+  - Вынесено: `collides`, `collidesWithMap`, `collidesWithOpenWorld`, `unstickPlayer`, `awardLoot`, `getStructureChestRarity`, `getOpenWorldSaveState` — 118 строк чистых helpers без глубоких зависимостей
+  - **Остаётся в main.js**: `loadMap`, `enterOpenWorld`, `exitOpenWorld`, `saveCheckpoint`, `respawnAtCheckpoint`, `checkCheckpoint`, `checkPortals`, `syncChunkEnemies`, `createOpenWorldMapProxy` — требуют доступа к `createPlayer`, `companions`, `enemies`, `MAP_REGISTRY` и будут вынесены в следующей сессии после smoke-теста
 
 - [ ] **Step 2.5: Создать `js/game-loop.js`**
   - Вынести: `gameLoop` (основной switch по state), `renderPlay`, `renderHUD`, `step`/`tick` функции
