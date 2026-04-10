@@ -815,6 +815,43 @@ function syncChunkEnemies() {
     }
   }
 
+  // --- Boss lair: spawn real boss in current chunk ---
+  const currentChunk = cm.getChunk(cm.centerCX, cm.centerCY);
+  if (currentChunk && currentChunk.structure && currentChunk.structure.bossType) {
+    const bossType = currentChunk.structure.bossType;
+    const killedBosses = game._killedOpenWorldBosses || new Set();
+    if (!killedBosses.has(bossType)) {
+      // Only spawn if not already active
+      if (!game.boss || !game.boss.alive || game.boss.type !== bossType) {
+        const st = currentChunk.structure;
+        const bossCenterCol = cm.centerCX * CHUNK_W + st.col + Math.floor(st.width / 2);
+        const bossCenterRow = cm.centerCY * CHUNK_H + st.row + Math.floor(st.height / 2);
+        game.boss = createBoss(bossType, bossCenterCol, bossCenterRow);
+        if (game.boss) {
+          // Scale boss stats by difficulty setting
+          const bDiff = getDifficulty(game.difficulty);
+          game.boss.hp = Math.floor(game.boss.hp * bDiff.hpMul);
+          game.boss.maxHp = game.boss.hp;
+          for (const phase of game.boss.phases) {
+            phase.atk = Math.floor(phase.atk * bDiff.atkMul);
+          }
+          game.boss._openWorldBoss = true;
+          game.boss._dialogShown = false;
+        }
+      }
+    }
+  } else if (game.boss && game.boss._openWorldBoss) {
+    // Player left the boss chunk — despawn boss (unless mid-fight)
+    const bx = game.boss.x + game.boss.width / 2;
+    const by = game.boss.y + game.boss.height / 2;
+    const px = game.player.x + game.player.hitW / 2;
+    const py = game.player.y + game.player.hitH / 2;
+    const distToBoss = Math.sqrt((bx - px) ** 2 + (by - py) ** 2);
+    if (distToBoss > 600) {
+      game.boss = null;
+    }
+  }
+
   // Unload distant chunk enemies
   for (const [k] of game.chunkEnemies) {
     const [ecx, ecy] = k.split(',').map(Number);
@@ -875,6 +912,7 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game.activeBuff = null;
   game._openedStructChests = game._openedStructChests || new Set();
   game._pickedBuffStones = game._pickedBuffStones || new Set();
+  game._killedOpenWorldBosses = game._killedOpenWorldBosses || new Set();
   game.visitedChunks = game.visitedChunks instanceof Set ? game.visitedChunks : new Set();
   game.fastTravel = createFastTravel();
   game.hazardManager = createHazardManager();
@@ -931,6 +969,7 @@ function getOpenWorldSaveState() {
     pickedBuffStones: game._pickedBuffStones ? [...game._pickedBuffStones] : [],
     difficulty: game.difficulty,
     visitedChunks: game.visitedChunks ? [...game.visitedChunks] : [],
+    killedBosses: game._killedOpenWorldBosses ? [...game._killedOpenWorldBosses] : [],
   };
 }
 
@@ -996,13 +1035,23 @@ function checkPortals() {
   // Grace period after teleport to prevent instant re-teleport
   if (game.portalCooldown > 0) return;
 
-  // Open world: check for structure portal tiles (cave entrances)
+  // Open world: check for structure portal tiles (cave entrances, village portal)
   if (game.openWorld) {
     const p = game.player;
     const centerCol = Math.floor((p.x + p.hitW / 2) / TILE_SIZE);
     const centerRow = Math.floor((p.y + p.hitH / 2) / TILE_SIZE);
     const tile = game.chunkManager.getTileAtWorld(centerCol, centerRow);
     if (tile === TILE.PORTAL) {
+      // Check if this is the village portal at chunk (0,0)
+      const { cx, cy } = game.chunkManager.pixelToChunk(p.x, p.y);
+      if (cx === 0 && cy === 0) {
+        // Return to village map
+        saveGame(game.player, 'openworld', getOpenWorldSaveState());
+        exitOpenWorld();
+        game.portalCooldown = 0.5;
+        SFX.playPortal();
+        return;
+      }
       // Save return position
       game._openWorldReturn = { x: p.x, y: p.y + TILE_SIZE * 2 };
       // Enter a procedural dungeon
@@ -2496,6 +2545,9 @@ function gameLoop(timestamp) {
             if (save.openWorld.visitedChunks) {
               game.visitedChunks = new Set(save.openWorld.visitedChunks);
             }
+            if (save.openWorld.killedBosses) {
+              game._killedOpenWorldBosses = new Set(save.openWorld.killedBosses);
+            }
             if (game.minimapRenderer) {
               game.minimapRenderer.invalidate();
             }
@@ -2912,6 +2964,11 @@ function gameLoop(timestamp) {
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
               game.player.defeatedBosses.push(game.boss.type);
+              // Track open world boss kills
+              if (game.boss._openWorldBoss) {
+                if (!game._killedOpenWorldBosses) game._killedOpenWorldBosses = new Set();
+                game._killedOpenWorldBosses.add(game.boss.type);
+              }
               // Boss quest progress
               const bqDone = updateBossProgress(game.player, game.boss.type);
               const genBqDone = updateGenBossProgress(game.player, game.boss.type);
@@ -2981,6 +3038,11 @@ function gameLoop(timestamp) {
             if (game.boss.hp <= 0) {
               game.boss.alive = false;
               game.player.defeatedBosses.push(game.boss.type);
+              // Track open world boss kills
+              if (game.boss._openWorldBoss) {
+                if (!game._killedOpenWorldBosses) game._killedOpenWorldBosses = new Set();
+                game._killedOpenWorldBosses.add(game.boss.type);
+              }
               game.player.xp += game.boss.xp;
               game.player.coins += game.boss.coins;
               if (game.boss.artifact) {
@@ -3080,6 +3142,13 @@ function gameLoop(timestamp) {
           if (ftResult) {
             if (ftResult.action === 'travel') {
               const dest = ftResult.dest;
+              // Special case: fast travel to village exits open world
+              if (dest.cx === 0 && dest.cy === 0) {
+                game.fastTravel.close();
+                saveGame(game.player, 'openworld', getOpenWorldSaveState());
+                exitOpenWorld();
+                SFX.playPortal();
+              } else {
               game.player.x = dest.worldX;
               game.player.y = dest.worldY;
               const { cx, cy } = game.chunkManager.pixelToChunk(dest.worldX, dest.worldY);
@@ -3093,6 +3162,7 @@ function gameLoop(timestamp) {
               game.fastTravel.close();
               game.particles.push(createParticle(game.player.x, game.player.y - 16, 'ТЕЛЕПОРТ!', '#b388ff', 1.5));
               SFX.playPortal();
+              }
             } else if (ftResult.action === 'close') {
               game.fastTravel.close();
             }

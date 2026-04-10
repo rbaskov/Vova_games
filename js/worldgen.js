@@ -5,7 +5,7 @@
 
 import { createNoise } from './simplex.js';
 import { TILE } from './sprites.js';
-import { getStructureForChunk, applyStructure } from './structures.js';
+import { getStructureForChunk, applyStructure, computeBossLairPositions } from './structures.js';
 
 // ---------------------------------------------------------------------------
 // Chunk dimensions
@@ -127,6 +127,9 @@ export function createWorldGen(seed) {
     return biomeFromNoise(height, moisture);
   }
 
+  // Compute boss lair positions once (deterministic from seed)
+  const bossLairMap = computeBossLairPositions(getBiomeAt, seed);
+
   /**
    * Generate a chunk at chunk coordinates (cx, cy).
    *
@@ -199,7 +202,7 @@ export function createWorldGen(seed) {
     const sNoise = structNoise(cx * 1.7, cy * 1.7);
     const dominantBiome = getBiomeAt(centerWorldCol, centerWorldRow);
 
-    const structureResult = getStructureForChunk(cx, cy, dominantBiome, sNoise);
+    const structureResult = getStructureForChunk(cx, cy, dominantBiome, sNoise, bossLairMap);
     let structure = null;
 
     if (structureResult) {
@@ -256,6 +259,8 @@ export function createWorldGen(seed) {
         hasBuffStone: template.hasBuffStone || false,
         buffStoneCol: template.buffStoneCol !== undefined ? cx * CHUNK_W + sCol + template.buffStoneCol : null,
         buffStoneRow: template.buffStoneRow !== undefined ? cy * CHUNK_H + sRow + template.buffStoneRow : null,
+        bossType: template.bossType || null,
+        isVillagePortal: template.id === 'village_portal',
       };
     }
 
@@ -275,5 +280,6 @@ export function createWorldGen(seed) {
     seed,
     getBiomeAt,
     generateChunk,
+    bossLairMap,
   };
 }

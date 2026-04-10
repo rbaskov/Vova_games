@@ -7,13 +7,16 @@ import { TILE_SIZE } from './tilemap.js';
 
 /** Biome display colors */
 const BIOME_COLORS = {
-  forest:   '#4caf50',
-  plains:   '#aed581',
-  desert:   '#ffd54f',
-  tundra:   '#b3e5fc',
-  swamp:    '#8d6e63',
-  volcanic: '#ff7043',
-  default:  '#9e9e9e',
+  forest:     '#4caf50',
+  plains:     '#aed581',
+  desert:     '#ffd54f',
+  tundra:     '#b3e5fc',
+  swamp:      '#8d6e63',
+  volcanic:   '#ff7043',
+  wasteland:  '#ff7043',
+  mountains:  '#9e9e9e',
+  snow:       '#b3e5fc',
+  default:    '#9e9e9e',
 };
 
 function biomeColor(biome) {
@@ -28,6 +31,8 @@ const STRUCTURE_ICONS = {
   ruins:     '✦',
   hut:       '▲',
   fortress:  '■',
+  boss:      '☠',
+  portal:    '⊕',
   default:   '◆',
 };
 

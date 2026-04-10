@@ -24,12 +24,17 @@ const UNVISITED_COLOR = '#222';
 
 // Structure icon colors and sizes  { color, size }
 const STRUCTURE_ICONS = {
-  npc_village:    { color: '#ffffff', size: 4 },
-  bandit_camp:    { color: '#ff3333', size: 3 },
-  cave_entrance:  { color: '#444444', size: 3 },
-  ruins:          { color: '#dddd33', size: 3 },
-  witch_hut:      { color: '#aa44cc', size: 3 },
-  fortress:       { color: '#f0c040', size: 4 },
+  npc_village:        { color: '#ffffff', size: 4 },
+  bandit_camp:        { color: '#ff3333', size: 3 },
+  cave_entrance:      { color: '#444444', size: 3 },
+  ruins:              { color: '#dddd33', size: 3 },
+  witch_hut:          { color: '#aa44cc', size: 3 },
+  fortress:           { color: '#f0c040', size: 4 },
+  village_portal:     { color: '#66ffcc', size: 5 },
+  boss_lair_forest:   { color: '#ff0000', size: 5, pulse: true },
+  boss_lair_wasteland:{ color: '#ff4400', size: 5, pulse: true },
+  boss_lair_snow:     { color: '#4488ff', size: 5, pulse: true },
+  boss_lair_dark:     { color: '#bb00ff', size: 5, pulse: true },
 };
 
 // How many chunks to show in each direction from center (total = RADIUS*2+1)
@@ -172,12 +177,17 @@ export function createMinimapRenderer(worldGen) {
           if (chunk && chunk.structure) {
             const icon = STRUCTURE_ICONS[chunk.structure.id];
             if (icon) {
-              const half = icon.size / 2;
+              let sz = icon.size;
+              // Pulsing effect for boss lairs
+              if (icon.pulse) {
+                sz = icon.size + Math.sin(Date.now() * 0.004) * 2;
+              }
+              const half = sz / 2;
               ctx.fillStyle = icon.color;
               ctx.fillRect(
                 Math.floor(cellX + cellW / 2 - half),
                 Math.floor(cellY + cellH / 2 - half),
-                icon.size, icon.size
+                Math.ceil(sz), Math.ceil(sz)
               );
             }
           }

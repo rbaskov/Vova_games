@@ -251,6 +251,164 @@ export const STRUCTURE_TEMPLATES = {
     ],
     hasCheckpoint: false,
   },
+
+  // =========================================================================
+  // 7. Village Portal (5x4) — spawn chunk (0,0) only
+  // Portal back to the village map from the open world
+  // =========================================================================
+  village_portal: {
+    id: 'village_portal',
+    name: 'Портал в деревню',
+    width: 5,
+    height: 4,
+    biomes: ['_village_portal'], // special, placed manually at (0,0)
+    rarity: 0,
+    tiles: [
+      [_, W, W, W, _],
+      [_, W, P, W, _],
+      [_, W, DR, W, _],
+      [_, D, D, D, _],
+    ],
+    npcs: [],
+    spawns: [],
+    chests: [],
+    hasCheckpoint: true,
+  },
+
+  // =========================================================================
+  // BOSS LAIRS — unique structures placed deterministically per seed
+  // =========================================================================
+
+  // 8. Forest Guardian Lair (8x8) — forest, distance 2-3
+  boss_lair_forest: {
+    id: 'boss_lair_forest',
+    name: 'Логово Лесного стража',
+    width: 8,
+    height: 8,
+    biomes: ['_boss'], // special, placed by getBossLairForChunk
+    rarity: 0,
+    bossType: 'forest_guardian',
+    tiles: [
+      [_, _, _, _, _, _, _, _],
+      [_, D, D, D, D, D, D, _],
+      [_, D, _, _, _, _, D, _],
+      [_, D, _, D, D, _, D, _],
+      [_, D, _, D, D, _, D, _],
+      [_, D, _, _, _, _, D, _],
+      [_, D, D, D, D, D, D, _],
+      [_, _, _, D, D, _, _, _],
+    ],
+    npcs: [],
+    spawns: [
+      { type: 'wolf', localCol: 1, localRow: 2 },
+      { type: 'wolf', localCol: 6, localRow: 2 },
+    ],
+    chests: [
+      { localCol: 1, localRow: 1 },
+    ],
+    hasCheckpoint: false,
+  },
+
+  // 9. Fire Dragon Lair (10x8) — wasteland, distance 4-5
+  boss_lair_wasteland: {
+    id: 'boss_lair_wasteland',
+    name: 'Логово Огненного дракона',
+    width: 10,
+    height: 8,
+    biomes: ['_boss'],
+    rarity: 0,
+    bossType: 'fire_dragon',
+    tiles: [
+      [_, W, W, W, W, W, W, W, W, _],
+      [W, D, D, D, D, D, D, D, D, W],
+      [W, D, L, D, D, D, D, L, D, W],
+      [W, D, D, D, D, D, D, D, D, W],
+      [W, D, D, D, D, D, D, D, D, W],
+      [W, D, L, D, D, D, D, L, D, W],
+      [W, D, D, D, D, D, D, D, D, W],
+      [_, W, W, W, DR, DR, W, W, W, _],
+    ],
+    npcs: [],
+    spawns: [
+      { type: 'skeleton', localCol: 1, localRow: 1 },
+      { type: 'skeleton', localCol: 8, localRow: 1 },
+    ],
+    chests: [
+      { localCol: 1, localRow: 6 },
+      { localCol: 8, localRow: 6 },
+    ],
+    hasCheckpoint: false,
+  },
+
+  // 10. Ice Lich Lair (10x10) — snow, distance 6-8
+  boss_lair_snow: {
+    id: 'boss_lair_snow',
+    name: 'Ледяной чертог',
+    width: 10,
+    height: 10,
+    biomes: ['_boss'],
+    rarity: 0,
+    bossType: 'ice_lich',
+    tiles: [
+      [W, W, W, W, W, W, W, W, W, W],
+      [W, C, C, C, C, C, C, C, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, C, C, C, C, C, C, C, W],
+      [W, W, W, W, DR, DR, W, W, W, W],
+      [_, _, _, _, D, D, _, _, _, _],
+    ],
+    npcs: [],
+    spawns: [
+      { type: 'golem', localCol: 2, localRow: 2 },
+      { type: 'golem', localCol: 7, localRow: 2 },
+      { type: 'skeleton', localCol: 2, localRow: 6 },
+      { type: 'skeleton', localCol: 7, localRow: 6 },
+    ],
+    chests: [
+      { localCol: 1, localRow: 1 },
+      { localCol: 8, localRow: 1 },
+    ],
+    hasCheckpoint: false,
+  },
+
+  // 11. Dark Mage Lair (10x10) — any biome, farthest distance (13+)
+  boss_lair_dark: {
+    id: 'boss_lair_dark',
+    name: 'Башня Тёмного мага',
+    width: 10,
+    height: 10,
+    biomes: ['_boss'],
+    rarity: 0,
+    bossType: 'dark_mage',
+    tiles: [
+      [W, W, W, W, W, W, W, W, W, W],
+      [W, C, C, C, C, C, C, C, C, W],
+      [W, C, W, D, D, D, D, W, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, D, D, L, L, D, D, C, W],
+      [W, C, D, D, L, L, D, D, C, W],
+      [W, C, D, D, D, D, D, D, C, W],
+      [W, C, W, D, D, D, D, W, C, W],
+      [W, W, W, W, DR, DR, W, W, W, W],
+      [_, _, _, _, D, D, _, _, _, _],
+    ],
+    npcs: [],
+    spawns: [
+      { type: 'skeleton', localCol: 2, localRow: 3 },
+      { type: 'skeleton', localCol: 7, localRow: 3 },
+      { type: 'golem', localCol: 2, localRow: 6 },
+      { type: 'golem', localCol: 7, localRow: 6 },
+    ],
+    chests: [
+      { localCol: 1, localRow: 1 },
+      { localCol: 8, localRow: 1 },
+    ],
+    hasCheckpoint: false,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -266,9 +424,88 @@ export const STRUCTURE_TEMPLATES = {
  * @param {number} structNoise - Noise value sampled at chunk center (range roughly -1..1)
  * @returns {{ template: object, col: number, row: number } | null}
  */
-export function getStructureForChunk(cx, cy, dominantBiome, structNoise) {
-  // Skip spawn chunk
-  if (cx === 0 && cy === 0) return null;
+// ---------------------------------------------------------------------------
+// Boss lair definitions: which boss goes in which biome at what distance
+// ---------------------------------------------------------------------------
+
+const BOSS_LAIR_DEFS = [
+  { templateId: 'boss_lair_forest',    targetBiome: 'forest',    minDist: 2, maxDist: 3 },
+  { templateId: 'boss_lair_wasteland', targetBiome: 'wasteland', minDist: 4, maxDist: 5 },
+  { templateId: 'boss_lair_snow',      targetBiome: 'snow',      minDist: 6, maxDist: 8 },
+  { templateId: 'boss_lair_dark',      targetBiome: null,        minDist: 13, maxDist: 16 },
+];
+
+/**
+ * Compute deterministic boss lair positions for a given seed.
+ * Returns a Map<"cx,cy" → template> for all boss lairs.
+ * Call once per world gen and cache the result.
+ *
+ * @param {function} getBiomeAt - worldGen.getBiomeAt(worldCol, worldRow)
+ * @param {number} seed - world seed for deterministic selection
+ * @returns {Map<string, object>}
+ */
+export function computeBossLairPositions(getBiomeAt, seed) {
+  const result = new Map();
+
+  for (const def of BOSS_LAIR_DEFS) {
+    const template = STRUCTURE_TEMPLATES[def.templateId];
+    if (!template) continue;
+
+    // Scan unique chunk positions in the target distance range
+    const candidates = [];
+    const seen = new Set();
+    const maxR = def.maxDist + 1;
+    for (let dx = -maxR; dx <= maxR; dx++) {
+      for (let dy = -maxR; dy <= maxR; dy++) {
+        const chunkDist = Math.sqrt(dx * dx + dy * dy);
+        if (chunkDist < def.minDist || chunkDist > def.maxDist + 0.5) continue;
+
+        const key = `${dx},${dy}`;
+        if (seen.has(key) || result.has(key)) continue;
+        seen.add(key);
+
+        const centerCol = dx * CHUNK_W + Math.floor(CHUNK_W / 2);
+        const centerRow = dy * CHUNK_H + Math.floor(CHUNK_H / 2);
+        const biome = getBiomeAt(centerCol, centerRow);
+
+        // For dark_mage, any biome works; for others, must match
+        if (def.targetBiome && biome !== def.targetBiome) continue;
+
+        candidates.push({ cx: dx, cy: dy, biome });
+      }
+    }
+
+    if (candidates.length === 0) continue;
+
+    // Deterministic selection from candidates based on seed
+    const pick = Math.floor(Math.abs((seed * 31 + def.minDist * 7919 + def.maxDist * 104729) % candidates.length));
+    const chosen = candidates[pick];
+    const key = `${chosen.cx},${chosen.cy}`;
+
+    result.set(key, template);
+  }
+
+  return result;
+}
+
+export function getStructureForChunk(cx, cy, dominantBiome, structNoise, bossLairMap) {
+  // Spawn chunk (0,0): village portal
+  if (cx === 0 && cy === 0) {
+    const template = STRUCTURE_TEMPLATES.village_portal;
+    const col = Math.floor((CHUNK_W - template.width) / 2);
+    const row = Math.floor((CHUNK_H - template.height) / 2);
+    return { template, col, row };
+  }
+
+  // Check if this chunk has a boss lair
+  if (bossLairMap) {
+    const bossTemplate = bossLairMap.get(`${cx},${cy}`);
+    if (bossTemplate) {
+      const col = Math.floor((CHUNK_W - bossTemplate.width) / 2);
+      const row = Math.floor((CHUNK_H - bossTemplate.height) / 2);
+      return { template: bossTemplate, col, row };
+    }
+  }
 
   // Normalize noise to 0..1 range
   const noiseVal = (structNoise + 1) / 2;
