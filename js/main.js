@@ -32,6 +32,7 @@ import { createChunkManager } from './chunks.js';
 import { createFastTravel } from './fasttravel.js';
 import { getDifficulty, cycleDifficulty, DIFFICULTY_COLORS } from './difficulty.js';
 import { createMinimapRenderer } from './minimap.js';
+import { createHazardManager } from './biome-hazards.js';
 
 // --- Game States ---
 export const STATE = {
@@ -874,6 +875,7 @@ function enterOpenWorld(seed, playerWorldX, playerWorldY) {
   game._pickedBuffStones = game._pickedBuffStones || new Set();
   game.visitedChunks = game.visitedChunks instanceof Set ? game.visitedChunks : new Set();
   game.fastTravel = createFastTravel();
+  game.hazardManager = createHazardManager();
 
   const px = playerWorldX !== undefined ? playerWorldX : 15 * TILE_SIZE;
   const py = playerWorldY !== undefined ? playerWorldY : 10 * TILE_SIZE;
@@ -907,6 +909,7 @@ function exitOpenWorld() {
   game.chunkEnemies = null;
   game.chunkKills = null;
   game.minimapRenderer = null;
+  game.hazardManager = null;
   loadMap('village', 14, 10);
 }
 
@@ -1399,7 +1402,7 @@ function updatePlayer(dt) {
   }
 
   // Apply movement with collision
-  const actualSpeed = (game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED) * getBuffSpeedMultiplier(game);
+  const actualSpeed = (game.hasHorse ? MOVE_SPEED * 1.6 : MOVE_SPEED) * getBuffSpeedMultiplier(game) * (game.hazardManager ? game.hazardManager.getSpeedMultiplier() : 1);
   const moveX = dx * actualSpeed * dt;
   const moveY = dy * actualSpeed * dt;
 
@@ -1436,6 +1439,11 @@ function updatePlayer(dt) {
   if (game.portalCooldown > 0) game.portalCooldown -= dt;
   checkPortals();
   checkCheckpoint();
+
+  // Biome hazards (open world only)
+  if (game.openWorld && game.hazardManager) {
+    game.hazardManager.update(p, game.chunkManager, dt, game.totalTime, game.particles);
+  }
 
   // Update camera
   if (game.openWorld) {
@@ -2280,6 +2288,11 @@ function renderPlay(ctx) {
 
   // Particles
   renderParticles(ctx, game.particles, game.camera);
+
+  // Biome hazard overlays (before HUD)
+  if (game.openWorld && game.hazardManager) {
+    game.hazardManager.render(ctx, game.camera, game.totalTime);
+  }
 
   // HUD on top
   renderHUD(ctx);
