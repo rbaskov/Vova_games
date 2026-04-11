@@ -3,12 +3,14 @@
 
 import { game, STATE } from './game-state.js';
 import { createNetwork, getRelayUrl } from './network.js';
+import { CLASSES } from './rendering.js';
 
 // Lobby внутренний state — хранится в замыкании createLobby()
 // (не в game, чтобы не захламлять game-state session-1 деталями)
 
 let _state = 'idle';
 // 'idle'             — начальный экран (две кнопки: Создать / Присоединиться)
+// 'class_select'     — выбор класса перед connect (для обоих ролей)
 // 'connecting'       — WS устанавливается
 // 'create_waiting'   — отправлен createRoom, ждём roomCreated
 // 'join_input'       — пользователь набирает 6-символьный код
@@ -20,6 +22,11 @@ let _codeInput = '';   // набираемый код при joinRoom
 let _roomCode  = null; // присвоенный нам код (для хоста) или тот что вводили (для гостя)
 let _errorMsg  = null;
 let _pendingStart = null; // { map: 'village' } когда кооп готов к старту
+let _classIntent = null;  // 'host' | 'guest' — куда идти после class_select
+let _selectedClass = 0;   // индекс в CLASSES
+let _myClass = null;      // выбранный класс (id)
+let _hostHasHello = false; // хост получил hello от гостя
+let _hostHasPeer = false;  // хост получил peerJoined
 
 // ---------- Жизненный цикл ----------
 
@@ -28,8 +35,15 @@ export function openLobby() {
   _codeInput = '';
   _roomCode  = null;
   _errorMsg  = null;
+  _classIntent = null;
+  _selectedClass = 0;
+  _myClass = null;
+  _hostHasHello = false;
+  _hostHasPeer = false;
   game.coopRole = 'none';
   game.coopCode = null;
+  game._coopHostClass = null;
+  game._coopGuestClass = null;
   // Подключаемся к network только когда пользователь нажмёт Создать/Присоединиться
   if (game.network) { game.network.disconnect(); game.network = null; }
 }
@@ -43,24 +57,39 @@ export function closeLobby() {
 
 export function lobbyCreateRoom() {
   if (_state !== 'idle') return;
-  _state = 'connecting';
+  _classIntent = 'host';
+  _state = 'class_select';
   _errorMsg = null;
-  game.network = createNetwork();
-  const net = game.network;
-  // Слушаем очередь через update() — не через колбэки,
-  // чтобы вся обработка шла в game loop (один поток).
-  net.connect(getRelayUrl());
-  // После connect сразу отправим createRoom — но WS ещё может не открыться.
-  // update() увидит 'connected' и отправит команду.
-  _pendingCreate = true;
 }
 let _pendingCreate = false;
 
 export function lobbyStartJoinInput() {
   if (_state !== 'idle') return;
-  _state = 'join_input';
+  _classIntent = 'guest';
+  _state = 'class_select';
   _codeInput = '';
   _errorMsg = null;
+}
+
+export function lobbyClassPrev() {
+  if (_state !== 'class_select') return;
+  _selectedClass = (_selectedClass - 1 + CLASSES.length) % CLASSES.length;
+}
+export function lobbyClassNext() {
+  if (_state !== 'class_select') return;
+  _selectedClass = (_selectedClass + 1) % CLASSES.length;
+}
+export function lobbyConfirmClass() {
+  if (_state !== 'class_select') return;
+  _myClass = CLASSES[_selectedClass].id;
+  if (_classIntent === 'host') {
+    _state = 'connecting';
+    game.network = createNetwork();
+    game.network.connect(getRelayUrl());
+    _pendingCreate = true;
+  } else {
+    _state = 'join_input';
+  }
 }
 
 export function lobbyAddCodeChar(ch) {
@@ -123,6 +152,7 @@ export function updateLobby() {
         _roomCode = msg.code;
         game.coopRole = 'host';
         game.coopCode = msg.code;
+        game._coopHostClass = _myClass;
         _state = 'waiting_for_peer';
         break;
 
@@ -130,19 +160,29 @@ export function updateLobby() {
         _roomCode = _codeInput;
         game.coopRole = 'guest';
         game.coopCode = _codeInput;
+        game._coopGuestClass = _myClass;
         _state = 'waiting_for_peer';
-        // Session 2: здесь отправить {type:'hello', character:{...}}
+        // Шлём hello с выбранным классом — хост сохранит и применит к players[1]
+        net.send({ type: 'hello', class: _myClass });
         break;
 
       case 'peerJoined':
-        // Хост: гость подключился — запускаем игру
+        // Хост: гость подключился — ждём hello, потом запускаем игру.
         if (typeof window !== 'undefined') window._coopNet = game.network;
-        game.network.send({ type: 'startGame', map: 'village' });
-        _pendingStart = { map: 'village' };
+        _hostHasPeer = true;
+        break;
+
+      case 'hello':
+        // Хост получил hello от гостя — сохраняем класс.
+        if (game.coopRole === 'host') {
+          game._coopGuestClass = msg.class || null;
+          _hostHasHello = true;
+        }
         break;
 
       case 'startGame':
-        // Гость: хост запустил игру
+        // Гость: хост запустил игру и прислал свой класс.
+        game._coopHostClass = msg.hostClass || null;
         _pendingStart = { map: msg.map };
         break;
 
@@ -172,6 +212,12 @@ export function updateLobby() {
         }
         break;
     }
+  }
+
+  // Хост: оба условия выполнены — стартуем игру.
+  if (game.coopRole === 'host' && _hostHasPeer && _hostHasHello && !_pendingStart) {
+    net.send({ type: 'startGame', map: 'village', hostClass: _myClass });
+    _pendingStart = { map: 'village' };
   }
 }
 
@@ -213,6 +259,9 @@ export function renderLobby(ctx, canvasW, canvasH) {
     case 'idle':
       _renderIdleScreen(ctx, cx, by);
       break;
+    case 'class_select':
+      _renderClassSelect(ctx, cx, cy, bx, by, BOX_W, BOX_H);
+      break;
     case 'connecting':
       ctx.font = '10px "Press Start 2P"';
       ctx.fillStyle = '#aaa';
@@ -247,6 +296,40 @@ export function renderLobby(ctx, canvasW, canvasH) {
   }
 
   ctx.textAlign = 'left';
+}
+
+function _renderClassSelect(ctx, cx, cy, bx, by, BOX_W, BOX_H) {
+  ctx.font = '10px "Press Start 2P"';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(_classIntent === 'host' ? 'Класс хоста:' : 'Класс гостя:', cx, by + 80);
+
+  const cls = CLASSES[_selectedClass];
+  ctx.font = '14px "Press Start 2P"';
+  ctx.fillStyle = cls.color || '#f0c040';
+  ctx.fillText(cls.name, cx, by + 120);
+
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#aaa';
+  // Описание может быть длинным — режем на 2 строки.
+  const desc = cls.desc || '';
+  const words = desc.split(' ');
+  let line1 = '', line2 = '';
+  for (const w of words) {
+    if ((line1 + ' ' + w).length < 35) line1 += (line1 ? ' ' : '') + w;
+    else line2 += (line2 ? ' ' : '') + w;
+  }
+  ctx.fillText(line1, cx, by + 150);
+  if (line2) ctx.fillText(line2, cx, by + 165);
+
+  ctx.font = '8px "Press Start 2P"';
+  ctx.fillStyle = '#888';
+  ctx.fillText(`HP ${cls.hp}  ATK ${cls.atk}  POT ${cls.potions}`, cx, by + 195);
+
+  ctx.font = '9px "Press Start 2P"';
+  ctx.fillStyle = '#80ff80';
+  ctx.fillText('[← →] выбор   [ENTER] OK', cx, by + 235);
+  ctx.fillStyle = '#777';
+  ctx.fillText('[ESC] назад', cx, by + 260);
 }
 
 function _renderIdleScreen(ctx, cx, by) {

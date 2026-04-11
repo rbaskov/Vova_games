@@ -5,6 +5,7 @@
 import { drawPotionSprite, drawCoinSprite } from './sprites.js';
 import { WEAPONS, getWeapon, getTotalAtk } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, getArmorBonusHp, drawArmorIcon } from './armor.js';
+import { game } from './game-state.js';
 
 // UI state вынесен в player.ui.inventorySlot (было module-level `let selectedSlot`).
 // Это даёт поддержку кооп: у гостя будет свой player с собственным UI-состоянием.
@@ -88,6 +89,10 @@ function getItems(player) {
       },
       action: (p) => {
         p.weapon = wid;
+        // Кооп: гость синхронизирует выбор оружия с хостом.
+        if (game.coopRole === 'guest' && game.network) {
+          game.network.send({ type: 'setWeapon', weapon: wid });
+        }
       },
       actionLabel: '[ENTER] Экипировать',
       sellPrice: canSell ? Math.floor(w.price * 0.5) : 0,

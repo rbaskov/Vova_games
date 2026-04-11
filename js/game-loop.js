@@ -29,7 +29,7 @@ import {
   createPlayer, createCompanion, COMPANION_TYPES,
   updatePlayer, updateCompanions, MOVE_SPEED,
 } from './player-update.js';
-import { WEAPONS, getWeapon, getWeaponRange, getTotalAtk, getAttackSpeed } from './weapons.js';
+import { WEAPONS, getWeapon, getWeaponRange, getTotalAtk, getAttackSpeed, createArrow } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, tryBlockProjectile } from './armor.js';
 import { spawnEnemy, updateEnemies, setProjectileCallback } from './enemies.js';
 import { createParticle, updateParticles } from './particles.js';
@@ -68,7 +68,7 @@ import {
   lobbyCreateRoom, lobbyStartJoinInput,
   lobbyAddCodeChar, lobbyRemoveCodeChar, lobbySubmitCode,
   lobbyBack, getLobbyState, getLobbyCodeInput,
-  getPendingStart,
+  getPendingStart, lobbyClassPrev, lobbyClassNext, lobbyConfirmClass,
 } from './lobby.js';
 
 // --- Boss Dialogs ---
@@ -341,6 +341,28 @@ function gameLoop(timestamp) {
     'village', 'forest', 'canyon', 'cave', 'castle', 'kingdom', 'hellpit', 'arena',
   ]);
 
+  /** Инициализация аватара гостя на стороне хоста: артефакты, кулдауны.
+   *  Класс/инвентарь применяется отдельно из game._coopGuestClass. */
+  function _initGuestAvatar(p) {
+    if (!p) return;
+    p.artifacts = { earth: true, fire: true, water: true };
+    p.cooldowns = { earth: 0, fire: 0, water: 0 };
+    const cls = game._coopGuestClass;
+    if (cls && Array.isArray(CLASSES)) {
+      const c = CLASSES.find(x => x.id === cls);
+      if (c) {
+        p.hp = c.hp; p.maxHp = c.hp;
+        p.atk = c.atk;
+        p.coins = c.coins;
+        p.potions = c.potions;
+        p.weapon = c.weapon;
+        p.ownedWeapons = [...c.ownedWeapons];
+        p.equippedArmor = { ...c.armor };
+        p.ownedArmor = [...c.ownedArmor];
+      }
+    }
+  }
+
   /** Простое движение + атака аватара удалённого игрока на стороне хоста. */
   function _updateCoopAvatar(p, dt) {
     const len = Math.hypot(p.input.dx, p.input.dy);
@@ -366,11 +388,53 @@ function gameLoop(timestamp) {
       p.attackTimer -= dt;
       if (p.attackTimer <= 0) p.attacking = false;
     }
-    // Edge-триггер атаки из сетевого инпута.
-    if (p.inputEdges && p.inputEdges.attack && !p.attacking) {
+    // Тик кулдаунов способностей.
+    if (p.cooldowns) {
+      if (p.cooldowns.earth > 0) p.cooldowns.earth -= dt;
+      if (p.cooldowns.fire  > 0) p.cooldowns.fire  -= dt;
+      if (p.cooldowns.water > 0) p.cooldowns.water -= dt;
+    }
+    if (!p.inputEdges) return;
+    // Edge-триггер атаки: ближний бой через playerAttackEnemies (вызывается
+    // отдельно), лук — здесь создаём стрелу.
+    if (p.inputEdges.attack && !p.attacking) {
       p.inputEdges.attack = false;
       p.attacking = true;
       p.attackTimer = getAttackSpeed(p);
+      const arrow = createArrow(p);
+      if (arrow) {
+        game.projectiles.push(arrow);
+        SFX.playBowShot();
+      } else {
+        const wType = getWeapon(p.weapon).type;
+        if (wType === 'spear') SFX.playSpearThrust();
+        else if (wType === 'axe') { SFX.playSwordSwing(); SFX.playHitEnemy(); }
+        else SFX.playSwordSwing();
+      }
+    }
+    // Зелье.
+    if (p.inputEdges.potion) {
+      p.inputEdges.potion = false;
+      if (p.potions > 0 && p.hp < p.maxHp) {
+        p.potions--;
+        const heal = Math.min(30, p.maxHp - p.hp);
+        p.hp += heal;
+        SFX.playUsePotion();
+        game.particles.push(createParticle(p.x, p.y - 8, `+${heal} HP`, '#44cc44'));
+      }
+    }
+    // Способности — те же ключи, что у хоста.
+    if (p.inputEdges.ability1) {
+      p.inputEdges.ability1 = false;
+      if (useAbility('earth', p, game.projectiles, game.enemies)) SFX.playShield();
+    }
+    if (p.inputEdges.ability2) {
+      p.inputEdges.ability2 = false;
+      if (useAbility('fire', p, game.projectiles, game.enemies)) SFX.playFireball();
+    }
+    if (p.inputEdges.ability3) {
+      p.inputEdges.ability3 = false;
+      if (useAbility('water', p, game.projectiles, game.enemies)) SFX.playIceWave();
     }
   }
 
@@ -380,6 +444,12 @@ function gameLoop(timestamp) {
       x: p.x, y: p.y, hp: p.hp, maxHp: p.maxHp,
       facing: p.facing, moving: p.moving, attacking: p.attacking,
       animFrame: p.animFrame, animTimer: p.animTimer,
+      // Расширенные поля для HUD/UI гостя.
+      potions: p.potions, coins: p.coins, xp: p.xp, level: p.level, atk: p.atk,
+      weapon: p.weapon, ownedWeapons: p.ownedWeapons,
+      equippedArmor: p.equippedArmor, ownedArmor: p.ownedArmor,
+      cooldowns: p.cooldowns, artifacts: p.artifacts,
+      _shieldBlocked: p._shieldBlocked,
     };
   }
 
@@ -528,12 +598,28 @@ function gameLoop(timestamp) {
       const coopPending = getPendingStart();
       if (coopPending) {
         loadMap(coopPending.map);
-        // Аватар удалённого игрока рядом со спавном
+        // Применяем класс к локальному игроку (своя роль).
         if (game.player) {
+          const myCls = (game.coopRole === 'host') ? game._coopHostClass : game._coopGuestClass;
+          if (myCls) {
+            const c = CLASSES.find(x => x.id === myCls);
+            if (c) {
+              const p = game.player;
+              p.hp = c.hp; p.maxHp = c.hp; p.atk = c.atk;
+              p.coins = c.coins; p.potions = c.potions;
+              p.weapon = c.weapon;
+              p.ownedWeapons = [...c.ownedWeapons];
+              p.equippedArmor = { ...c.armor };
+              p.ownedArmor = [...c.ownedArmor];
+              game.playerClass = c.id;
+            }
+          }
+          // Аватар удалённого игрока рядом со спавном
           game.players[1] = createPlayer(
             Math.floor(game.player.x / TILE_SIZE) + 2,
             Math.floor(game.player.y / TILE_SIZE)
           );
+          if (game.coopRole === 'host') _initGuestAvatar(game.players[1]);
         }
         game.state = STATE.PLAY;
         SFX.resumeAudio();
@@ -544,7 +630,7 @@ function gameLoop(timestamp) {
       const ls = getLobbyState();
       if (isKeyPressed('Escape')) {
         // ESC — назад в меню из любого состояния
-        if (ls === 'idle' || ls === 'error' || ls === 'join_input' || ls === 'waiting_for_peer') {
+        if (ls === 'idle' || ls === 'error' || ls === 'join_input' || ls === 'waiting_for_peer' || ls === 'class_select') {
           lobbyBack();
           break;
         }
@@ -556,6 +642,10 @@ function gameLoop(timestamp) {
         } else if (isKeyPressed('KeyJ')) {
           lobbyStartJoinInput();
         }
+      } else if (ls === 'class_select') {
+        if (isKeyPressed('ArrowLeft'))  lobbyClassPrev();
+        if (isKeyPressed('ArrowRight')) lobbyClassNext();
+        if (isKeyPressed('Enter') || isKeyPressed('Space')) lobbyConfirmClass();
       } else if (getLobbyState() === 'join_input') {
         // Буквы и цифры кода
         const codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -675,17 +765,22 @@ function gameLoop(timestamp) {
       // input, но такой порядок более предсказуем).
       if (game.coopRole === 'guest' && game.network && game.players[0] && !game._coopHostDead) {
         const _gp = game.players[0];
-        const _gdx = _gp.input.dx;
-        const _gdy = _gp.input.dy;
-        if (_gdx !== 0 || _gdy !== 0) {
-          console.log(`[COOP] guest→host input dx=${_gdx} dy=${_gdy}`);
-        }
-        game.network.send({
+        const _ge = _gp.inputEdges;
+        // Edges потребляются ЛОКАЛЬНО (consume) и одновременно отправляются —
+        // хост применит их к своему players[1]. Локальный players[0] всё равно
+        // перезаписывается snapshot'ом, так что consume здесь не повредит.
+        const pkt = {
           type: 'input',
-          dx: _gdx,
-          dy: _gdy,
-          attack: _gp.inputEdges.attack || false,
-        });
+          dx: _gp.input.dx,
+          dy: _gp.input.dy,
+          attack: false, potion: false, ability1: false, ability2: false, ability3: false,
+        };
+        if (_ge.attack)   { pkt.attack = true;   _ge.attack = false; }
+        if (_ge.potion)   { pkt.potion = true;   _ge.potion = false; }
+        if (_ge.ability1) { pkt.ability1 = true; _ge.ability1 = false; }
+        if (_ge.ability2) { pkt.ability2 = true; _ge.ability2 = false; }
+        if (_ge.ability3) { pkt.ability3 = true; _ge.ability3 = false; }
+        game.network.send(pkt);
       }
 
       // --- Coop: flush сеть, применить входящие сообщения ---
@@ -695,13 +790,18 @@ function gameLoop(timestamp) {
       if (game.coopRole === 'host') {
         for (const msg of _coopMsgs) {
           if (msg.type === 'input' && game.players[1]) {
-            const _rdx = msg.dx ?? 0;
-            const _rdy = msg.dy ?? 0;
-            game.players[1].input.dx = _rdx;
-            game.players[1].input.dy = _rdy;
-            if (msg.attack) game.players[1].inputEdges.attack = true;
-            if (_rdx !== 0 || _rdy !== 0) {
-              console.log(`[COOP] host recv input dx=${_rdx} dy=${_rdy} p1.x=${game.players[1].x?.toFixed(1)}`);
+            const g1 = game.players[1];
+            g1.input.dx = msg.dx ?? 0;
+            g1.input.dy = msg.dy ?? 0;
+            if (msg.attack)   g1.inputEdges.attack = true;
+            if (msg.potion)   g1.inputEdges.potion = true;
+            if (msg.ability1) g1.inputEdges.ability1 = true;
+            if (msg.ability2) g1.inputEdges.ability2 = true;
+            if (msg.ability3) g1.inputEdges.ability3 = true;
+          } else if (msg.type === 'setWeapon' && game.players[1]) {
+            // Гость переключил оружие — применяем (требуется ownedWeapons).
+            if (game.players[1].ownedWeapons.includes(msg.weapon)) {
+              game.players[1].weapon = msg.weapon;
             }
           } else if (msg.type === '_disconnected' || msg.type === '_error') {
             _coopDisconnect(); break;
@@ -794,6 +894,7 @@ function gameLoop(timestamp) {
             const sx = Math.floor(game.player.x / TILE_SIZE) + 2;
             const sy = Math.floor(game.player.y / TILE_SIZE);
             game.players[1] = createPlayer(sx, sy);
+            _initGuestAvatar(game.players[1]);
             if (game.network) {
               game.network.send({
                 type: 'mapChange',
@@ -1695,6 +1796,7 @@ function gameLoop(timestamp) {
           const sx = Math.floor(game.player.x / TILE_SIZE);
           const sy = Math.floor(game.player.y / TILE_SIZE);
           game.players[1] = createPlayer(sx + 2, sy);
+          _initGuestAvatar(game.players[1]);
           if (game.network) {
             game.network.send({
               type: 'mapChange',
