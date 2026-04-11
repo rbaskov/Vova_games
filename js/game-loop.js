@@ -661,7 +661,7 @@ function gameLoop(timestamp) {
       // ДО flush'а сети. Это гарантирует, что свежий инпут уходит хосту
       // до обработки входящих снапшотов (Object.assign не перезаписывает
       // input, но такой порядок более предсказуем).
-      if (game.coopRole === 'guest' && game.network && game.players[0]) {
+      if (game.coopRole === 'guest' && game.network && game.players[0] && !game._coopHostDead) {
         const _gp = game.players[0];
         const _gdx = _gp.input.dx;
         const _gdy = _gp.input.dy;
@@ -700,13 +700,13 @@ function gameLoop(timestamp) {
       if (game.coopRole === 'guest') {
         for (const msg of _coopMsgs) {
           if (msg.type === 'hostDied') {
-            console.log('[COOP] host died — returning to menu');
-            _coopDisconnect();
-            SFX.stopMusic();
-            break;
+            console.log('[COOP] host died — ожидание респауна');
+            game._coopHostDead = true;
+            SFX.playPlayerDeath && SFX.playPlayerDeath();
           } else if (msg.type === 'mapChange') {
-            // Хост сменил карту через портал — повторяем локально.
+            // Хост сменил карту (портал или респаун после смерти).
             console.log(`[COOP] guest mapChange → ${msg.map}`);
+            game._coopHostDead = false;
             loadMap(msg.map, msg.spawnX, msg.spawnY);
             if (game.player) {
               // Пересоздаём аватар хоста рядом со спавном.
@@ -990,6 +990,23 @@ function gameLoop(timestamp) {
               vibrate(HAPTIC_DEATH);
             }
           }
+        }
+      }
+
+      // --- Coop: урон аватару гостя (host-side) + респавн возле хоста ---
+      if (game.coopRole === 'host' && game.players[1]) {
+        const guest = game.players[1];
+        const guestDmg = enemyAttackPlayer(game.enemies, guest, dt);
+        if (guestDmg > 0) {
+          game.particles.push(createParticle(guest.x, guest.y - 8, `-${guestDmg}`, '#ff4444'));
+        }
+        if (guest.hp <= 0) {
+          guest.hp = guest.maxHp;
+          guest.x = game.player.x + 24;
+          guest.y = game.player.y;
+          guest.invincibleTimer = 2;
+          game.particles.push(createParticle(guest.x, guest.y - 16, 'Возрождение', '#b388ff', 2));
+          console.log('[COOP] guest died → respawned near host');
         }
       }
 
@@ -1510,6 +1527,20 @@ function gameLoop(timestamp) {
         renderRemotePlayer(ctx, game.camera, game.players[1], remoteLabel);
       }
 
+      // --- Coop: гость ждёт респауна хоста ---
+      if (game.coopRole === 'guest' && game._coopHostDead) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, game.width, game.height);
+        ctx.font = '16px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#cc2222';
+        ctx.fillText('ХОСТ ПОГИБ', game.width / 2, 220);
+        ctx.font = '8px "Press Start 2P"';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Ожидание респауна...', game.width / 2, 250);
+        ctx.textAlign = 'left';
+      }
+
       // --- NPC proximity prompt ---
       {
         const nearNPC = getNearbyNPC(game.npcs, game.player.x, game.player.y);
@@ -1618,22 +1649,37 @@ function gameLoop(timestamp) {
     } break;
 
     case STATE.GAMEOVER: {
-      // --- Coop: хост умер — уведомляем гостя и разрываем сессию ---
-      // Пока что в кооп-режиме респавна нет: смерть хоста = конец игры.
-      // Гость получает hostDied, оба возвращаются в меню.
-      if (game.coopRole !== 'none') {
-        if (game.coopRole === 'host' && game.network) {
-          game.network.send({ type: 'hostDied' });
-        }
-        _coopDisconnect();
+      // --- Coop: хост умер — уведомляем гостя один раз, соединение живое ---
+      if (game.coopRole === 'host' && game.network && !game._coopDeathNotified) {
+        game.network.send({ type: 'hostDied' });
+        game._coopDeathNotified = true;
         SFX.stopMusic();
-        break;
       }
 
       // --- UPDATE ---
-      // Respawn at checkpoint or return to menu
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
-        if (game.checkpoint && respawnAtCheckpoint()) {
+        if (game.coopRole === 'host') {
+          // Кооп-респаун: всегда возвращаемся в деревню, синкаем гостя
+          // через существующий mapChange (надёжнее чекпоинта).
+          loadMap('village');
+          game.player.hp = game.player.maxHp;
+          game.player.invincibleTimer = 2;
+          const sx = Math.floor(game.player.x / TILE_SIZE);
+          const sy = Math.floor(game.player.y / TILE_SIZE);
+          game.players[1] = createPlayer(sx + 2, sy);
+          if (game.network) {
+            game.network.send({
+              type: 'mapChange',
+              map: 'village',
+              spawnX: sx,
+              spawnY: sy,
+            });
+          }
+          game._coopDeathNotified = false;
+          game.state = STATE.PLAY;
+          game.particles = [];
+          game.projectiles = [];
+        } else if (game.checkpoint && respawnAtCheckpoint()) {
           game.state = STATE.PLAY;
           game.particles = [];
           game.projectiles = [];
