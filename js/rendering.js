@@ -934,6 +934,9 @@ export function renderPlay(ctx) {
   const map = game.currentMap;
   if (!cam) return;
   if (!map && !game.openWorld) return;
+  // Guard: GAMEOVER→MENU переход обнуляет game.player, но renderPlay
+  // вызывается в том же кадре. Без проверки — краш на player.artifacts.
+  if (!game.player) return;
 
   const gOffset = getGameOffsetX();
 
@@ -1177,7 +1180,7 @@ export function renderPlay(ctx) {
   renderHUD(ctx);
 
   // Ability bar
-  renderAbilityBar(ctx, game.player, 640, 480);
+  if (game.player) renderAbilityBar(ctx, game.player, 640, 480);
 
   // Active buff HUD
   if (game.activeBuff) {

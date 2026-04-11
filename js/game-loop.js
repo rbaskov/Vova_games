@@ -699,7 +699,12 @@ function gameLoop(timestamp) {
 
       if (game.coopRole === 'guest') {
         for (const msg of _coopMsgs) {
-          if (msg.type === 'mapChange') {
+          if (msg.type === 'hostDied') {
+            console.log('[COOP] host died — returning to menu');
+            _coopDisconnect();
+            SFX.stopMusic();
+            break;
+          } else if (msg.type === 'mapChange') {
             // Хост сменил карту через портал — повторяем локально.
             console.log(`[COOP] guest mapChange → ${msg.map}`);
             loadMap(msg.map, msg.spawnX, msg.spawnY);
@@ -1613,6 +1618,18 @@ function gameLoop(timestamp) {
     } break;
 
     case STATE.GAMEOVER: {
+      // --- Coop: хост умер — уведомляем гостя и разрываем сессию ---
+      // Пока что в кооп-режиме респавна нет: смерть хоста = конец игры.
+      // Гость получает hostDied, оба возвращаются в меню.
+      if (game.coopRole !== 'none') {
+        if (game.coopRole === 'host' && game.network) {
+          game.network.send({ type: 'hostDied' });
+        }
+        _coopDisconnect();
+        SFX.stopMusic();
+        break;
+      }
+
       // --- UPDATE ---
       // Respawn at checkpoint or return to menu
       if (isKeyPressed('Enter') || isKeyPressed('Space')) {
