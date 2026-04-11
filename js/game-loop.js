@@ -16,7 +16,7 @@ import {
   detectMobile, initTouchControls, renderTouchControls,
   isMobileDevice, setTapAnywhereMode, getJoystickFlick, getGameOffsetX,
 } from './touch.js';
-import { TILE_SIZE } from './tilemap.js';
+import { TILE_SIZE, isPortal } from './tilemap.js';
 import * as SFX from './audio.js';
 import { saveGame, loadGame, hasSave, deleteSave } from './save.js';
 import {
@@ -333,6 +333,13 @@ function gameLoop(timestamp) {
   }
 
   // ─── Coop helpers (Session 2+) ────────────────────────────────────────────
+
+  // Карты, которые разрешено синхронизировать в кооп-режиме через порталы.
+  // Исключены процедурные (dungeon), open world и их производные — их синк
+  // требует передачи seed'а и специальной обработки.
+  const COOP_SYNCABLE_MAPS = new Set([
+    'village', 'forest', 'canyon', 'cave', 'castle', 'kingdom', 'hellpit', 'arena',
+  ]);
 
   /** Простое движение аватара удалённого игрока на стороне хоста. */
   function _updateCoopAvatar(p, dt) {
@@ -692,7 +699,19 @@ function gameLoop(timestamp) {
 
       if (game.coopRole === 'guest') {
         for (const msg of _coopMsgs) {
-          if (msg.type === 'snapshot') {
+          if (msg.type === 'mapChange') {
+            // Хост сменил карту через портал — повторяем локально.
+            console.log(`[COOP] guest mapChange → ${msg.map}`);
+            loadMap(msg.map, msg.spawnX, msg.spawnY);
+            if (game.player) {
+              // Пересоздаём аватар хоста рядом со спавном.
+              game.players[1] = createPlayer(
+                Math.floor(game.player.x / TILE_SIZE) + 2,
+                Math.floor(game.player.y / TILE_SIZE)
+              );
+            }
+            SFX.playPortal && SFX.playPortal();
+          } else if (msg.type === 'snapshot') {
             // На гостевой стороне: players[0] = наш аватар (p1 у хоста), players[1] = хост (p0)
             const _prevX = game.players[0]?.x;
             if (msg.p1 && game.players[0]) Object.assign(game.players[0], msg.p1);
@@ -722,11 +741,56 @@ function gameLoop(timestamp) {
         game.player.coins = 99999;
       }
 
-      // Гость получает позицию от хоста — локальная симуляция не нужна
+      // Гость получает позицию от хоста — локальная симуляция не нужна.
+      // Запоминаем карту до updatePlayer: если хост прошёл через портал,
+      // loadMap поменяет currentMapName — это триггерит синк для гостя.
+      const _coopMapBefore = (game.coopRole === 'host') ? game.currentMapName : null;
       if (game.coopRole !== 'guest') updatePlayer(dt);
 
       // --- Coop: движение аватара гостя (хост), отправка снапшота ---
       if (game.coopRole === 'host' && game.players[1]) {
+        // Проверяем портал под аватаром гостя (host-authoritative).
+        // updatePlayer уже запустил checkPortals для хоста выше, здесь —
+        // тот же эффект для ведомого игрока.
+        if (
+          game.currentMap && !game.openWorld &&
+          game.portalCooldown <= 0 &&
+          game.currentMapName === _coopMapBefore
+        ) {
+          const p1 = game.players[1];
+          const col = Math.floor((p1.x + p1.hitW / 2) / TILE_SIZE);
+          const row = Math.floor((p1.y + p1.hitH / 2) / TILE_SIZE);
+          const portal = isPortal(game.currentMap, col, row);
+          if (portal && COOP_SYNCABLE_MAPS.has(portal.target)) {
+            console.log(`[COOP] guest avatar hit portal → ${portal.target}`);
+            loadMap(portal.target, portal.spawnX, portal.spawnY);
+            game.portalCooldown = 0.5;
+            SFX.playPortal && SFX.playPortal();
+          }
+        }
+
+        // Если карта поменялась (любой из игроков прошёл портал) —
+        // синхронизируем состояние для кооп: пересоздаём players[1] на
+        // новом спавне и шлём mapChange гостю.
+        if (game.currentMapName !== _coopMapBefore) {
+          if (COOP_SYNCABLE_MAPS.has(game.currentMapName)) {
+            const sx = Math.floor(game.player.x / TILE_SIZE) + 2;
+            const sy = Math.floor(game.player.y / TILE_SIZE);
+            game.players[1] = createPlayer(sx, sy);
+            if (game.network) {
+              game.network.send({
+                type: 'mapChange',
+                map: game.currentMapName,
+                spawnX: Math.floor(game.player.x / TILE_SIZE),
+                spawnY: Math.floor(game.player.y / TILE_SIZE),
+              });
+              console.log(`[COOP] host mapChange sent: ${_coopMapBefore} → ${game.currentMapName}`);
+            }
+          } else {
+            console.warn(`[COOP] map ${game.currentMapName} не синкается — гость остался на ${_coopMapBefore}`);
+          }
+        }
+
         const _prevX = game.players[1].x;
         _updateCoopAvatar(game.players[1], dt);
         if (game.players[1].x !== _prevX) {
