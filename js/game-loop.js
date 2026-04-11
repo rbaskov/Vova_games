@@ -29,7 +29,7 @@ import {
   createPlayer, createCompanion, COMPANION_TYPES,
   updatePlayer, updateCompanions, MOVE_SPEED,
 } from './player-update.js';
-import { WEAPONS, getWeapon, getWeaponRange, getTotalAtk } from './weapons.js';
+import { WEAPONS, getWeapon, getWeaponRange, getTotalAtk, getAttackSpeed } from './weapons.js';
 import { ARMOR, getArmor, getTotalDef, tryBlockProjectile } from './armor.js';
 import { spawnEnemy, updateEnemies, setProjectileCallback } from './enemies.js';
 import { createParticle, updateParticles } from './particles.js';
@@ -341,7 +341,7 @@ function gameLoop(timestamp) {
     'village', 'forest', 'canyon', 'cave', 'castle', 'kingdom', 'hellpit', 'arena',
   ]);
 
-  /** Простое движение аватара удалённого игрока на стороне хоста. */
+  /** Простое движение + атака аватара удалённого игрока на стороне хоста. */
   function _updateCoopAvatar(p, dt) {
     const len = Math.hypot(p.input.dx, p.input.dy);
     if (len > 0) {
@@ -359,6 +359,18 @@ function gameLoop(timestamp) {
       }
     } else {
       p.moving = false;
+    }
+
+    // Тик атаки: decay attackTimer, сброс attacking.
+    if (p.attackTimer > 0) {
+      p.attackTimer -= dt;
+      if (p.attackTimer <= 0) p.attacking = false;
+    }
+    // Edge-триггер атаки из сетевого инпута.
+    if (p.inputEdges && p.inputEdges.attack && !p.attacking) {
+      p.inputEdges.attack = false;
+      p.attacking = true;
+      p.attackTimer = getAttackSpeed(p);
     }
   }
 
@@ -800,6 +812,21 @@ function gameLoop(timestamp) {
         _updateCoopAvatar(game.players[1], dt);
         if (game.players[1].x !== _prevX) {
           console.log(`[COOP] host avatar moved: ${_prevX?.toFixed(1)} → ${game.players[1].x?.toFixed(1)}`);
+        }
+        // Атака гостя по врагам: credit host (xp/coins идут хосту, проще).
+        {
+          const gKilled = playerAttackEnemies(game.players[1], game.enemies);
+          for (const enemy of gKilled) {
+            if (game.openWorld && enemy._chunkKey !== undefined) {
+              if (!game.chunkKills.has(enemy._chunkKey)) game.chunkKills.set(enemy._chunkKey, new Set());
+              game.chunkKills.get(enemy._chunkKey).add(enemy._spawnIndex);
+            }
+            awardLoot(enemy.xp, enemy.coins);
+            SFX.playKillEnemy();
+            SFX.playPickupCoin();
+            game.particles.push(createParticle(enemy.x, enemy.y - 8, `+${enemy.xp} XP`, '#cc66ff'));
+            game.particles.push(createParticle(enemy.x, enemy.y - 20, `+${enemy.coins} $`, '#f0c040'));
+          }
         }
         if (game.network) {
           game.network.send({
