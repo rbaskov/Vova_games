@@ -996,6 +996,7 @@ function gameLoop(timestamp) {
       // --- Coop: урон аватару гостя (host-side) + респавн возле хоста ---
       if (game.coopRole === 'host' && game.players[1]) {
         const guest = game.players[1];
+        guest._map = game.currentMap;
         const guestDmg = enemyAttackPlayer(game.enemies, guest, dt);
         if (guestDmg > 0) {
           game.particles.push(createParticle(guest.x, guest.y - 8, `-${guestDmg}`, '#ff4444'));
