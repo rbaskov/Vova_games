@@ -25,6 +25,7 @@ let gameAreaX = 0; // offset where game renders
 
 let buttonAreas = [];
 let menuButtonAreas = [];
+let lobbyButtonAreas = []; // динамические тап-зоны для STATE.LOBBY
 let joystickArea = { x: 0, y: 0 };
 let canvasRect = null;
 let scaleX = 1;
@@ -162,6 +163,19 @@ function handleTouchStart(e) {
   for (const touch of e.changedTouches) {
     const pos = toCanvasCoords(touch);
 
+    // Lobby buttons (динамические — пересчитываются каждый кадр в game-loop)
+    let lobbyHit = false;
+    for (const btn of lobbyButtonAreas) {
+      if (hitMenuButton(pos, btn)) {
+        touchButtons[btn.key] = true;
+        touchHeld[btn.key] = true;
+        vibrate(HAPTIC_TAP);
+        lobbyHit = true;
+        break;
+      }
+    }
+    if (lobbyHit) continue;
+
     // Check menu buttons first
     for (const btn of menuButtonAreas) {
       if (hitMenuButton(pos, btn)) {
@@ -231,6 +245,17 @@ function handleTouchEnd(e) {
     }
   }
   touchHeld = {};
+}
+
+/** Установить тап-зоны лобби. Вызывается из game-loop каждый кадр в STATE.LOBBY.
+ * areas: [{x, y, w, h, key, label}]
+ */
+export function setLobbyButtonAreas(areas) {
+  lobbyButtonAreas = areas || [];
+}
+
+export function getLobbyButtonAreas() {
+  return lobbyButtonAreas;
 }
 
 // Called by input.js

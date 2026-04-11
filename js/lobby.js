@@ -89,6 +89,21 @@ export function lobbyConfirmClass() {
     _pendingCreate = true;
   } else {
     _state = 'join_input';
+    // Mobile: открываем системный prompt вместо клавиатурного ввода.
+    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+      const code = window.prompt('Код комнаты (6 символов):');
+      if (code) {
+        _codeInput = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+        if (_codeInput.length === 6) {
+          lobbySubmitCode();
+        } else {
+          _state = 'error';
+          _errorMsg = 'Код должен быть 6 символов';
+        }
+      } else {
+        _state = 'idle';
+      }
+    }
   }
 }
 
@@ -288,13 +303,45 @@ export function renderLobby(ctx, canvasW, canvasH) {
       break;
   }
 
-  // ESC / кнопка назад
-  if (_state === 'idle' || _state === 'error') {
+  // ESC / кнопка назад (только клавиатура)
+  if ((_state === 'idle' || _state === 'error') && !_isMobile()) {
     ctx.font = '8px "Press Start 2P"';
     ctx.fillStyle = '#777';
     ctx.fillText('[ESC] Назад', cx, by + BOX_H - 14);
   }
 
+  // Mobile: тап-кнопки поверх (после контента)
+  if (_isMobile()) {
+    _renderLobbyTouchButtons(ctx, canvasW, canvasH);
+  }
+
+  ctx.textAlign = 'left';
+}
+
+function _isMobile() {
+  return typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+}
+
+function _renderLobbyTouchButtons(ctx, canvasW, canvasH) {
+  const areas = getLobbyTouchAreas(canvasW, canvasH);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const btn of areas) {
+    const halfW = btn.w / 2;
+    const halfH = btn.h / 2;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = btn.key === 'Escape' ? '#555' : '#1a6aaa';
+    ctx.fillRect(btn.x - halfW, btn.y - halfH, btn.w, btn.h);
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(btn.x - halfW, btn.y - halfH, btn.w, btn.h);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.min(14, btn.h * 0.42)}px "Press Start 2P"`;
+    ctx.fillText(btn.label, btn.x, btn.y + 1);
+  }
+  ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
 }
 
@@ -333,14 +380,16 @@ function _renderClassSelect(ctx, cx, cy, bx, by, BOX_W, BOX_H) {
 }
 
 function _renderIdleScreen(ctx, cx, by) {
-  ctx.font = '11px "Press Start 2P"';
-  ctx.fillStyle = '#80ff80';
-  ctx.fillText('[N] Создать комнату', cx, by + 110);
-  ctx.fillStyle = '#80c8ff';
-  ctx.fillText('[J] Присоединиться', cx, by + 150);
+  if (!_isMobile()) {
+    ctx.font = '11px "Press Start 2P"';
+    ctx.fillStyle = '#80ff80';
+    ctx.fillText('[N] Создать комнату', cx, by + 110);
+    ctx.fillStyle = '#80c8ff';
+    ctx.fillText('[J] Присоединиться', cx, by + 150);
+  }
   ctx.font = '8px "Press Start 2P"';
   ctx.fillStyle = '#888';
-  ctx.fillText('Нужен интернет и друг', cx, by + 195);
+  ctx.fillText('Нужен интернет и друг', cx, by + 220);
 }
 
 function _renderJoinInput(ctx, cx, cy, bx, by, BOX_W) {
@@ -415,6 +464,42 @@ function _renderError(ctx, cx, cy) {
   ctx.font = '8px "Press Start 2P"';
   ctx.fillStyle = '#aaa';
   ctx.fillText('[ESC] Назад', cx, cy + 30);
+}
+
+// ---------- Mobile: тап-зоны ----------
+/** Возвращает массив тап-зон для текущего lobby state.
+ *  Каждая зона: {x, y, w, h, key, label}. Game-loop передаёт их в touch.js.
+ *  Координаты — центр кнопки, в пространстве canvas (640x480 базовый).
+ */
+export function getLobbyTouchAreas(canvasW, canvasH) {
+  const cx = Math.floor(canvasW / 2);
+  const cy = Math.floor(canvasH / 2);
+  const BOX_W = Math.min(460, canvasW - 20);
+  const BOX_H = 300;
+  const by = cy - Math.floor(BOX_H / 2);
+
+  const areas = [];
+  switch (_state) {
+    case 'idle':
+      areas.push({ x: cx, y: by + 110, w: 280, h: 44, key: 'KeyN', label: 'Создать' });
+      areas.push({ x: cx, y: by + 165, w: 280, h: 44, key: 'KeyJ', label: 'Войти' });
+      areas.push({ x: cx, y: by + BOX_H - 22, w: 200, h: 32, key: 'Escape', label: 'Назад' });
+      break;
+    case 'class_select':
+      areas.push({ x: cx - 110, y: by + 130, w: 60, h: 60, key: 'ArrowLeft', label: '◀' });
+      areas.push({ x: cx + 110, y: by + 130, w: 60, h: 60, key: 'ArrowRight', label: '▶' });
+      areas.push({ x: cx, y: by + 235, w: 220, h: 44, key: 'Enter', label: 'OK' });
+      areas.push({ x: cx, y: by + BOX_H - 22, w: 200, h: 32, key: 'Escape', label: 'Назад' });
+      break;
+    case 'waiting_for_peer':
+    case 'create_waiting':
+    case 'join_waiting':
+    case 'connecting':
+    case 'error':
+      areas.push({ x: cx, y: by + BOX_H - 22, w: 200, h: 32, key: 'Escape', label: 'Назад' });
+      break;
+  }
+  return areas;
 }
 
 // ---------- Геттеры для game-loop ----------

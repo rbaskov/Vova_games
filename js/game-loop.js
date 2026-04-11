@@ -15,6 +15,7 @@ import { initInput, isKeyPressed, captureLocalInput, consumeEdge } from './input
 import {
   detectMobile, initTouchControls, renderTouchControls,
   isMobileDevice, setTapAnywhereMode, getJoystickFlick, getGameOffsetX,
+  setLobbyButtonAreas,
 } from './touch.js';
 import { TILE_SIZE, isPortal } from './tilemap.js';
 import * as SFX from './audio.js';
@@ -69,6 +70,7 @@ import {
   lobbyAddCodeChar, lobbyRemoveCodeChar, lobbySubmitCode,
   lobbyBack, getLobbyState, getLobbyCodeInput,
   getPendingStart, lobbyClassPrev, lobbyClassNext, lobbyConfirmClass,
+  getLobbyTouchAreas,
 } from './lobby.js';
 
 // --- Boss Dialogs ---
@@ -593,6 +595,10 @@ function gameLoop(timestamp) {
     case STATE.LOBBY: {
       // --- UPDATE ---
       updateLobby();
+      // Обновляем тап-зоны для текущего lobby state (mobile).
+      if (isMobileDevice()) {
+        setLobbyButtonAreas(getLobbyTouchAreas(game.width, game.height));
+      }
 
       // Session 2: переход в PLAY когда оба игрока готовы
       const coopPending = getPendingStart();
@@ -621,6 +627,7 @@ function gameLoop(timestamp) {
           );
           if (game.coopRole === 'host') _initGuestAvatar(game.players[1]);
         }
+        setLobbyButtonAreas([]);
         game.state = STATE.PLAY;
         SFX.resumeAudio();
         break;
@@ -632,6 +639,7 @@ function gameLoop(timestamp) {
         // ESC — назад в меню из любого состояния
         if (ls === 'idle' || ls === 'error' || ls === 'join_input' || ls === 'waiting_for_peer' || ls === 'class_select') {
           lobbyBack();
+          setLobbyButtonAreas([]);
           break;
         }
       }
